@@ -1,0 +1,66 @@
+{
+  "name": "@nyaomaru/changelog-bot",
+  "version": "0.0.1",
+  "description": "CLI and GitHub Action to auto-update CHANGELOG.md from git history and release notes, optionally using LLMs.",
+  "type": "module",
+  "bin": {
+    "changelog-bot": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
+    "lint": "eslint .",
+    "start": "node dist/index.js",
+    "dev": "ts-node-esm src/index.ts",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "prepack": "pnpm build"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nyaomaru/changelog-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nyaomaru/changelog-bot/issues"
+  },
+  "homepage": "https://github.com/nyaomaru/changelog-bot#readme",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "changelog",
+    "release",
+    "github-actions",
+    "cli",
+    "openai",
+    "anthropic"
+  ],
+  "dependencies": {
+    "is-kit": "^1.0.3",
+    "octokit": "^4.0.2",
+    "yargs": "^17.7.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.38.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.5.2",
+    "@types/yargs": "^17.0.33",
+    "eslint": "^9.38.0",
+    "globals": "^16.4.0",
+    "jest": "^29.7.0",
+    "jiti": "^2.6.1",
+    "ts-jest": "29",
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.46.1"
+  }
+}

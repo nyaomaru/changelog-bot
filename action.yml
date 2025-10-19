@@ -1,0 +1,89 @@
+name: 'Changelog Bot'
+description: 'Auto-update CHANGELOG.md from git history and release notes, optionally using an LLM. Creates a PR with the changes.'
+author: '@nyaomaru'
+branding:
+  icon: 'edit'
+  color: 'blue'
+
+inputs:
+  changelog-path:
+    description: 'Path to CHANGELOG file'
+    required: false
+    default: 'CHANGELOG.md'
+  base-branch:
+    description: 'Base branch for the PR'
+    required: false
+    default: 'main'
+  provider:
+    description: 'LLM provider to use (openai|anthropic)'
+    required: false
+    default: 'openai'
+  release-tag:
+    description: 'Git ref (tag or HEAD) to generate changelog for'
+    required: false
+  release-name:
+    description: "Display name for the version (without 'v')"
+    required: false
+  release-body:
+    description: 'Additional release notes body to merge in'
+    required: false
+  npm-version:
+    description: 'npm dist-tag or version range for @nyaomaru/changelog-bot'
+    required: false
+    default: 'latest'
+  dry-run:
+    description: "If 'true', print updated changelog without writing or PR"
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure git user
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Run changelog-bot
+      shell: bash
+      env:
+        # Allow repo name to be auto-detected by the CLI
+        REPO_FULL_NAME: ${{ github.repository }}
+        # Capture release_body safely without inline interpolation issues
+        INPUT_RELEASE_BODY: ${{ inputs['release-body'] }}
+      run: |
+        set -euo pipefail
+        CMD=(
+          npx -y @nyaomaru/changelog-bot@"${{ inputs.npm-version }}"
+          --changelog-path "${{ inputs['changelog-path'] }}"
+          --base-branch "${{ inputs['base-branch'] }}"
+          --provider "${{ inputs.provider }}"
+        )
+
+        if [ -n "${{ inputs['release-tag'] }}" ]; then
+          CMD+=(--release-tag "${{ inputs['release-tag'] }}")
+        fi
+        if [ -n "${{ inputs['release-name'] }}" ]; then
+          CMD+=(--release-name "${{ inputs['release-name'] }}")
+        fi
+        if [ -n "${INPUT_RELEASE_BODY:-}" ]; then
+          CMD+=(--release-body "${INPUT_RELEASE_BODY}")
+        fi
+        if [ "${{ inputs['dry-run'] }}" = "true" ]; then
+          CMD+=(--dry-run)
+        fi
+
+        echo "+ ${CMD[@]}"
+        "${CMD[@]}"
+
+# Notes:
+# - Pass secrets from the workflow using 'env' on the uses step, e.g.:
+#   env:
+#     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+#     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

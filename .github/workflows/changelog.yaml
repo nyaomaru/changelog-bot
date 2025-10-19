@@ -1,0 +1,61 @@
+name: Shared Changelog Workflow
+
+on:
+  workflow_call:
+    inputs:
+      changelog_path:
+        required: true
+        type: string
+      base_branch:
+        required: false
+        type: string
+        default: 'main'
+      provider:
+        required: false
+        type: string
+        default: 'openai'
+      release_tag:
+        required: false
+        type: string
+      release_name:
+        required: false
+        type: string
+      release_body:
+        required: false
+        type: string
+      dry_run:
+        required: false
+        type: string
+        default: 'false'
+    secrets:
+      REPO_TOKEN:
+        required: true
+      OPENAI_API_KEY:
+        required: false
+      ANTHROPIC_API_KEY:
+        required: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Run changelog bot action
+        uses: nyaomaru/changelog-bot@v0
+        with:
+          changelog-path: ${{ inputs.changelog_path }}
+          base-branch: ${{ inputs.base_branch }}
+          provider: ${{ inputs.provider }}
+          release-tag: ${{ inputs.release_tag }}
+          release-name: ${{ inputs.release_name }}
+          release-body: ${{ inputs.release_body }}
+          dry-run: ${{ inputs.dry_run }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

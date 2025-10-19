@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-tests",
+    "module": "node20",
+    "moduleResolution": "nodenext",
+    "target": "ES2022",
+    "types": ["node", "jest"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "is-kit": ["./src/vendor/is-kit/index.ts"],
+      "@jest/globals": [
+        "./node_modules/.pnpm/@jest+globals@29.7.0/node_modules/@jest/globals/build/index.d.ts"
+      ]
+    }
+  },
+  "include": ["tests/**/*.ts"],
+  "exclude": ["node_modules", "dist", "dist-tests"]
+}
