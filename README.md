@@ -1,7 +1,11 @@
 <h1 align="center">
-  <img src="https://https://raw.githubusercontent.com/nyaomaru/changelog-bot/main/public/ChangelogBot_logo02.png" alt="changelog-bot logo" width="400" />
+  <img src="https://https://raw.githubusercontent.com/nyaomaru/changelog-bot/main/public/ChangelogBot_logo02.png" alt="changelog-bot type logo" width="400" />
   changelog-bot
 </h1>
+
+<p align="center">
+    <img src="https://raw.githubusercontent.com/nyaomaru/changelog-bot/main/public/ChangelogBot_image.png" width="600px" align="center" alt="changelog-bot logo" />
+</p>
 
 Release mornings are supposed to feel exciting, not tedious. `changelog-bot` turns your Git history and release notes into a polished changelog entry (and optional PR) in a single run. Drop it into CI, run it locally, or hand it to your release captain—either way, you ship with a crisp changelog and zero copy-paste fatigue.
 
