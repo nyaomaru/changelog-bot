@@ -76,6 +76,12 @@ type RequestConfig = {
   errorPrefix: string;
 };
 
+/**
+ * Build the request payload and metadata for Anthropic classification calls.
+ * @param apiKey Anthropic API key to authorize the request.
+ * @param prompt Serialized classification prompt payload.
+ * @returns Configured request details for `postJson`.
+ */
 function buildAnthropicRequest(
   apiKey: string,
   prompt: ClassificationPrompt
@@ -96,6 +102,12 @@ function buildAnthropicRequest(
   };
 }
 
+/**
+ * Build the request payload and metadata for OpenAI classification calls.
+ * @param apiKey OpenAI API key to authorize the request.
+ * @param prompt Serialized classification prompt payload.
+ * @returns Configured request details for `postJson`.
+ */
 function buildOpenAiRequest(
   apiKey: string,
   prompt: ClassificationPrompt
