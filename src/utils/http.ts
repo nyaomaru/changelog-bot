@@ -50,7 +50,7 @@ async function parseJsonResponse<T>(
 
   const data = safeJsonParse<T>(text);
   if (data === undefined) {
-    throw new Error('Failed to parse JSON response');
+    throw new Error(`${errorPrefix} failed to parse JSON response`);
   }
   return data;
 }
