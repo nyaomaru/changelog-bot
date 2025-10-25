@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="https://https://raw.githubusercontent.com/nyaomaru/changelog-bot/main/public/ChangelogBot_logo02.png" alt="changelog-bot type logo" width="400" />
+  <img src="https://raw.githubusercontent.com/nyaomaru/changelog-bot/main/public/ChangelogBot_logo02.png" alt="changelog-bot type logo" width="400" />
   changelog-bot
 </h1>
 
