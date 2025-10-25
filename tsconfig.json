@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "node20",
+    "moduleResolution": "nodenext",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "is-kit": ["./src/vendor/is-kit/index.ts"]
+    },
+    "verbatimModuleSyntax": true,
+    "baseUrl": "."
+  },
+  "include": ["src"]
+}

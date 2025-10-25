@@ -1,0 +1,21 @@
+[tools]
+node = "22"
+pnpm = "10.12"
+
+[tasks.lint]
+run = "pnpm lint"
+
+[tasks.build]
+run = "pnpm build"
+
+[tasks.test]
+run = "pnpm test"
+
+[tasks.test_unit]
+run = "pnpm run test:unit"
+
+[tasks.test_performance]
+run = "pnpm run test:performance"
+
+[tasks.qa]
+run = ["pnpm lint", "pnpm test", "pnpm build"]
