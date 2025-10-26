@@ -10,7 +10,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "is-kit": ["./src/vendor/is-kit/index.ts"],
+      "is-kit": ["./src/vendor/is-kit/index.ts"]
     }
   },
   "include": ["tests/**/*.ts"],
