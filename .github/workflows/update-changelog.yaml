@@ -1,0 +1,24 @@
+name: Update Changelog
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  changelog:
+    uses: ./.github/workflows/changelog.yaml
+    with:
+      changelog_path: CHANGELOG.md
+      base_branch: main
+      provider: openai
+      release_tag: ${{ github.event.release.tag_name }}
+      release_body: ${{ github.event.release.body }}
+      dry_run: 'false'
+    secrets:
+      REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
