@@ -7,15 +7,22 @@
     <img src="https://raw.githubusercontent.com/nyaomaru/changelog-bot/main/public/ChangelogBot_image.png" width="600px" align="center" alt="changelog-bot logo" />
 </p>
 
-Release mornings are supposed to feel exciting, not tedious. `changelog-bot` turns your Git history and release notes into a polished changelog entry (and optional PR) in a single run. Drop it into CI, run it locally, or hand it to your release captain—either way, you ship with a crisp changelog and zero copy-paste fatigue.
+Releases should feel exciting, not tedious.
+`@nyaomaru/changelog-bot` 🤖 turns your Git history and release notes into a polished changelog entry (and optional PR) in a single run. Drop it into CI, run it locally, or hand it to your release captain—either way, you ship with a crisp changelog and zero copy-paste fatigue.
 
 ## Why changelog-bot?
 
 - **Automated storytelling:** Combines commit history, PR titles, and release notes to produce human-ready changelog sections.
-- **LLM superpowers (optional):** Connect OpenAI or Anthropic for tone-aware summaries; skip the keys and it still ships with a reliable heuristic fallback.
+- **LLM superpowers (optional):** Connect OpenAI or Anthropic for tone-aware summaries or skip API keys entirely and rely on a robust heuristic fallback.
 - **PR-ready output:** Can open a pull request with updated changelog, compare links, and release notes already wired up.
 - **Safe defaults:** Detects duplicate versions, keeps compare links current, and won’t fail a release if AI is down.
 - **CI-native:** Works as a GitHub Action, reusable workflow, or plain CLI—no fragile scripting required.
+
+> [!IMPORTANT] > **Early-stage release (v0.0.x)**
+>
+> This project is currently in its early stages (`v0.0.x`).
+> Interfaces and behaviors may change without notice until `v1.0.0`.
+> If you plan to integrate it into production workflows, please pin the exact version to avoid unexpected breaking changes.
 
 ## Quick start
 
@@ -35,26 +42,6 @@ pnpm exec changelog-bot --help
 ```
 
 Using it in CI? Jump to [GitHub Actions integration](#github-actions-integration) for drop-in workflow examples.
-
-## Usage
-
-Run the CLI however it fits your workflow—install it globally, call it from project scripts, or reach for one-off commands via `npx`/`pnpm dlx`.
-
-Recommended invocations:
-
-```sh
-# Run without installing (npm)
-npx @nyaomaru/changelog-bot --help
-
-# Run without installing (pnpm)
-pnpm dlx @nyaomaru/changelog-bot --help
-
-# After installing in your project (scripts resolve the bin)
-npx changelog-bot --help
-
-# If you prefer, directly call the bin name when globally installed
-changelog-bot --help
-```
 
 ### Options
 
@@ -282,12 +269,12 @@ cp .env.example .env
 npx @nyaomaru/changelog-bot --help
 ```
 
-## Notes
+## Notes & FAQ
 
-- AI keys are optional; the CLI degrades gracefully with a fallback changelog and PR note.
-- `GITHUB_TOKEN` is required to create a PR (non-dry-run).
-- Duplicate version headings are detected to prevent accidental re-inserts.
-- Compare links are ensured/updated automatically.
+- ❓ _Do I need AI keys?_ → No. The CLI gracefully falls back to heuristic mode.
+- 🔑 _Is GITHUB_TOKEN required?_ → Only when creating PRs (non-dry-run).
+- 🧩 _What if my tag already exists?_ → Duplicate version headings are automatically detected and skipped.
+- 🔗 _Compare links?_ → Automatically ensured and updated for every release.
 
 **Compatibility Policy**
 
