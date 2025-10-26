@@ -1,4 +1,4 @@
-name: 'Changelog Bot'
+name: 'Changelog Bot Runner Nyaomaru'
 description: 'Auto-update CHANGELOG.md from git history and release notes, optionally using an LLM. Creates a PR with the changes.'
 author: '@nyaomaru'
 branding:
