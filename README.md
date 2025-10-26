@@ -145,7 +145,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: nyaomaru/changelog-bot@v0
+      - uses: nyaomaru/changelog-bot@v0.0.1 # Set release version
         with:
           changelog-path: CHANGELOG.md
           base-branch: main
