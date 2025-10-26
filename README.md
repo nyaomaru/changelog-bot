@@ -28,8 +28,6 @@ Releases should feel exciting, not tedious.
 Run the published CLI right away—no local tooling prep required.
 
 ```sh
-npx @nyaomaru/changelog-bot --help
-# or
 pnpm dlx @nyaomaru/changelog-bot --help
 ```
 
@@ -60,7 +58,7 @@ Using it in CI? Jump to [GitHub Actions integration](#github-actions-integration
 ### Dry-run for latest release
 
 ```sh
-npx @nyaomaru/changelog-bot \
+pnpm dlx @nyaomaru/changelog-bot \
   --release-tag HEAD \
   --release-name 0.1.0-dev \
   --changelog-path CHANGELOG.md \
@@ -71,7 +69,7 @@ npx @nyaomaru/changelog-bot \
 ### Generate changelog for a tagged release
 
 ```sh
-npx @nyaomaru/changelog-bot \
+pnpm dlx @nyaomaru/changelog-bot \
  --release-tag vx.y.z \
  --release-name x.y.z \
  --changelog-path CHANGELOG.md \
@@ -84,7 +82,7 @@ If `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` are not set, the CLI skips model calls
 
 ```sh
 # No AI keys in env
-npx @nyaomaru/changelog-bot --release-tag HEAD --release-name 1.2.3
+pnpm dlx @nyaomaru/changelog-bot --release-tag HEAD --release-name 1.2.3
 ```
 
 Example PR body suffix:
@@ -98,7 +96,7 @@ Note: Generated without LLM. Reason: Missing API key for provider: openai.
 ```sh
 export OPENAI_MODEL=gpt-4o-mini
 export OPENAI_API_KEY=sk-xxxx
-npx @nyaomaru/changelog-bot --release-tag HEAD --release-name 1.0.0 --dry-run
+pnpm dlx @nyaomaru/changelog-bot --release-tag HEAD --release-name 1.0.0 --dry-run
 ```
 
 ### From source (local checkout)
