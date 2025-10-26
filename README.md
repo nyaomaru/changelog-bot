@@ -17,8 +17,7 @@ Releases should feel exciting, not tedious.
 - **Safe defaults:** Detects duplicate versions, keeps compare links current, and won’t fail a release if AI is down.
 - **CI-native:** Works as a GitHub Action, reusable workflow, or plain CLI—no fragile scripting required.
 
-> [!IMPORTANT] > **Early-stage release (v0.0.x)**
->
+> [!IMPORTANT]
 > This project is currently in its early stages (`v0.0.x`).
 > Interfaces and behaviors may change without notice until `v1.0.0`.
 > If you plan to integrate it into production workflows, please pin the exact version to avoid unexpected breaking changes.
@@ -145,7 +144,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: nyaomaru/changelog-bot@v0
+      - uses: nyaomaru/changelog-bot@v0.0.1 # Set release version
         with:
           changelog-path: CHANGELOG.md
           base-branch: main

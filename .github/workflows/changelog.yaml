@@ -9,11 +9,11 @@ on:
       base_branch:
         required: false
         type: string
-        default: 'main'
+        default: "main"
       provider:
         required: false
         type: string
-        default: 'openai'
+        default: "openai"
       release_tag:
         required: false
         type: string
@@ -26,7 +26,7 @@ on:
       dry_run:
         required: false
         type: string
-        default: 'false'
+        default: "false"
     secrets:
       REPO_TOKEN:
         required: true
@@ -46,7 +46,7 @@ jobs:
         with: { fetch-depth: 0 }
 
       - name: Run changelog bot action
-        uses: nyaomaru/changelog-bot@v0
+        uses: nyaomaru/changelog-bot@v0.0.1
         with:
           changelog-path: ${{ inputs.changelog_path }}
           base-branch: ${{ inputs.base_branch }}
