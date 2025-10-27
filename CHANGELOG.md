@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.2] - 2025-10-27
+
+### Chore
+
+- update action name by @nyaomaru in [#3](https://github.com/nyaomaru/changelog-bot/pull/3)
+- add update changelog workflow by @nyaomaru in [#4](https://github.com/nyaomaru/changelog-bot/pull/4)
+- update README by @nyaomaru in [#5](https://github.com/nyaomaru/changelog-bot/pull/5)
+- set release version by @nyaomaru in [#6](https://github.com/nyaomaru/changelog-bot/pull/6)
+- permission denied error by @nyaomaru in [#7](https://github.com/nyaomaru/changelog-bot/pull/7)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.0.1...v0.0.2
+
+[v0.0.2]: https://github.com/nyaomaru/changelog-bot/compare/v0.0.1...v0.0.2
+
 ## [0.0.1] - 2025-10-26
 
 ### 🚀 Initial Release
