@@ -1,0 +1,87 @@
+name: Version Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Select version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options: [patch, minor, major]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate new version
+        id: version
+        run: |
+          NEW_VERSION=$(pnpm version ${{ inputs.release_type }} --no-git-tag-version | awk '{print $NF}')
+          version_no_v=${NEW_VERSION#v}
+          echo "new_version=$version_no_v" >> $GITHUB_ENV
+
+      - name: Create new branch
+        run: git checkout -b "release/${{ env.new_version }}"
+
+      - name: Configure git (bot identity)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Update remote to use token
+        run: |
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git remote -v
+
+      - name: Commit & Push changes
+        run: |
+          git add package.json pnpm-lock.yaml || true
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(release): bump version to ${{ env.new_version }}"
+          else
+            echo "No changes to commit"
+          fi
+          git push -u origin "HEAD:release/${{ env.new_version }}"
+
+      - name: Create Pull Request
+        run: |
+          gh pr create \
+            --base main \
+            --head "release/${{ env.new_version }}" \
+            --title "Release: ${{ env.new_version }}" \
+            --body "Auto-generated release PR for version ${{ env.new_version }}"
