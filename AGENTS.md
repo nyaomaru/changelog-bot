@@ -2,7 +2,8 @@
 
 ## Project Structure & Module Organization
 
-- `src/index.ts`: CLI entry (Yargs). Outputs to `dist/index.js`.
+- `src/cli.ts`: CLI entry wrapper (shebang + error handling).
+- `src/index.ts`: CLI implementation (Yargs) reused by the wrapper.
 - `src/lib/*`: Git, changelog parsing/writing, PR creation.
 - `src/providers/*`: LLM providers (`openai`, `anthropic`) and types.
 - `src/utils/*`: Helpers (classification, release parsing, PR mapping, etc.).
@@ -21,8 +22,8 @@ mise install   # installs Node 22 and pnpm 10.12
 - `pnpm install`: Install deps.
 - `pnpm build`: Compile TypeScript and rewrite path aliases (`tsc`, `tsc-alias`).
 - `pnpm dev`: Run the CLI from TS (`ts-node-esm`).
-- `pnpm start`: Run compiled CLI (`node dist/index.js`).
-- Dry run example: `node dist/index.js --release-tag HEAD --release-name 0.1.0 --provider openai --dry-run` (prints updated changelog without writing/PR).
+- `pnpm start`: Run compiled CLI (`node dist/cli.js`).
+- Dry run example: `node dist/cli.js --release-tag HEAD --release-name 0.1.0 --provider openai --dry-run` (prints updated changelog without writing/PR).
 
 ### Mise Tasks
 
@@ -54,7 +55,7 @@ mise run qa          # lint + test + build
 ## Testing Guidelines
 
 - No automated test runner yet. Validate via dry runs against a repo clone:
-  `node dist/index.js --release-tag vx.y.z --release-name x.y.z --dry-run`.
+  `node dist/cli.js --release-tag vx.y.z --release-name x.y.z --dry-run`.
 - If adding tests, prefer Vitest/Jest in `src/**/__tests__` with `*.test.ts`. Keep pure functions in `utils/` easy to unit test.
 
 ## Commit & Pull Request Guidelines
