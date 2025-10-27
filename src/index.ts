@@ -60,7 +60,11 @@ import { PROVIDER_NAMES, PROVIDER_OPENAI } from '@/constants/provider.js';
 import { sanitizeLLMOutput } from '@/utils/sanitize.js';
 import { buildPrMapBySha, buildTitleToPr } from '@/utils/pr-mapping.js';
 
-async function main() {
+/**
+ * Runs the changelog bot CLI end-to-end.
+ * @returns Promise that resolves when the CLI flow completes.
+ */
+export async function runCli(): Promise<void> {
   const argv = await yargs(hideBin(process.argv))
     .option('repo-path', { type: 'string', default: '.' })
     .option('changelog-path', {
@@ -384,8 +388,3 @@ async function main() {
 
   console.log(`Created PR #${prNum}`);
 }
-
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
-});

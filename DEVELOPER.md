@@ -27,7 +27,8 @@ Using mise tasks:
 ## Project Map
 
 - src/ TypeScript sources (ESM, strict)
-  - index.ts CLI entry (Yargs) → outputs to dist/index.js
+  - cli.ts CLI entry wrapper (shebang + process wiring)
+  - index.ts CLI implementation (Yargs) reused by the wrapper
   - lib/ git + changelog + PR + GitHub API helpers
   - providers/ LLM providers (openai, anthropic) and JSON extraction utils
   - utils/ helpers (classification, release parsing, PR mapping, HTTP, etc.)
@@ -42,13 +43,13 @@ Alias: `@/…` → `src/` (see tsconfig.json and jest.config.cjs `moduleNameMapp
 
 - `pnpm build` compile TypeScript (`tsc` + `tsc-alias`)
 - `pnpm dev` run the CLI from TS (`ts-node-esm`)
-- `pnpm start` run compiled CLI (`node dist/index.js`)
+- `pnpm start` run compiled CLI (`node dist/cli.js`)
 - `pnpm test` run Jest tests (`tests/**/*.test.ts`)
 
 Handy dry-run example:
 
 ```sh
-node dist/index.js \
+node dist/cli.js \
   --release-tag HEAD \
   --release-name 0.1.0 \
   --provider openai \

@@ -4,13 +4,13 @@
   "description": "CLI and GitHub Action to auto-update CHANGELOG.md from git history and release notes, optionally using LLMs.",
   "type": "module",
   "bin": {
-    "changelog-bot": "./dist/index.js"
+    "changelog-bot": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "lint": "eslint .",
-    "start": "node dist/index.js",
-    "dev": "ts-node-esm src/index.ts",
+    "start": "node dist/cli.js",
+    "dev": "ts-node-esm src/cli.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "prepack": "pnpm build"
   },
