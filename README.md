@@ -144,7 +144,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: nyaomaru/changelog-bot@v0.0.1 # Set release version
+
+      - uses: nyaomaru/changelog-bot@v0 # Set release version
         with:
           changelog-path: CHANGELOG.md
           base-branch: main
@@ -178,9 +179,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
+
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - run: npx @nyaomaru/changelog-bot \
+
+      - run: npx @nyaomaru/changelog-bot@latest \
           --release-tag ${{ github.event.release.tag_name }} \
           --release-name ${{ github.event.release.tag_name }} \
           --changelog-path CHANGELOG.md \
@@ -197,7 +200,7 @@ jobs:
 ```yaml
 jobs:
   changelog:
-    uses: nyaomaru/changelog-bot/.github/workflows/changelog.yaml@v0
+    uses: nyaomaru/changelog-bot/.github/workflows/changelog.yaml@main
     with:
       changelog_path: CHANGELOG.md
       base_branch: main
@@ -280,3 +283,7 @@ npx @nyaomaru/changelog-bot --help
   - Action + CLI pin: set `npm-version` input (e.g., `npm-version: 0.1.2`).
   - npx: `npx @nyaomaru/changelog-bot@0.1.2 ...`.
 - From `v1` onward, we follow SemVer: no breaking changes without a major version bump.
+
+<p align="center">
+    <img src="https://raw.githubusercontent.com/nyaomaru/changelog-bot/main/public/ChangelogBot_text.png" width="600px" align="center" alt="changelog-bot text" />
+</p>
