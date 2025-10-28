@@ -1,0 +1,27 @@
+name: Move v0 tag on release
+on:
+  release:
+    types: [published]
+
+jobs:
+  move-v0:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Move v0 tag to this release's commit
+        env:
+          SHA: ${{ github.event.release.target_commitish }}
+        run: |
+          git fetch --tags
+          git checkout "$SHA"
+          git tag -fa v0 -m "Move v0 to ${{ github.event.release.tag_name }}"
+          git push origin v0 --force
