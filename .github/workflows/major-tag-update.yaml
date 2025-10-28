@@ -21,7 +21,6 @@ jobs:
         env:
           SHA: ${{ github.event.release.target_commitish }}
         run: |
-          git fetch --tags
           git checkout "$SHA"
           git tag -fa v0 -m "Move v0 to ${{ github.event.release.tag_name }}"
           git push origin v0 --force
