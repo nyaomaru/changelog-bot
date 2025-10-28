@@ -46,7 +46,7 @@ jobs:
         with: { fetch-depth: 0 }
 
       - name: Run changelog bot action
-        uses: nyaomaru/changelog-bot@v0.0.1
+        uses: nyaomaru/changelog-bot@v0
         with:
           changelog-path: ${{ inputs.changelog_path }}
           base-branch: ${{ inputs.base_branch }}
