@@ -12,7 +12,7 @@ Using mise (recommended):
 
 ```sh
 mise install         # installs Node 22 and pnpm 10.12
-pnpm install
+mise dev_install     # installs dependencies
 ```
 
 Or manual:
@@ -24,8 +24,8 @@ pnpm install
 Run the CLI locally (examples):
 
 ```sh
-pnpm build
-node dist/cli.js --release-tag HEAD --release-name 0.1.0 --dry-run
+mise build
+mise start --release-tag HEAD --release-name 0.1.0 --dry-run
 # or iterate fast from TS
 pnpm dev -- --release-tag HEAD --release-name 0.1.0 --dry-run
 ```
@@ -102,7 +102,7 @@ Types include: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.
 - `pnpm dev` — run CLI from TS (`ts-node-esm`)
 - `pnpm start` — run compiled CLI (`node dist/cli.js`)
 - `pnpm test` — run Jest tests
-- `mise run qa` — run lint + test + build (if lint is configured)
+- `mise qa` — run lint + test + build (if lint is configured)
 
 ## 🧪 Testing Notes
 

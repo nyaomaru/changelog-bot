@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0] - 2025-10-29
+### Fixed
+- permission denied error (#7)
+
+### Chore
+- Merge pull request #7 from nyaomaru/fix/shebang-permission-error (#7)
+- Merge pull request #6 from nyaomaru/chore/update-changelog (#6)
+- update important segment (#6)
+- set release version (#6)
+- Merge pull request #5 from nyaomaru/chore/update-README (#5)
+- update README (#5)
+- Merge pull request #4 from nyaomaru/chore/add-update-changelog-workflow (#4)
+- add update changelog workflow (#4)
+- Merge pull request #3 from nyaomaru/chore/update-action-name (#3)
+- update action name (#3)
+
+[v0]: https://github.com/nyaomaru/changelog-bot/compare/v0.0.1...v0
+
 ## [v0.0.2] - 2025-10-27
 
 ### Fixed
