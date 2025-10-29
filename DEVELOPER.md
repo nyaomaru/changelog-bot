@@ -10,19 +10,18 @@ Welcome! This is the developer guide for changelog-bot. It keeps things practica
 ```sh
 # Clone and install
 mise install              # installs Node 22 and pnpm 10.12
-pnpm install
+mise dev_install          # installs dependencies
 
 # Build and try the CLI
-pnpm build                # compile TS → dist/
-pnpm dev                  # run from TS (ts-node-esm)
-pnpm start                # run compiled JS
+mise build                # compile TS → dist/
+mise start                # run compiled JS
 ```
 
 Using mise tasks:
 
-- Build: `mise run build`
-- Test: `mise run test`
-- QA: `mise run qa` (lint + test + build; note: lint script may be absent)
+- Build: `mise build`
+- Test: `mise test`
+- QA: `mise qa` (lint + test + build; note: lint script may be absent)
 
 ## Project Map
 

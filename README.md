@@ -246,12 +246,14 @@ If you're contributing to `changelog-bot`, the repo ships a `mise.toml` to pin t
 ```sh
 # Install tool versions declared in mise.toml
 mise install
+# Install dependencies
+mise dev_install
 
 # Run common tasks
-mise run build         # same as: pnpm build
-mise run lint          # same as: pnpm lint
-mise run test          # same as: pnpm test
-mise run qa            # runs lint, test, build in sequence
+mise build         # same as: pnpm build
+mise lint          # same as: pnpm lint
+mise test          # same as: pnpm test
+mise qa            # runs lint, test, build in sequence
 ```
 
 ### Manual setup
