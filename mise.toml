@@ -2,6 +2,12 @@
 node = "22"
 pnpm = "10.12"
 
+[tasks.start]
+run = "pnpm start"
+
+[tasks.dev_install]
+run = "pnpm install"
+
 [tasks.lint]
 run = "pnpm lint"
 
