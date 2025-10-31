@@ -19,7 +19,7 @@ Prerequisite: Install the toolchain via mise. This repo pins Node and pnpm in `m
 mise install   # installs Node 22 and pnpm 10.12
 ```
 
-- `pnpm install`: Install deps.
+- `pnpm dev_install`: Install deps.
 - `pnpm build`: Compile TypeScript and rewrite path aliases (`tsc`, `tsc-alias`).
 - `pnpm dev`: Run the CLI from TS (`ts-node-esm`).
 - `pnpm start`: Run compiled CLI (`node dist/cli.js`).
