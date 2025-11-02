@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.3] - 2025-11-02
+
+### Fixed
+
+- PR title setting by @nyaomaru in [#15](https://github.com/nyaomaru/changelog-bot/pull/15)
+
+### Chore
+
+- version bump by @nyaomaru in [#9](https://github.com/nyaomaru/changelog-bot/pull/9)
+- v0.0.2 by [bot] by @github-actions in [#8](https://github.com/nyaomaru/changelog-bot/pull/8)
+- chore; update logo by @nyaomaru in [#10](https://github.com/nyaomaru/changelog-bot/pull/10)
+- major tag update by @nyaomaru in [#11](https://github.com/nyaomaru/changelog-bot/pull/11)
+- mise command by @nyaomaru in [#12](https://github.com/nyaomaru/changelog-bot/pull/12)
+- update documents by @nyaomaru in [#14](https://github.com/nyaomaru/changelog-bot/pull/14)
+- Release: 0.0.3 by [bot] by @github-actions in [#16](https://github.com/nyaomaru/changelog-bot/pull/16)
+
+### New Contributors
+
+- @github-actions[bot] made their first contribution in https://github.com/nyaomaru/changelog-bot/pull/8
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.3
+
+[v0.0.3]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.3
+
 ## [v0.0.2] - 2025-10-27
 
 ### Fixed
