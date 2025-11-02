@@ -36,12 +36,13 @@ import { normalizeSectionCategories } from '@/utils/section-normalize.js';
 import { postprocessSection } from '@/utils/section-postprocess.js';
 import { parseReleaseNotes, buildSectionFromRelease } from '@/utils/release.js';
 import { classifyTitles } from '@/utils/classify.js';
-
 import { providerFactory } from '@/utils/provider.js';
 import { getRepoFullName } from '@/utils/repository.js';
 import { versionFromRef } from '@/utils/version.js';
 import { fallbackSection } from '@/utils/fallback.js';
 import { escapeRegExp } from '@/utils/escape.js';
+import { isNumber } from '@/utils/is.js';
+
 import {
   DEFAULT_BASE_BRANCH,
   DEFAULT_CHANGELOG_FILE,
@@ -125,7 +126,7 @@ export async function runCli(): Promise<void> {
   const envParsed = EnvSchema.safeParse(process.env);
   const token = envParsed.success
     ? envParsed.data.GITHUB_TOKEN
-    : (process.env.GITHUB_TOKEN as string | undefined);
+    : process.env.GITHUB_TOKEN;
   const hasProviderKey = (() => {
     const openai = envParsed.success
       ? envParsed.data.OPENAI_API_KEY
@@ -160,30 +161,30 @@ export async function runCli(): Promise<void> {
     fallbackReasons.push(
       'Used GitHub Release Notes as the source (no model call)'
     );
-    for (const it of parsedRelease.items) {
-      if (!it.pr) {
-        const candidateKeys = [it.title, it.rawTitle]
+    for (const item of parsedRelease.items) {
+      if (!item.pr) {
+        const candidateKeys = [item.title, item.rawTitle]
           .filter(Boolean)
           .map((value) => value!.toLowerCase());
         const num = candidateKeys
           .map((key) => titleToPr[key])
-          .find((value): value is number => typeof value === 'number');
+          .find((value) => isNumber(value));
         if (num) {
-          it.pr = num;
-          it.url = `https://github.com/${owner}/${repo}/pull/${num}`;
+          item.pr = num;
+          item.url = `https://github.com/${owner}/${repo}/pull/${num}`;
         }
       }
-      if (it.pr) {
-        if (!it.url) {
-          it.url = `https://github.com/${owner}/${repo}/pull/${it.pr}`;
+      if (item.pr) {
+        if (!item.url) {
+          item.url = `https://github.com/${owner}/${repo}/pull/${item.pr}`;
         }
-        if (!it.author) {
+        if (!item.author) {
           try {
-            const pr = await fetchPRInfo(owner, repo, it.pr, token);
-            if (pr?.author) it.author = pr.author;
-            if (pr?.url) it.url = pr.url;
+            const pr = await fetchPRInfo(owner, repo, item.pr, token);
+            if (pr?.author) item.author = pr.author;
+            if (pr?.url) item.url = pr.url;
           } catch {
-            console.warn(`Warning: Failed to fetch PR #${it.pr} info`);
+            console.warn(`Warning: Failed to fetch PR #${item.pr} info`);
           }
         }
       }
