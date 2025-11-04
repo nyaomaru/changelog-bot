@@ -1,4 +1,4 @@
-import { CONVENTIONAL_PREFIX_RE } from '@/constants/conventional.js';
+import { CONVENTIONAL_PREFIX_RE, REFACTOR_LIKE_RE } from '@/constants/conventional.js';
 import type { CategoryMap } from '@/types/changelog.js';
 import type { ReleaseItem } from '@/types/release.js';
 
@@ -100,7 +100,6 @@ export function tuneCategoriesByTitle(
   }
 
   // Secondary rule: refactor/perf/style-like items should land in Changed when misclassified as Chore or missing.
-  const REFACTOR_LIKE_RE = /^(refactor|perf|style)(\(|:)/i;
   const isRefactorLike = (raw: string) => REFACTOR_LIKE_RE.test(raw.toLowerCase());
 
   // Helper to find current category of a title.

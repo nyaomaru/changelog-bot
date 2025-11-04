@@ -1,8 +1,7 @@
-import { CONVENTIONAL_PREFIX_RE } from '@/constants/conventional.js';
+import { CONVENTIONAL_PREFIX_RE, REFACTOR_LIKE_RE } from '@/constants/conventional.js';
 import type { ReleaseItem } from '@/types/release.js';
 import { isImplicitFixTitle } from '@/utils/category-tune.js';
 
-const REFACTOR_LIKE_RE = /^(refactor|perf|style)(\(|:)/i;
 
 /**
  * Normalize titles to make LLM classification more deterministic without
@@ -40,4 +39,3 @@ export function buildTitlesForClassification(items: ReleaseItem[]): string[] {
   }
   return out;
 }
-
