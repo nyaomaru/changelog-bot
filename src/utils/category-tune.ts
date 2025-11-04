@@ -76,7 +76,14 @@ export function tuneCategoriesByTitle(
     if (item.rawTitle) knownTitles.add(item.rawTitle);
     knownTitles.add(item.title);
   }
-
+  // Also add all titles from the classifier output (categories) to ensure remapping works for modified titles.
+  for (const list of Object.values(categories)) {
+    if (Array.isArray(list)) {
+      for (const title of list) {
+        knownTitles.add(title);
+      }
+    }
+  }
   // Ensure Fixed/Changed buckets exist on a deep-copied map so we don't mutate inputs.
   const adjusted: CategoryMap = Object.fromEntries(
     Object.entries(categories).map(([section, list]) => [
