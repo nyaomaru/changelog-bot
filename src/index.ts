@@ -36,6 +36,8 @@ import { normalizeSectionCategories } from '@/utils/section-normalize.js';
 import { postprocessSection } from '@/utils/section-postprocess.js';
 import { parseReleaseNotes, buildSectionFromRelease } from '@/utils/release.js';
 import { classifyTitles } from '@/utils/classify.js';
+import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
+import { buildTitlesForClassification } from '@/utils/classify-pre.js';
 import { providerFactory } from '@/utils/provider.js';
 import { getRepoFullName } from '@/utils/repository.js';
 import { versionFromRef } from '@/utils/version.js';
@@ -189,10 +191,10 @@ export async function runCli(): Promise<void> {
         }
       }
     }
-    const categories = await classifyTitles(
-      parsedRelease.items.map((item) => item.rawTitle ?? item.title),
-      provider.name
-    );
+    const titlesForLLM = buildTitlesForClassification(parsedRelease.items);
+    let categories = await classifyTitles(titlesForLLM, provider.name);
+    // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.
+    categories = tuneCategoriesByTitle(parsedRelease.items, categories);
     const section = buildSectionFromRelease({
       version,
       date,

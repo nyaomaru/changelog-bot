@@ -25,3 +25,6 @@ export const CONVENTIONAL_PREFIX_RE = new RegExp(
 // Inline PR number forms
 export const INLINE_PR_NUMBER_RE = /#(\d+)/g; // extract numbers
 export const INLINE_PR_PRESENT_RE = /\(#\d+\)|\[#\d+\]/; // test presence only
+
+// Refactor-like conventional types (mapped to Changed by default)
+export const REFACTOR_LIKE_RE = /^(refactor|perf|style)(\(|:)/i;
