@@ -77,8 +77,13 @@ export function tuneCategoriesByTitle(
     knownTitles.add(item.title);
   }
 
-  // Ensure Fixed bucket exists to receive re-mapped entries.
-  const adjusted: CategoryMap = { ...categories };
+  // Ensure Fixed/Changed buckets exist on a deep-copied map so we don't mutate inputs.
+  const adjusted: CategoryMap = Object.fromEntries(
+    Object.entries(categories).map(([section, list]) => [
+      section,
+      Array.isArray(list) ? list.slice() : [],
+    ])
+  );
   if (!adjusted.Fixed) adjusted.Fixed = [];
   if (!adjusted.Changed) adjusted.Changed = [];
 
