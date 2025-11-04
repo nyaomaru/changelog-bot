@@ -15,6 +15,8 @@ import { isImplicitFixTitle } from '@/utils/category-tune.js';
  */
 export function buildTitlesForClassification(items: ReleaseItem[]): string[] {
   const out: string[] = [];
+  const FIX_PREFIX_RE = /^fix(\(|:)/i;
+  const REFACTOR_PREFIX_RE = /^refactor(\(|:)/i;
   for (const item of items) {
     const base = (item.rawTitle ?? item.title ?? '').trim();
     if (!base) continue;
@@ -24,14 +26,14 @@ export function buildTitlesForClassification(items: ReleaseItem[]): string[] {
 
     // If the title implies a correctness fix (e.g., typing/contract fix),
     // present it as a conventional `fix:` for the classifier.
-    if (isImplicitFixTitle(base) && !/^fix(\(|:)/i.test(lower)) {
+    if (isImplicitFixTitle(base) && !FIX_PREFIX_RE.test(lower)) {
       out.push(`fix: ${core}`);
       continue;
     }
 
     // Normalize refactor/perf/style to refactor: for consistent Changed mapping.
     if (REFACTOR_LIKE_RE.test(lower)) {
-      out.push(/^refactor(\(|:)/i.test(lower) ? base : `refactor: ${core}`);
+      out.push(REFACTOR_PREFIX_RE.test(lower) ? base : `refactor: ${core}`);
       continue;
     }
 
