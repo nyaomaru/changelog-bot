@@ -96,7 +96,7 @@ export function tuneCategoriesByTitle(
 
   // Remove from any existing buckets and add to Fixed, ensuring uniqueness.
   for (const title of toMove) {
-    for (const [section, list] of Object.entries(adjusted)) {
+    for (const list of Object.values(adjusted)) {
       if (!Array.isArray(list)) continue;
       const idx = list.indexOf(title);
       if (idx !== -1) list.splice(idx, 1);
