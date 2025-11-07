@@ -1,6 +1,6 @@
 import { CONVENTIONAL_PREFIX_RE, REFACTOR_LIKE_RE } from '@/constants/conventional.js';
 import type { ReleaseItem } from '@/types/release.js';
-import { isImplicitFixTitle } from '@/utils/category-tune.js';
+import { isImplicitFixTitle, isChangeLikeTitle } from '@/utils/category-tune.js';
 
 
 /**
@@ -33,6 +33,12 @@ export function buildTitlesForClassification(items: ReleaseItem[]): string[] {
 
     // Normalize refactor/perf/style to refactor: for consistent Changed mapping.
     if (REFACTOR_LIKE_RE.test(lower)) {
+      out.push(REFACTOR_PREFIX_RE.test(lower) ? base : `refactor: ${core}`);
+      continue;
+    }
+
+    // Nudge change-like improvements toward Changed by presenting as refactor.
+    if (isChangeLikeTitle(base)) {
       out.push(REFACTOR_PREFIX_RE.test(lower) ? base : `refactor: ${core}`);
       continue;
     }
