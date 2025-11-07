@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.4] - 2025-11-04
+
+### Changed
+
+- add LLM pre-processing and post-tuning to improve classification by @nyaomaru in [#18](https://github.
+
+### Chore
+
+- v0.0.3 by [bot] by @github-actions in [#17](https://github.com/nyaomaru/changelog-bot/pull/17)
+  com/nyaomaru/changelog-bot/pull/18)
+- Release: 0.0.4 by [bot] by @github-actions in [#19](https://github.com/nyaomaru/changelog-bot/pull/19)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.4
+
+[v0.0.4]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.4
+
 ## [v0.0.3] - 2025-11-02
 
 ### Fixed
