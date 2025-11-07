@@ -1,4 +1,7 @@
-import { CONVENTIONAL_PREFIX_RE, REFACTOR_LIKE_RE } from '@/constants/conventional.js';
+import {
+  CONVENTIONAL_PREFIX_RE,
+  REFACTOR_LIKE_RE,
+} from '@/constants/conventional.js';
 import type { CategoryMap } from '@/types/changelog.js';
 import type { ReleaseItem } from '@/types/release.js';
 
@@ -44,8 +47,8 @@ export function isImplicitFixTitle(rawTitle: string): boolean {
     'error',
   ];
 
-  const mentionsType = typeIndicators.some((kw) => core.includes(kw));
-  const impliesFix = fixIndicators.some((kw) => core.includes(kw));
+  const mentionsType = typeIndicators.some((keyword) => core.includes(keyword));
+  const impliesFix = fixIndicators.some((keyword) => core.includes(keyword));
 
   // If the core mentions typing/contract and implies a correction, treat as Fixed.
   if (mentionsType && impliesFix) return true;
@@ -56,6 +59,52 @@ export function isImplicitFixTitle(rawTitle: string): boolean {
   }
 
   return false;
+}
+
+/**
+ * Detect titles that imply noteworthy behavior changes or internal improvements
+ * (not new features), such as tuning/optimizing/improving pipelines.
+ * WHY: LLMs and simple fallbacks tend to bucket these as Chore or Added due to
+ * verbs like "add". For changelog readers, these are better grouped under Changed.
+ * @param rawTitle Original title including any conventional prefix.
+ * @returns True when the title suggests a change/improvement.
+ */
+export function isChangeLikeTitle(rawTitle: string): boolean {
+  if (!rawTitle) return false;
+  const lower = rawTitle.toLowerCase();
+  const core = lower.replace(CONVENTIONAL_PREFIX_RE, '').trim();
+
+  // Keywords indicating general improvements/behavior changes (domain-agnostic).
+  // Avoid overly broad terms like "update/change" to reduce false positives.
+  const changeIndicators = [
+    'improve',
+    'improvement',
+    'enhance',
+    'enhancement',
+    'optimize',
+    'optimization',
+    'refine',
+    'refinement',
+    'streamline',
+    'simplify',
+    'polish',
+    'rework',
+    'revise',
+    'revamp',
+    'stabilize',
+    'hardening',
+    'harden',
+    'tweak',
+    'adjust',
+    'tune',
+    'tuning',
+    'retune',
+    'fine-tune',
+    'fine tune',
+    'finetune',
+  ];
+
+  return changeIndicators.some((kw) => core.includes(kw));
 }
 
 /**
@@ -112,7 +161,9 @@ export function tuneCategoriesByTitle(
   }
 
   // Secondary rule: refactor/perf/style-like items should land in Changed when misclassified as Chore or missing.
-  const isRefactorLike = (raw: string) => REFACTOR_LIKE_RE.test(raw.toLowerCase());
+  const isRefactorLike = (raw: string) =>
+    REFACTOR_LIKE_RE.test(raw.toLowerCase());
+  const isChangeLike = (raw: string) => isChangeLikeTitle(raw);
 
   // Helper to find current category of a title.
   const findCategory = (title: string): string | undefined => {
@@ -123,10 +174,10 @@ export function tuneCategoriesByTitle(
   };
 
   for (const title of knownTitles) {
-    if (!isRefactorLike(title)) continue;
+    if (!isRefactorLike(title) && !isChangeLike(title)) continue;
     const current = findCategory(title);
     if (current === 'Fixed') continue; // don't override explicit/implicit fixes
-    if (current && current !== 'Chore') continue; // already in a non-Chore bucket
+    if (current && current !== 'Chore' && current !== 'Added') continue; // already in a specific bucket
     // Remove from all and move to Changed
     for (const list of Object.values(adjusted)) {
       if (!Array.isArray(list)) continue;
