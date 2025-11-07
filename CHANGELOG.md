@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.0.4] - 2025-11-04
 
+### Changed
+
+- add LLM pre-processing and post-tuning to improve classification by @nyaomaru in [#18](https://github.
+
 ### Chore
 
 - v0.0.3 by [bot] by @github-actions in [#17](https://github.com/nyaomaru/changelog-bot/pull/17)
-- add LLM pre-processing and post-tuning to improve classification by @nyaomaru in [#18](https://github.com/nyaomaru/changelog-bot/pull/18)
+  com/nyaomaru/changelog-bot/pull/18)
 - Release: 0.0.4 by [bot] by @github-actions in [#19](https://github.com/nyaomaru/changelog-bot/pull/19)
 
 **Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.4
