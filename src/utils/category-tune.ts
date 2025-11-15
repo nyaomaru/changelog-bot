@@ -175,7 +175,7 @@ export function tuneCategoriesByTitle(
   if (toMove.length) moveTitlesToCategory(adjusted, toMove, 'Fixed');
 
   // Rule: Conventional `fix:` prefix should map to Fixed (guard against LLM misclassifying as Chore).
-  const FIX_PREFIX_RE = /^fix(\(|:)/i;
+  const FIX_PREFIX_RE = /^fix!?(\(|:)/i;
   const conventionalFixes: string[] = [];
   for (const title of knownTitles) {
     if (FIX_PREFIX_RE.test(title)) conventionalFixes.push(title);
