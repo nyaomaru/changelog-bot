@@ -148,10 +148,21 @@ export function tuneCategoriesByTitle(
   for (const title of knownTitles) {
     if (isImplicitFixTitle(title)) toMove.push(title);
   }
-  if (!toMove.length) return adjusted;
 
   // Remove from any existing buckets and add to Fixed, ensuring uniqueness.
   for (const title of toMove) {
+    for (const list of Object.values(adjusted)) {
+      if (!Array.isArray(list)) continue;
+      const idx = list.indexOf(title);
+      if (idx !== -1) list.splice(idx, 1);
+    }
+    if (!adjusted.Fixed.includes(title)) adjusted.Fixed.push(title);
+  }
+
+  // Rule: Conventional `fix:` prefix should map to Fixed (guard against LLM misclassifying as Chore).
+  const FIX_PREFIX_RE = /^fix(\(|:)/i;
+  for (const title of knownTitles) {
+    if (!FIX_PREFIX_RE.test(title)) continue;
     for (const list of Object.values(adjusted)) {
       if (!Array.isArray(list)) continue;
       const idx = list.indexOf(title);
