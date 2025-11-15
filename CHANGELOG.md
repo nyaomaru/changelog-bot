@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.0.5] - 2025-11-08
 
+### Changed
+
+- llm pre process logic by @nyaomaru in [#22](https://github.com/nyaomaru/changelog-bot/pull/22)
+
 ### Chore
 
 - 0.0.4 by [bot] by @github-actions in [#20](https://github.com/nyaomaru/changelog-bot/pull/20)
-- llm pre process logic by @nyaomaru in [#22](https://github.com/nyaomaru/changelog-bot/pull/22)
 - Release: 0.0.5 by [bot] by @github-actions in [#23](https://github.com/nyaomaru/changelog-bot/pull/23)
 
 **Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.5
