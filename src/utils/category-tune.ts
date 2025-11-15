@@ -6,6 +6,28 @@ import type { CategoryMap } from '@/types/changelog.js';
 import type { ReleaseItem } from '@/types/release.js';
 
 /**
+ * Move given titles to a target category on a mutable CategoryMap.
+ * - Removes titles from all buckets first to avoid duplicates.
+ * - Ensures the target bucket exists and appends uniquely.
+ */
+function moveTitlesToCategory(
+  adjusted: CategoryMap,
+  titles: string[],
+  targetCategory: string
+): void {
+  if (!Array.isArray(adjusted[targetCategory])) adjusted[targetCategory] = [];
+  const target = adjusted[targetCategory] as string[];
+  for (const title of titles) {
+    for (const list of Object.values(adjusted)) {
+      if (!Array.isArray(list)) continue;
+      const idx = list.indexOf(title);
+      if (idx !== -1) list.splice(idx, 1);
+    }
+    if (!target.includes(title)) target.push(title);
+  }
+}
+
+/**
  * Heuristically detect bug-fix intent from a PR/release title that may not use the `fix:` prefix.
  * WHY: Some changes labeled as refactor/docs/chore actually correct type errors or runtime
  * behavior (e.g., "tighten ... option type"). We re-map such items to the Fixed section
@@ -150,26 +172,15 @@ export function tuneCategoriesByTitle(
   }
 
   // Remove from any existing buckets and add to Fixed, ensuring uniqueness.
-  for (const title of toMove) {
-    for (const list of Object.values(adjusted)) {
-      if (!Array.isArray(list)) continue;
-      const idx = list.indexOf(title);
-      if (idx !== -1) list.splice(idx, 1);
-    }
-    if (!adjusted.Fixed.includes(title)) adjusted.Fixed.push(title);
-  }
+  if (toMove.length) moveTitlesToCategory(adjusted, toMove, 'Fixed');
 
   // Rule: Conventional `fix:` prefix should map to Fixed (guard against LLM misclassifying as Chore).
   const FIX_PREFIX_RE = /^fix(\(|:)/i;
+  const conventionalFixes: string[] = [];
   for (const title of knownTitles) {
-    if (!FIX_PREFIX_RE.test(title)) continue;
-    for (const list of Object.values(adjusted)) {
-      if (!Array.isArray(list)) continue;
-      const idx = list.indexOf(title);
-      if (idx !== -1) list.splice(idx, 1);
-    }
-    if (!adjusted.Fixed.includes(title)) adjusted.Fixed.push(title);
+    if (FIX_PREFIX_RE.test(title)) conventionalFixes.push(title);
   }
+  if (conventionalFixes.length) moveTitlesToCategory(adjusted, conventionalFixes, 'Fixed');
 
   // Secondary rule: refactor/perf/style-like items should land in Changed when misclassified as Chore or missing.
   const isRefactorLike = (raw: string) =>
@@ -184,19 +195,15 @@ export function tuneCategoriesByTitle(
     return undefined;
   };
 
+  const toChanged: string[] = [];
   for (const title of knownTitles) {
     if (!isRefactorLike(title) && !isChangeLike(title)) continue;
     const current = findCategory(title);
     if (current === 'Fixed') continue; // don't override explicit/implicit fixes
     if (current && current !== 'Chore' && current !== 'Added') continue; // already in a specific bucket
-    // Remove from all and move to Changed
-    for (const list of Object.values(adjusted)) {
-      if (!Array.isArray(list)) continue;
-      const idx = list.indexOf(title);
-      if (idx !== -1) list.splice(idx, 1);
-    }
-    if (!adjusted.Changed.includes(title)) adjusted.Changed.push(title);
+    toChanged.push(title);
   }
+  if (toChanged.length) moveTitlesToCategory(adjusted, toChanged, 'Changed');
 
   return adjusted;
 }
