@@ -113,7 +113,7 @@ export async function resolveGitHubAuth(
     const inst = await getJson<unknown>(instUrl, ghHeaders(jwt), 'GitHub API');
     const parsed = GitHubInstallationSchema.safeParse(inst);
     if (!parsed.success) {
-      throw new Error('Failed to detect GitHub App installation for repo');
+      throw new Error(`Failed to detect GitHub App installation for ${owner}/${repo}. Ensure the GitHub App is installed on this repository and has the required permissions.`);
     }
     installationId = String(parsed.data.id);
   }
