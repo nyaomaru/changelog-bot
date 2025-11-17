@@ -15,19 +15,9 @@ import {
 } from '@/constants/github.js';
 import { getJson, postJson } from '@/utils/http.js';
 import type { GitHubAuth, TokenSource } from '@/types/github.js';
+import { base64url } from '@/utils/base64url.js';
 
 // API base comes from constants (supports GHES override via env)
-
-/**
- * Build a base64url string from input.
- */
-function base64url(input: string | Buffer): string {
-  return Buffer.from(input)
-    .toString('base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-}
 
 /**
  * Normalize private key: allow either multiline PEM or single-line with \n.
@@ -83,8 +73,6 @@ function ghHeaders(auth?: string): Record<string, string> {
   if (auth) h.Authorization = `Bearer ${auth}`;
   return h;
 }
-
-// Types moved to src/types/github.ts
 
 /**
  * Resolve a GitHub token for the repo, preferring PAT, then GitHub App.
