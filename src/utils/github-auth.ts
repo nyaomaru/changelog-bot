@@ -128,7 +128,7 @@ export async function resolveGitHubAuth(
   );
   const parsedToken = GitHubAccessTokenSchema.safeParse(tokenRes);
   if (!parsedToken.success) {
-    throw new Error('Failed to create installation access token');
+    throw new Error(`Failed to create installation access token for installation ${installationId}. Verify the GitHub App has the required permissions and the installation is active.`);
   }
 
   return {
