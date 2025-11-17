@@ -30,6 +30,7 @@ import {
 import { LLMOutputSchema } from '@/schema/schema.js';
 import { CliOptionsSchema } from '@/schema/cli.js';
 import { EnvSchema, ensureGithubTokenRequired } from '@/schema/env.js';
+import { resolveGitHubAuth } from '@/utils/github-auth.js';
 
 import type { LLMOutput, ProviderName } from '@/types/llm.js';
 import { normalizeSectionCategories } from '@/utils/section-normalize.js';
@@ -126,9 +127,9 @@ export async function runCli(): Promise<void> {
 
   let apiPrMap: Record<string, { number: number }[]> = {};
   const envParsed = EnvSchema.safeParse(process.env);
-  const token = envParsed.success
-    ? envParsed.data.GITHUB_TOKEN
-    : process.env.GITHUB_TOKEN;
+  // Resolve GitHub auth: prefer PAT, then GitHub App token
+  const ghAuth = await resolveGitHubAuth(owner, repo);
+  const token = ghAuth?.token;
   const hasProviderKey = (() => {
     const openai = envParsed.success
       ? envParsed.data.OPENAI_API_KEY

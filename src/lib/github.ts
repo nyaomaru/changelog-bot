@@ -11,6 +11,8 @@ import {
 } from '@/constants/github.js';
 import { getJson } from '@/utils/http.js';
 
+const API_BASE = process.env.GITHUB_API_BASE || 'https://api.github.com';
+
 /**
  * Perform a GitHub API GET request with standard headers.
  * WHY: Centralize headers (accept + version) to keep call sites minimal.
@@ -43,7 +45,7 @@ export async function fetchReleaseBody(
   token?: string
 ): Promise<string> {
   // GET /repos/{owner}/{repo}/releases/tags/{tag}
-  const endpoint = `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`;
+  const endpoint = `${API_BASE}/repos/${owner}/${repo}/releases/tags/${tag}`;
   try {
     const data = await ghGet<unknown>(endpoint, token);
     const parsed = GitHubReleaseByTagSchema.safeParse(data);
@@ -68,7 +70,7 @@ export async function fetchPRInfo(
   number: number,
   token?: string
 ): Promise<{ author?: string; url?: string } | null> {
-  const endpoint = `https://api.github.com/repos/${owner}/${repo}/pulls/${number}`;
+  const endpoint = `${API_BASE}/repos/${owner}/${repo}/pulls/${number}`;
   try {
     const data = await ghGet<unknown>(endpoint, token);
     const parsed = GitHubPRInfoSchema.safeParse(data);
@@ -98,7 +100,7 @@ export async function prsForCommit(
   token: string
 ): Promise<PullRef[]> {
   // GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls
-  const endpoint = `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/pulls`;
+  const endpoint = `${API_BASE}/repos/${owner}/${repo}/commits/${sha}/pulls`;
   const data = await ghGet<unknown>(endpoint, token);
   const parsed = GitHubCommitPullsArraySchema.safeParse(data);
   const pullRequests = parsed.success ? parsed.data : [];
