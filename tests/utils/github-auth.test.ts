@@ -38,6 +38,7 @@ describe('github-auth utils', () => {
   afterEach(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     global.fetch = originalFetch as any;
+    process.env = originalEnv;
   });
 
   test('returns PAT when GITHUB_TOKEN is set', async () => {
