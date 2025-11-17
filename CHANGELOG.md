@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.6] - 2025-11-15
+
 ### Fixed
 
 - category tune fix types by @nyaomaru in [#25](https://github.com/nyaomaru/changelog-bot/pull/25)
@@ -17,15 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.6
 
 [v0.0.6]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.6
-
-## [v0.0.6] - 2025-11-17
-### Docs
-- 0.0.6 (#27)
-
-### Chore
-- Merge pull request #27 from nyaomaru/chore/changelog-v0.0.6 (#27)
-
-[v0.0.6]: https://github.com/nyaomaru/changelog-bot/compare/v0.0.6...HEAD
 
 ## [v0.0.5] - 2025-11-08
 
