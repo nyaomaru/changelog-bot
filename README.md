@@ -108,6 +108,10 @@ Bring your own keys and tokens as needed—`changelog-bot` only asks for what it
 
 - Environment variables:
   - `GITHUB_TOKEN` (required for PR creation; not required for `--dry-run`)
+  - Or GitHub App auth (recommended for branding and least-privilege):
+    - `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY` (required)
+    - `GITHUB_APP_INSTALLATION_ID` (optional; auto-detected per repo)
+    - `GITHUB_API_BASE` (optional; GHES, e.g., `https://ghe.example.com/api/v3`)
   - `OPENAI_API_KEY` (optional)
   - `ANTHROPIC_API_KEY` (optional)
   - `REPO_FULL_NAME` (optional, `owner/repo`; used for link resolution)
@@ -231,8 +235,114 @@ Outputs: None.
 Environment:
 
 - `GITHUB_TOKEN` (required to create the PR; not needed in dry-run).
+- Or GitHub App auth variables (`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, optional `GITHUB_APP_INSTALLATION_ID`).
 - `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` (optional for AI generation).
 - `REPO_FULL_NAME` auto-set by the Action; set yourself if calling the CLI directly.
+
+### GitHub App authentication in Actions (YAML examples)
+
+Use a GitHub App instead of a PAT so PRs come from your bot account and permissions are least‑privilege.
+
+1) Using the published Action with a GitHub App
+
+```yaml
+name: Update Changelog (App Auth)
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write         # to push branch
+      pull-requests: write    # to open PR
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: nyaomaru/changelog-bot@v0
+        with:
+          changelog-path: CHANGELOG.md
+          base-branch: main
+          provider: openai
+          release-tag: ${{ github.event.release.tag_name }}
+          release-name: ${{ github.event.release.tag_name }}
+        env:
+          # Use App auth (do not set GITHUB_TOKEN to force App path)
+          GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          # Optional: hardcode installation id; otherwise auto-detected
+          # GITHUB_APP_INSTALLATION_ID: ${{ secrets.GITHUB_APP_INSTALLATION_ID }}
+          # Optional: GHES
+          # GITHUB_API_BASE: https://ghe.example.com/api/v3
+          # Optional: AI keys
+          # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+2) Running the CLI directly with a GitHub App
+
+```yaml
+name: Update Changelog (App Auth)
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+
+      - run: |
+          npx @nyaomaru/changelog-bot@latest \
+            --release-tag ${{ github.event.release.tag_name }} \
+            --release-name ${{ github.event.release.tag_name }} \
+            --changelog-path CHANGELOG.md \
+            --provider openai
+        env:
+          REPO_FULL_NAME: ${{ github.repository }}
+          GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          # GITHUB_APP_INSTALLATION_ID: ${{ secrets.GITHUB_APP_INSTALLATION_ID }}
+          # GITHUB_API_BASE: https://ghe.example.com/api/v3
+          # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+Notes
+- Paste the App private key into a repository/organization secret as a multiline PEM; secrets preserve newlines.
+- If you also provide `GITHUB_TOKEN`, PAT takes precedence and the run will use the PAT path.
+
+### Using a GitHub App instead of a PAT
+
+If you install `changelog-bot` as a GitHub App in your org, the PRs will be authored by the App’s account and you can scope permissions cleanly.
+
+Set the following in your workflow or environment:
+
+```sh
+export GITHUB_APP_ID=123456
+export GITHUB_APP_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+# Optional: hardcode installation id; otherwise we auto-detect from the repo
+# export GITHUB_APP_INSTALLATION_ID=987654
+```
+
+The CLI exchanges the App credentials for an installation access token at runtime and uses it for:
+
+- GitHub REST calls (PR lookups, release notes fetch)
+- PR creation (Octokit)
+
+Token rotation: We mint a fresh installation token per CLI run. Tokens expire in ~1 hour; no manual rotation required.
 
 ## Local development setup
 

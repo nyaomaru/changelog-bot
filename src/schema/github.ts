@@ -29,3 +29,16 @@ export type GitHubPRInfoParsed = z.infer<typeof GitHubPRInfoSchema>;
 export type GitHubCommitPullsItemParsed = z.infer<
   typeof GitHubCommitPullsItemSchema
 >;
+
+// Additional schemas for GitHub App installation/token exchange
+export const GitHubInstallationSchema = z.object({
+  id: z.number(),
+});
+
+export const GitHubAccessTokenSchema = z.object({
+  token: z.string(),
+  expires_at: z.string(),
+});
+
+export type GitHubInstallation = z.infer<typeof GitHubInstallationSchema>;
+export type GitHubAccessToken = z.infer<typeof GitHubAccessTokenSchema>;
