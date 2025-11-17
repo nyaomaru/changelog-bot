@@ -1,5 +1,6 @@
 import { createSign } from 'node:crypto';
 import { EnvSchema } from '@/schema/env.js';
+import type { Env } from '@/schema/env.js';
 import {
   GitHubAccessTokenSchema,
   GitHubInstallationSchema,
@@ -14,8 +15,10 @@ import {
   GITHUB_APP_SIGN_ALG,
 } from '@/constants/github.js';
 import { getJson, postJson } from '@/utils/http.js';
-import type { GitHubAuth, TokenSource } from '@/types/github.js';
+import type { GitHubAuth } from '@/types/github.js';
 import { base64url } from '@/utils/base64url.js';
+import { MS_PER_SECOND } from '@/constants/time.js';
+import { getEnv } from '@/utils/env.js';
 
 // API base comes from constants (supports GHES override via env)
 
@@ -24,8 +27,10 @@ import { base64url } from '@/utils/base64url.js';
  */
 function normalizePrivateKey(raw: string): string {
   // Normalize common encodings: escaped \n and CRLF -> LF
-  const v = raw.includes('\\n') ? raw.replaceAll('\\n', '\n') : raw;
-  return v.replace(/\r/g, '');
+  const normalizedPrivateKey = raw.includes('\\n')
+    ? raw.replaceAll('\\n', '\n')
+    : raw;
+  return normalizedPrivateKey.replace(/\r/g, '');
 }
 
 /**
@@ -34,7 +39,8 @@ function normalizePrivateKey(raw: string): string {
  * @param privateKey PEM private key.
  */
 function createAppJwt(appId: string, privateKey: string): string {
-  const now = Math.floor(Date.now() / 1000);
+  const now = Math.floor(Date.now() / MS_PER_SECOND);
+
   // WHY: Keep token lifetime short (10m) per GitHub guidance.
   const payload = {
     iat: now - GITHUB_APP_JWT_SKEW_SECONDS,
@@ -48,9 +54,10 @@ function createAppJwt(appId: string, privateKey: string): string {
   const signer = createSign(GITHUB_APP_SIGN_ALG);
   signer.update(data);
   let signature: Buffer;
+
   try {
     signature = signer.sign(privateKey);
-  } catch (err) {
+  } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     // Provide actionable hints for common PEM decoding issues.
     throw new Error(
@@ -66,12 +73,12 @@ function createAppJwt(appId: string, privateKey: string): string {
  * Standard GitHub headers for REST calls.
  */
 function ghHeaders(auth?: string): Record<string, string> {
-  const h: Record<string, string> = {
+  const header: Record<string, string> = {
     Accept: GITHUB_ACCEPT,
     'X-GitHub-Api-Version': GITHUB_API_VERSION,
   };
-  if (auth) h.Authorization = `Bearer ${auth}`;
-  return h;
+  if (auth) header.Authorization = `Bearer ${auth}`;
+  return header;
 }
 
 /**
@@ -85,12 +92,12 @@ export async function resolveGitHubAuth(
   owner: string,
   repo: string
 ): Promise<GitHubAuth | undefined> {
-  const env = EnvSchema.safeParse(process.env);
-  const get = (k: keyof typeof process.env) =>
-    env.success ? (env.data as any)[k] : process.env[k];
+  const parsed = EnvSchema.safeParse(process.env);
+  const parsedEnv: Env | undefined = parsed.success ? parsed.data : undefined;
+  const get = <K extends keyof Env>(key: K) => getEnv(key, parsedEnv);
 
   const pat = get('GITHUB_TOKEN');
-  if (pat) return { token: pat as string, source: 'pat' };
+  if (pat) return { token: pat, source: 'pat' };
 
   const appId = get('GITHUB_APP_ID');
   const privateKeyRaw = get('GITHUB_APP_PRIVATE_KEY');
@@ -123,6 +130,7 @@ export async function resolveGitHubAuth(
   if (!parsedToken.success) {
     throw new Error('Failed to create installation access token');
   }
+
   return {
     token: parsedToken.data.token,
     source: 'app',
