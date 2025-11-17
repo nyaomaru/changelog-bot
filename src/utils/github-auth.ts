@@ -4,14 +4,19 @@ import {
   GitHubAccessTokenSchema,
   GitHubInstallationSchema,
 } from '@/schema/github.js';
-import { GITHUB_ACCEPT, GITHUB_API_VERSION } from '@/constants/github.js';
+import {
+  GITHUB_ACCEPT,
+  GITHUB_API_VERSION,
+  GITHUB_API_BASE,
+  GITHUB_APP_JWT_ALG,
+  GITHUB_APP_JWT_SKEW_SECONDS,
+  GITHUB_APP_JWT_TTL_SECONDS,
+  GITHUB_APP_SIGN_ALG,
+} from '@/constants/github.js';
 import { getJson, postJson } from '@/utils/http.js';
 import type { GitHubAuth, TokenSource } from '@/types/github.js';
 
-/**
- * Base URL for GitHub REST API. NOTE: For GHES, set GITHUB_API_BASE in env.
- */
-const GITHUB_API_BASE = process.env.GITHUB_API_BASE || 'https://api.github.com';
+// API base comes from constants (supports GHES override via env)
 
 /**
  * Build a base64url string from input.
@@ -42,15 +47,15 @@ function createAppJwt(appId: string, privateKey: string): string {
   const now = Math.floor(Date.now() / 1000);
   // WHY: Keep token lifetime short (10m) per GitHub guidance.
   const payload = {
-    iat: now - 60, // allow small clock drift
-    exp: now + 10 * 60,
+    iat: now - GITHUB_APP_JWT_SKEW_SECONDS,
+    exp: now + GITHUB_APP_JWT_TTL_SECONDS,
     iss: appId,
   } as const;
-  const header = { alg: 'RS256', typ: 'JWT' } as const;
+  const header = { alg: GITHUB_APP_JWT_ALG, typ: 'JWT' } as const;
   const encHeader = base64url(JSON.stringify(header));
   const encPayload = base64url(JSON.stringify(payload));
   const data = `${encHeader}.${encPayload}`;
-  const signer = createSign('RSA-SHA256');
+  const signer = createSign(GITHUB_APP_SIGN_ALG);
   signer.update(data);
   let signature: Buffer;
   try {

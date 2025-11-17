@@ -10,8 +10,7 @@ import {
   PRS_LOOKUP_COMMIT_LIMIT,
 } from '@/constants/github.js';
 import { getJson } from '@/utils/http.js';
-
-const API_BASE = process.env.GITHUB_API_BASE || 'https://api.github.com';
+import { GITHUB_API_BASE as API_BASE } from '@/constants/github.js';
 
 /**
  * Perform a GitHub API GET request with standard headers.
