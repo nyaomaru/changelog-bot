@@ -5,8 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.0.6] - 2025-11-15
-
 ### Fixed
 
 - category tune fix types by @nyaomaru in [#25](https://github.com/nyaomaru/changelog-bot/pull/25)
@@ -19,6 +17,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.6
 
 [v0.0.6]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.6
+
+- Support GitHub App authentication for PR creation (PAT fallback) (#29)
+
+### Fixed
+- classification to use json base response (#32)
+- add App auth via installation tokens + CI-safe env (#31)
+
+### Changed
+- remove magic number (#29)
+- extract env (#29)
+- extract base64Url (#29)
+- extract constants (#29)
+
+### Docs
+- 0.0.6 (#27)
+- 0.0.6 (#27)
+
+### Test
+- update (#29)
+
+### Chore
+- Merge pull request #30 from nyaomaru/release/0.0.7 (#30)
+- Merge pull request #32 from nyaomaru/fix/classify-json-base (#32)
+- Update src/utils/classify.ts (#32)
+- Update src/utils/classify.ts (#32)
+- Merge pull request #31 from nyaomaru/fix/github-app-secret (#31)
+- bump version to 0.0.7 (#30)
+- Merge pull request #29 from nyaomaru/feat/github-app-auth (#29)
+- Update tests/utils/github-auth.test.ts (#29)
+- Update src/utils/github-auth.ts (#29)
+- Update src/utils/github-auth.ts (#29)
+- Revert "docs(changelog): 0.0.6" (#29)
+- Merge pull request #27 from nyaomaru/chore/changelog-v0.0.6 (#27)
+
+[v0.0.6]: https://github.com/nyaomaru/changelog-bot/compare/v0.0.6...HEAD
+
+## [v0.0.6] - 2025-11-18
+### Added
+- Support GitHub App authentication for PR creation (PAT fallback) (#29)
+
+### Fixed
+- classification to use json base response (#32)
+- add App auth via installation tokens + CI-safe env (#31)
+
+### Changed
+- remove magic number (#29)
+- extract env (#29)
+- extract base64Url (#29)
+- extract constants (#29)
+
+### Docs
+- 0.0.6 (#27)
+- 0.0.6 (#27)
+
+### Test
+- update (#29)
+
+### Chore
+- Merge pull request #30 from nyaomaru/release/0.0.7 (#30)
+- Merge pull request #32 from nyaomaru/fix/classify-json-base (#32)
+- Update src/utils/classify.ts (#32)
+- Update src/utils/classify.ts (#32)
+- Merge pull request #31 from nyaomaru/fix/github-app-secret (#31)
+- bump version to 0.0.7 (#30)
+- Merge pull request #29 from nyaomaru/feat/github-app-auth (#29)
+- Update tests/utils/github-auth.test.ts (#29)
+- Update src/utils/github-auth.ts (#29)
+- Update src/utils/github-auth.ts (#29)
+- Revert "docs(changelog): 0.0.6" (#29)
+- Merge pull request #27 from nyaomaru/chore/changelog-v0.0.6 (#27)
+
+[v0.0.6]: https://github.com/nyaomaru/changelog-bot/compare/v0.0.6...HEAD
 
 ## [v0.0.5] - 2025-11-08
 
