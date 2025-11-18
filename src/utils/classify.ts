@@ -96,7 +96,7 @@ function buildAnthropicRequest(
 ): RequestConfig {
   // Define a structured output schema via tools to force JSON.
   const properties: Record<string, unknown> = {};
-  for (const cat of SECTION_ORDER) {
+  for (const cat of prompt.categories) {
     properties[cat] = { type: 'array', items: { type: 'string' } };
   }
   const payload = {
