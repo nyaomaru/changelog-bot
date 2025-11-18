@@ -27,8 +27,19 @@ type ClassificationPrompt = {
  * @returns First message text or an empty string.
  */
 function extractAnthropicResponse(json: unknown): string {
+  // Prefer structured tool_use output when present.
   if (isRecord(json) && Array.isArray(json.content)) {
     const first = json.content[0];
+    // tool_use content: { type: 'tool_use', name, input: {...} }
+    if (isRecord(first) && first.type === 'tool_use' && isRecord(first.input)) {
+      try {
+        return JSON.stringify(first.input);
+      } catch (err: unknown) {
+        // fall through
+        console.error('Anthropic response JSON stringify error:', err);
+      }
+    }
+    // Fallback to plain text when model did not use tools/structured outputs.
     if (isRecord(first) && isString(first.text)) {
       return first.text;
     }
@@ -86,12 +97,30 @@ function buildAnthropicRequest(
   apiKey: string,
   prompt: ClassificationPrompt
 ): RequestConfig {
+  // Define a structured output schema via tools to force JSON.
+  const properties: Record<string, unknown> = {};
+  for (const cat of SECTION_ORDER) {
+    properties[cat] = { type: 'array', items: { type: 'string' } };
+  }
   const payload = {
     model: DEFAULT_ANTHROPIC_MODEL,
     max_tokens: LLM_CLASSIFY_MAX_TOKENS,
     temperature: 0,
     system: SYSTEM_ANTHROPIC,
     messages: [{ role: 'user', content: JSON.stringify(prompt) }],
+    tools: [
+      {
+        name: 'return_categories',
+        description:
+          'Return a JSON object mapping each category to an array of titles.',
+        input_schema: {
+          type: 'object',
+          properties,
+          additionalProperties: false,
+        },
+      },
+    ],
+    tool_choice: { type: 'tool', name: 'return_categories' },
   } as const;
   return {
     url: ANTHROPIC_API,
@@ -119,6 +148,8 @@ function buildOpenAiRequest(
       { role: 'system', content: SYSTEM_OPENAI },
       { role: 'user', content: JSON.stringify(prompt) },
     ],
+    // Enforce strict JSON object output for robust parsing.
+    response_format: { type: 'json_object' },
   } as const;
   return {
     url: OPENAI_CHAT_API,
