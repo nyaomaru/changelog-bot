@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.8] - 2025-11-18
+
+### Added
+
+- changelog robustness (links, full compare, dedupe) by @nyaomaru in [#38](https://github.com/nyaomaru/changelog-bot/pull/38)
+
+### Docs
+
+- 0.0.7 by [bot] by @changelogbotapp in [#37](https://github.com/nyaomaru/changelog-bot/pull/37)
+
+### Chore
+
+- Release: 0.0.8 by [bot] by @github-actions in [#39](https://github.com/nyaomaru/changelog-bot/pull/39)
+
+### New Contributors
+
+* @changelogbotapp[bot] made their first contribution in https://github.com/nyaomaru/changelog-bot/pull/37
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.8
+
+[v0.0.8]: https://github.com/nyaomaru/changelog-bot/compare/v0.0.7...v0.0.8
+
 ## [v0.0.7] - 2025-11-18
 
 ### Added
