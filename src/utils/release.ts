@@ -7,7 +7,7 @@ import { ParsedReleaseSchema } from '@/schema/release.js';
 import { SECTION_ORDER } from '@/constants/changelog.js';
 
 const H2_HEADING_RE = /^##\s+(.*)$/;
-const FULL_CHANGELOG_RE = /Full Changelog[^:]*:\s*(\S+)/i;
+export const FULL_CHANGELOG_RE = /Full Changelog[^:]*:\s*(\S+)/i;
 const BULLET_PREFIX_RE = /^[*-]\s+/;
 const PR_URL_RE = /https?:\/\/\S+\/pull\/(\d+)/; // captures PR number
 const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
@@ -305,7 +305,8 @@ export function buildSectionFromRelease(params: {
     const exact = normalizedToItem.get(normalizedLookup);
     if (exact) return exact;
     for (const [k, item] of normalizedToItem) {
-      if (k.startsWith(normalizedLookup) || normalizedLookup.startsWith(k)) return item;
+      if (k.startsWith(normalizedLookup) || normalizedLookup.startsWith(k))
+        return item;
     }
     return undefined;
   };
@@ -327,7 +328,9 @@ export function buildSectionFromRelease(params: {
     for (const candidateTitle of titles) {
       const item = findItem(candidateTitle);
       if (item) {
-        const key = item.pr ? `pr-${item.pr}` : `title-${item.title}-${item.rawTitle ?? ''}`;
+        const key = item.pr
+          ? `pr-${item.pr}`
+          : `title-${item.title}-${item.rawTitle ?? ''}`;
         if (!seen.has(key) && !entries.includes(item)) {
           entries.push(item);
           seen.add(key);
