@@ -32,12 +32,9 @@ function extractAnthropicResponse(json: unknown): string {
     const first = json.content[0];
     // tool_use content: { type: 'tool_use', name, input: {...} }
     if (isRecord(first) && first.type === 'tool_use' && isRecord(first.input)) {
-      try {
-        return JSON.stringify(first.input);
-      } catch (err: unknown) {
-        // fall through
-        console.error('Anthropic response JSON stringify error:', err);
-      }
+      // Note: If first.input contains circular references, JSON.stringify will throw.
+      // If this is a concern, handle or document it explicitly.
+      return JSON.stringify(first.input);
     }
     // Fallback to plain text when model did not use tools/structured outputs.
     if (isRecord(first) && isString(first.text)) {
