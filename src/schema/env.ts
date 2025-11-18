@@ -7,14 +7,11 @@ import { z } from 'zod';
 export const EnvSchema = z.object({
   GITHUB_TOKEN: z.string().min(1).optional(),
   // GitHub App credentials (optional; used when PAT is absent)
-  GITHUB_APP_ID: z.string().min(1).optional(),
-  /**
-   * GitHub App private key in PEM format. Supports either literal multiline
-   * PEM or a single-line value with \n sequences.
-   */
-  GITHUB_APP_PRIVATE_KEY: z.string().min(1).optional(),
-  /** Optional installation id; autodetected from repo when omitted. */
-  GITHUB_APP_INSTALLATION_ID: z.string().min(1).optional(),
+  // NOTE: Use aliases that do not start with GITHUB_ to avoid Secrets restrictions.
+  CHANGELOG_BOT_APP_ID: z.string().min(1).optional(),
+  CHANGELOG_BOT_APP_PRIVATE_KEY: z.string().min(1).optional(),
+  CHANGELOG_BOT_APP_INSTALLATION_ID: z.string().min(1).optional(),
+  CHANGELOG_BOT_API_BASE: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   REPO_FULL_NAME: z.string().min(1).optional(),

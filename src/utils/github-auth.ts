@@ -99,15 +99,16 @@ export async function resolveGitHubAuth(
   const pat = get('GITHUB_TOKEN');
   if (pat) return { token: pat, source: 'pat' };
 
-  const appId = get('GITHUB_APP_ID');
-  const privateKeyRaw = get('GITHUB_APP_PRIVATE_KEY');
+  // Use CI-safe aliases only (no GITHUB_ prefix for Secrets compatibility)
+  const appId = get('CHANGELOG_BOT_APP_ID');
+  const privateKeyRaw = get('CHANGELOG_BOT_APP_PRIVATE_KEY');
   if (!appId || !privateKeyRaw) return undefined;
 
   const privateKey = normalizePrivateKey(String(privateKeyRaw));
   const jwt = createAppJwt(String(appId), privateKey);
 
   // Determine installation id: env or via repo lookup
-  let installationId = get('GITHUB_APP_INSTALLATION_ID');
+  let installationId = get('CHANGELOG_BOT_APP_INSTALLATION_ID');
   if (!installationId) {
     const instUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/installation`;
     const inst = await getJson<unknown>(instUrl, ghHeaders(jwt), 'GitHub API');
