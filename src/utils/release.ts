@@ -314,7 +314,7 @@ export function buildSectionFromRelease(params: {
     return line;
   }
 
-  // Track items already assigned to enforce single-category membership
+  // Track items already assigned to enforce single-category membership within this version
   const seen = new Set<string>();
 
   for (const section of SECTION_ORDER) {
