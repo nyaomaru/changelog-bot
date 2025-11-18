@@ -333,7 +333,7 @@ export function buildSectionFromRelease(params: {
         const key = item.pr
           ? `pr-${item.pr}`
           : `title-${item.title}-${item.rawTitle ?? ''}`;
-        if (!seen.has(key) && !entries.includes(item)) {
+        if (!seen.has(key)) {
           entries.push(item);
           seen.add(key);
         }
