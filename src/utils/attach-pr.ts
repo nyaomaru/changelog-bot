@@ -1,10 +1,8 @@
 // WHY: We normalize titles for fuzzy matching, so we strip any leading
 // conventional commit prefix (with optional scope) to compare plain subjects.
 import { isBulletLine } from '@/utils/is.js';
-import {
-  CONVENTIONAL_PREFIX_RE,
-  INLINE_PR_PRESENT_RE,
-} from '@/constants/conventional.js';
+import { INLINE_PR_PRESENT_RE } from '@/constants/conventional.js';
+import { normalizeTitle } from '@/utils/title-normalize.js';
 
 /** Maps original PR titles to their numeric identifiers. */
 type TitleToPr = Record<string, number>;
@@ -21,13 +19,7 @@ type BulletParts = {
  * @param rawTitle Original bullet text.
  * @returns Normalized key for lookups.
  */
-function normalizeTitleForMatching(rawTitle: string): string {
-  return rawTitle
-    .toLowerCase()
-    .replace(CONVENTIONAL_PREFIX_RE, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
+// title normalization moved to shared util: normalizeTitle
 
 /**
  * Check whether a line already includes an inline PR reference (e.g., "(#123)").
@@ -46,7 +38,7 @@ function hasInlinePrReference(line: string): boolean {
 function buildNormalizedLookup(titleToPr: TitleToPr): Map<string, number> {
   const normalized = new Map<string, number>();
   for (const [originalTitle, prNumber] of Object.entries(titleToPr)) {
-    normalized.set(normalizeTitleForMatching(originalTitle), prNumber);
+    normalized.set(normalizeTitle(originalTitle), prNumber);
   }
   return normalized;
 }
@@ -109,7 +101,7 @@ export function attachPrNumbers(
     const bulletParts = splitBulletLine(line);
     if (!bulletParts) return line;
 
-    const normalizedBulletText = normalizeTitleForMatching(bulletParts.text);
+    const normalizedBulletText = normalizeTitle(bulletParts.text);
     const matchedPrNumber = findMatchingPrNumber(
       normalizedBulletText,
       normalizedTitleToPr

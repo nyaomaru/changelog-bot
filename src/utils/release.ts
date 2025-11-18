@@ -14,6 +14,7 @@ const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
 const AUTHOR_RE = /@([A-Za-z0-9_-]+)/;
 const TRAILING_BY_IN_RE = /\s*(by|in)\s*$/i; // strip noisy trailing tokens
 import { CONVENTIONAL_PREFIX_RE } from '@/constants/conventional.js';
+import { stripConventionalPrefix, normalizeTitle } from '@/utils/title-normalize.js';
 
 /** GitHub repository owner/name pair used for compare link construction. */
 type RepoInfo = {
@@ -45,9 +46,7 @@ function stripBulletPrefix(input: string): string {
  * @param input Title that may start with `type(scope):`.
  * @returns Title without the conventional prefix.
  */
-function stripConventionalPrefix(input: string): string {
-  return input.replace(CONVENTIONAL_PREFIX_RE, '').trim();
-}
+// stripConventionalPrefix moved to utils/title-normalize
 
 /**
  * Strip trailing "by"/"in" tokens used in GitHub release lines.
@@ -269,11 +268,7 @@ export function buildSectionFromRelease(params: {
 
   // Normalize titles for fuzzy matching: lowercase, strip conventional prefix,
   // collapse non-alphanumerics to spaces, and trim.
-  const normalize = (s: string) =>
-    stripConventionalPrefix(s)
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
+  const normalize = (s: string) => normalizeTitle(s);
 
   // Build both exact and normalized lookup maps.
   const titleToItem = new Map<string, ReleaseItem>();
