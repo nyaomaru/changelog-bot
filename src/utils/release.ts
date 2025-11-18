@@ -297,11 +297,11 @@ export function buildSectionFromRelease(params: {
     if (direct) return direct;
 
     // Fuzzy: try normalized matching with bidirectional prefix check.
-    const norm = normalize(lookupTitle);
-    const exact = normalizedToItem.get(norm);
+    const normalizedLookup = normalize(lookupTitle);
+    const exact = normalizedToItem.get(normalizedLookup);
     if (exact) return exact;
     for (const [k, item] of normalizedToItem) {
-      if (k.startsWith(norm) || norm.startsWith(k)) return item;
+      if (k.startsWith(normalizedLookup) || normalizedLookup.startsWith(k)) return item;
     }
     return undefined;
   };
