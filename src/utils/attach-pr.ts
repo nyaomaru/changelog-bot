@@ -38,7 +38,21 @@ function hasInlinePrReference(line: string): boolean {
 function buildNormalizedLookup(titleToPr: TitleToPr): Map<string, number> {
   const normalized = new Map<string, number>();
   for (const [originalTitle, prNumber] of Object.entries(titleToPr)) {
-    normalized.set(normalizeTitle(originalTitle), prNumber);
+    const key = normalizeTitle(originalTitle);
+    if (normalized.has(key)) {
+      const existing = normalized.get(key)!;
+      // WHY: Collisions happen when titles differ only by punctuation/case.
+      // Prefer the higher PR number (usually newer) and log for visibility.
+      if (prNumber !== existing) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `Title collision: "${originalTitle}" -> "${key}" (PR #${prNumber} vs #${existing})`
+        );
+      }
+      normalized.set(key, Math.max(existing, prNumber));
+    } else {
+      normalized.set(key, prNumber);
+    }
   }
   return normalized;
 }
