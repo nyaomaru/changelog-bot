@@ -178,7 +178,7 @@ export function tuneCategoriesByTitle(
   // Rule: Conventional `fix:` prefix should map to Fixed (guard against LLM misclassifying as Chore).
   // Match conventional fix prefixes including optional scope and optional breaking '!'
   // Examples: fix: msg, fix!: msg, fix(scope): msg, fix(scope)!: msg
-  const FIX_PREFIX_RE = /^fix(?:\([^)]*\))?!?:/i;
+  const FIX_PREFIX_RE = /^fix(?:!:|(?:\([^)]*\))?!?:)/i;
   const conventionalFixes: string[] = [];
   for (const title of knownTitles) {
     if (FIX_PREFIX_RE.test(title)) conventionalFixes.push(title);
