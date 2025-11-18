@@ -24,7 +24,7 @@ export const COMMIT_TYPES = [
 //  - feat(scope): msg
 //  - feat(scope)!: msg
 export const CONVENTIONAL_PREFIX_RE = new RegExp(
-  `^(${COMMIT_TYPES.join('|')})(?:\\([^)]*\\))?!?:\\s*`,
+  `^(${COMMIT_TYPES.join('|')})(?:!:|(?:\\([^)]*\\))?!?:)\\s*`,
   'i'
 );
 
