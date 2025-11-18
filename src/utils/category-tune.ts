@@ -164,6 +164,7 @@ export function tuneCategoriesByTitle(
   );
   if (!adjusted.Fixed) adjusted.Fixed = [];
   if (!adjusted.Changed) adjusted.Changed = [];
+  if (!adjusted.Added) adjusted.Added = [];
 
   // Collect titles that should be moved.
   const toMove: string[] = [];
@@ -204,6 +205,15 @@ export function tuneCategoriesByTitle(
     toChanged.push(title);
   }
   if (toChanged.length) moveTitlesToCategory(adjusted, toChanged, 'Changed');
+
+  // Rule: Conventional `feat:` prefix should map to Added (guard against LLM
+  // placing features under Chore/Changed due to generic verbs like "add/support").
+  const FEAT_PREFIX_RE = /^feat!?(\(|:)/i;
+  const toAdded: string[] = [];
+  for (const title of knownTitles) {
+    if (FEAT_PREFIX_RE.test(title)) toAdded.push(title);
+  }
+  if (toAdded.length) moveTitlesToCategory(adjusted, toAdded, 'Added');
 
   return adjusted;
 }

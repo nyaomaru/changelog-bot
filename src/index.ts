@@ -321,7 +321,8 @@ export async function runCli(): Promise<void> {
   if (llm.new_section_markdown) {
     llm.new_section_markdown = postprocessSection(
       llm.new_section_markdown,
-      titleToPr
+      titleToPr,
+      { owner, repo }
     );
   }
 
@@ -340,6 +341,15 @@ export async function runCli(): Promise<void> {
     if (!llm.new_section_markdown.includes(ref)) {
       llm.new_section_markdown = `${llm.new_section_markdown}\n${compare}`;
     }
+  }
+
+  // Ensure Full Changelog line exists when release notes were not used or missing.
+  if (
+    llm.new_section_markdown &&
+    !/Full Changelog/i.test(llm.new_section_markdown)
+  ) {
+    const fullUrl = `https://github.com/${owner}/${repo}/compare/${prevRef}...${releaseRef}`;
+    llm.new_section_markdown = `${llm.new_section_markdown}\n**Full Changelog**: ${fullUrl}\n`;
   }
 
   // Remove duplicate sections before applying changes

@@ -94,7 +94,11 @@ function findMatchingPrNumber(
  * @param titleToPr Map of original PR titles to PR numbers.
  * @returns Markdown with missing PR references appended to matching bullets.
  */
-export function attachPrNumbers(md: string, titleToPr: TitleToPr): string {
+export function attachPrNumbers(
+  md: string,
+  titleToPr: TitleToPr,
+  repo?: { owner: string; repo: string }
+): string {
   const normalizedTitleToPr = buildNormalizedLookup(titleToPr);
 
   const lines = md.split('\n');
@@ -111,9 +115,13 @@ export function attachPrNumbers(md: string, titleToPr: TitleToPr): string {
       normalizedTitleToPr
     );
 
-    return matchedPrNumber
-      ? `${bulletParts.prefix}${bulletParts.text} (#${matchedPrNumber})`
-      : line;
+    if (!matchedPrNumber) return line;
+
+    if (repo) {
+      const url = `https://github.com/${repo.owner}/${repo.repo}/pull/${matchedPrNumber}`;
+      return `${bulletParts.prefix}${bulletParts.text} in [#${matchedPrNumber}](${url})`;
+    }
+    return `${bulletParts.prefix}${bulletParts.text} (#${matchedPrNumber})`;
   });
   return updated.join('\n');
 }

@@ -266,22 +266,44 @@ export function buildSectionFromRelease(params: {
   sections?: ReleaseSection[];
 }): string {
   const { version, date, items, categories, sections = [] } = params;
+
+  // Normalize titles for fuzzy matching: lowercase, strip conventional prefix,
+  // collapse non-alphanumerics to spaces, and trim.
+  const normalize = (s: string) =>
+    stripConventionalPrefix(s)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+
+  // Build both exact and normalized lookup maps.
   const titleToItem = new Map<string, ReleaseItem>();
+  const normalizedToItem = new Map<string, ReleaseItem>();
   for (const item of items) {
-    titleToItem.set(item.title, item);
-    if (item.rawTitle) titleToItem.set(item.rawTitle, item);
-    titleToItem.set(item.title.toLowerCase(), item);
-    if (item.rawTitle) titleToItem.set(item.rawTitle.toLowerCase(), item);
+    const keys = [item.title, item.rawTitle].filter(Boolean) as string[];
+    for (const key of keys) {
+      titleToItem.set(key, item);
+      titleToItem.set(key.toLowerCase(), item);
+      normalizedToItem.set(normalize(key), item);
+    }
   }
 
   const findItem = (lookupTitle: string): ReleaseItem | undefined => {
     if (!lookupTitle) return undefined;
-    return (
+    const direct =
       titleToItem.get(lookupTitle) ||
       titleToItem.get(lookupTitle.toLowerCase()) ||
       titleToItem.get(stripConventionalPrefix(lookupTitle)) ||
-      titleToItem.get(stripConventionalPrefix(lookupTitle).toLowerCase())
-    );
+      titleToItem.get(stripConventionalPrefix(lookupTitle).toLowerCase());
+    if (direct) return direct;
+
+    // Fuzzy: try normalized matching with bidirectional prefix check.
+    const norm = normalize(lookupTitle);
+    const exact = normalizedToItem.get(norm);
+    if (exact) return exact;
+    for (const [k, item] of normalizedToItem) {
+      if (k.startsWith(norm) || norm.startsWith(k)) return item;
+    }
+    return undefined;
   };
   const lines: string[] = [`## [v${version}] - ${date}`, ''];
 
@@ -292,13 +314,20 @@ export function buildSectionFromRelease(params: {
     return line;
   }
 
+  // Track items already assigned to enforce single-category membership
+  const seen = new Set<string>();
+
   for (const section of SECTION_ORDER) {
     const titles = categories[section] || [];
     const entries: ReleaseItem[] = [];
     for (const candidateTitle of titles) {
       const item = findItem(candidateTitle);
-      if (item && !entries.includes(item)) {
-        entries.push(item);
+      if (item) {
+        const key = String(item.pr ?? item.title);
+        if (!seen.has(key) && !entries.includes(item)) {
+          entries.push(item);
+          seen.add(key);
+        }
       }
     }
     if (!entries.length) continue;

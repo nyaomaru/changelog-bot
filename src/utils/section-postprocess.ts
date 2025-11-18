@@ -11,10 +11,11 @@ import { attachPrNumbers } from '@/utils/attach-pr.js';
  */
 export function postprocessSection(
   markdown: string,
-  titleToPr: Record<string, number>
+  titleToPr: Record<string, number>,
+  repo?: { owner: string; repo: string }
 ): string {
   // WHY: Keep the section concise and link-rich for reviewers.
   let processedMarkdown = removeMergedPRs(markdown);
-  processedMarkdown = attachPrNumbers(processedMarkdown, titleToPr);
+  processedMarkdown = attachPrNumbers(processedMarkdown, titleToPr, repo);
   return processedMarkdown;
 }
