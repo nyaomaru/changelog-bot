@@ -352,7 +352,7 @@ export async function runCli(): Promise<void> {
     llm.new_section_markdown &&
     !FULL_CHANGELOG_RE.test(llm.new_section_markdown)
   ) {
-    const fullUrl = `https://github.com/${owner}/${repo}/compare/${prevRef}...${releaseRef}`;
+    const fullUrl = `https://github.com/${owner}/${repo}/compare/${encodeURIComponent(prevRef)}...${encodeURIComponent(releaseRef)}`;
     llm.new_section_markdown = `${llm.new_section_markdown}\n**Full Changelog**: ${fullUrl}\n`;
   }
 
