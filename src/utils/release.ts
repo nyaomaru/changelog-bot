@@ -300,6 +300,10 @@ export function buildSectionFromRelease(params: {
     const exact = normalizedToItem.get(normalizedLookup);
     if (exact) return exact;
     for (const [k, item] of normalizedToItem) {
+      const minLen = Math.min(k.length, norm.length);
+      const maxLen = Math.max(k.length, norm.length);
+      // Only match if the shorter string is at least 50% of the longer
+      if (minLen / maxLen < 0.5) continue;
       if (k.startsWith(normalizedLookup) || normalizedLookup.startsWith(k))
         return item;
     }
