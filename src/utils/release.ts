@@ -14,7 +14,10 @@ const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
 const AUTHOR_RE = /@([A-Za-z0-9_-]+)/;
 const TRAILING_BY_IN_RE = /\s*(by|in)\s*$/i; // strip noisy trailing tokens
 import { CONVENTIONAL_PREFIX_RE } from '@/constants/conventional.js';
-import { stripConventionalPrefix, normalizeTitle } from '@/utils/title-normalize.js';
+import {
+  stripConventionalPrefix,
+  normalizeTitle,
+} from '@/utils/title-normalize.js';
 
 /** GitHub repository owner/name pair used for compare link construction. */
 type RepoInfo = {
@@ -300,8 +303,8 @@ export function buildSectionFromRelease(params: {
     const exact = normalizedToItem.get(normalizedLookup);
     if (exact) return exact;
     for (const [k, item] of normalizedToItem) {
-      const minLen = Math.min(k.length, norm.length);
-      const maxLen = Math.max(k.length, norm.length);
+      const minLen = Math.min(k.length, normalizedLookup.length);
+      const maxLen = Math.max(k.length, normalizedLookup.length);
       // Only match if the shorter string is at least 50% of the longer
       if (minLen / maxLen < 0.5) continue;
       if (k.startsWith(normalizedLookup) || normalizedLookup.startsWith(k))
