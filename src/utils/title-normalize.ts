@@ -13,6 +13,7 @@ export function stripConventionalPrefix(input: string): string {
  * Normalize a title for fuzzy matching by stripping conventional prefix,
  * lowercasing, collapsing non-alphanumerics to a single space, and trimming.
  * @param input Raw title text.
+ * @returns Normalized title suitable for fuzzy matching.
  */
 export function normalizeTitle(input: string): string {
   return stripConventionalPrefix(input)
