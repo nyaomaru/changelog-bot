@@ -323,7 +323,7 @@ export function buildSectionFromRelease(params: {
     for (const candidateTitle of titles) {
       const item = findItem(candidateTitle);
       if (item) {
-        const key = String(item.pr ?? item.title);
+        const key = item.pr ? `pr-${item.pr}` : `title-${item.title}-${item.rawTitle ?? ''}`;
         if (!seen.has(key) && !entries.includes(item)) {
           entries.push(item);
           seen.add(key);
