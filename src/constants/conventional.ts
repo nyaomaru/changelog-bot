@@ -17,8 +17,14 @@ export const COMMIT_TYPES = [
 ] as const;
 
 // Matches: type!: scope: , type(scope): , type:
+// Matches conventional prefixes with optional scope and optional breaking '!'.
+// Examples:
+//  - feat: msg
+//  - feat!: msg
+//  - feat(scope): msg
+//  - feat(scope)!: msg
 export const CONVENTIONAL_PREFIX_RE = new RegExp(
-  `^(${COMMIT_TYPES.join('|')})!?(?:\\([^)]*\\))?:\\s*`,
+  `^(${COMMIT_TYPES.join('|')})(?:!:|(?:\\([^)]*\\))?!?:)\\s*`,
   'i'
 );
 

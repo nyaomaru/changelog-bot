@@ -35,7 +35,11 @@ import { resolveGitHubAuth } from '@/utils/github-auth.js';
 import type { LLMOutput, ProviderName } from '@/types/llm.js';
 import { normalizeSectionCategories } from '@/utils/section-normalize.js';
 import { postprocessSection } from '@/utils/section-postprocess.js';
-import { parseReleaseNotes, buildSectionFromRelease } from '@/utils/release.js';
+import {
+  parseReleaseNotes,
+  buildSectionFromRelease,
+  FULL_CHANGELOG_RE,
+} from '@/utils/release.js';
 import { classifyTitles } from '@/utils/classify.js';
 import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
 import { buildTitlesForClassification } from '@/utils/classify-pre.js';
@@ -321,7 +325,8 @@ export async function runCli(): Promise<void> {
   if (llm.new_section_markdown) {
     llm.new_section_markdown = postprocessSection(
       llm.new_section_markdown,
-      titleToPr
+      titleToPr,
+      { owner, repo }
     );
   }
 
@@ -340,6 +345,15 @@ export async function runCli(): Promise<void> {
     if (!llm.new_section_markdown.includes(ref)) {
       llm.new_section_markdown = `${llm.new_section_markdown}\n${compare}`;
     }
+  }
+
+  // Ensure Full Changelog line exists when release notes were not used or missing.
+  if (
+    llm.new_section_markdown &&
+    !FULL_CHANGELOG_RE.test(llm.new_section_markdown)
+  ) {
+    const fullUrl = `https://github.com/${owner}/${repo}/compare/${encodeURIComponent(prevRef)}...${encodeURIComponent(releaseRef)}`;
+    llm.new_section_markdown = `${llm.new_section_markdown}\n**Full Changelog**: ${fullUrl}\n`;
   }
 
   // Remove duplicate sections before applying changes

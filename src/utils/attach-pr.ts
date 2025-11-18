@@ -1,10 +1,8 @@
 // WHY: We normalize titles for fuzzy matching, so we strip any leading
 // conventional commit prefix (with optional scope) to compare plain subjects.
 import { isBulletLine } from '@/utils/is.js';
-import {
-  CONVENTIONAL_PREFIX_RE,
-  INLINE_PR_PRESENT_RE,
-} from '@/constants/conventional.js';
+import { INLINE_PR_PRESENT_RE } from '@/constants/conventional.js';
+import { normalizeTitle } from '@/utils/title-normalize.js';
 
 /** Maps original PR titles to their numeric identifiers. */
 type TitleToPr = Record<string, number>;
@@ -21,13 +19,7 @@ type BulletParts = {
  * @param rawTitle Original bullet text.
  * @returns Normalized key for lookups.
  */
-function normalizeTitleForMatching(rawTitle: string): string {
-  return rawTitle
-    .toLowerCase()
-    .replace(CONVENTIONAL_PREFIX_RE, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
+// title normalization moved to shared util: normalizeTitle
 
 /**
  * Check whether a line already includes an inline PR reference (e.g., "(#123)").
@@ -46,7 +38,21 @@ function hasInlinePrReference(line: string): boolean {
 function buildNormalizedLookup(titleToPr: TitleToPr): Map<string, number> {
   const normalized = new Map<string, number>();
   for (const [originalTitle, prNumber] of Object.entries(titleToPr)) {
-    normalized.set(normalizeTitleForMatching(originalTitle), prNumber);
+    const key = normalizeTitle(originalTitle);
+    if (normalized.has(key)) {
+      const existing = normalized.get(key)!;
+      // WHY: Collisions happen when titles differ only by punctuation/case.
+      // Prefer the higher PR number (usually newer) and log for visibility.
+      if (prNumber !== existing) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `Title collision: "${originalTitle}" -> "${key}" (PR #${prNumber} vs #${existing})`
+        );
+      }
+      normalized.set(key, Math.max(existing, prNumber));
+    } else {
+      normalized.set(key, prNumber);
+    }
   }
   return normalized;
 }
@@ -94,7 +100,11 @@ function findMatchingPrNumber(
  * @param titleToPr Map of original PR titles to PR numbers.
  * @returns Markdown with missing PR references appended to matching bullets.
  */
-export function attachPrNumbers(md: string, titleToPr: TitleToPr): string {
+export function attachPrNumbers(
+  md: string,
+  titleToPr: TitleToPr,
+  repo?: { owner: string; repo: string }
+): string {
   const normalizedTitleToPr = buildNormalizedLookup(titleToPr);
 
   const lines = md.split('\n');
@@ -105,15 +115,19 @@ export function attachPrNumbers(md: string, titleToPr: TitleToPr): string {
     const bulletParts = splitBulletLine(line);
     if (!bulletParts) return line;
 
-    const normalizedBulletText = normalizeTitleForMatching(bulletParts.text);
+    const normalizedBulletText = normalizeTitle(bulletParts.text);
     const matchedPrNumber = findMatchingPrNumber(
       normalizedBulletText,
       normalizedTitleToPr
     );
 
-    return matchedPrNumber
-      ? `${bulletParts.prefix}${bulletParts.text} (#${matchedPrNumber})`
-      : line;
+    if (!matchedPrNumber) return line;
+
+    if (repo) {
+      const url = `https://github.com/${repo.owner}/${repo.repo}/pull/${matchedPrNumber}`;
+      return `${bulletParts.prefix}${bulletParts.text} in [#${matchedPrNumber}](${url})`;
+    }
+    return `${bulletParts.prefix}${bulletParts.text} (#${matchedPrNumber})`;
   });
   return updated.join('\n');
 }

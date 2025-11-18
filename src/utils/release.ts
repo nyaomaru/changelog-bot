@@ -7,13 +7,17 @@ import { ParsedReleaseSchema } from '@/schema/release.js';
 import { SECTION_ORDER } from '@/constants/changelog.js';
 
 const H2_HEADING_RE = /^##\s+(.*)$/;
-const FULL_CHANGELOG_RE = /Full Changelog[^:]*:\s*(\S+)/i;
+export const FULL_CHANGELOG_RE = /Full Changelog[^:]*:\s*(\S+)/i;
 const BULLET_PREFIX_RE = /^[*-]\s+/;
 const PR_URL_RE = /https?:\/\/\S+\/pull\/(\d+)/; // captures PR number
 const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
 const AUTHOR_RE = /@([A-Za-z0-9_-]+)/;
 const TRAILING_BY_IN_RE = /\s*(by|in)\s*$/i; // strip noisy trailing tokens
 import { CONVENTIONAL_PREFIX_RE } from '@/constants/conventional.js';
+import {
+  stripConventionalPrefix,
+  normalizeTitle,
+} from '@/utils/title-normalize.js';
 
 /** GitHub repository owner/name pair used for compare link construction. */
 type RepoInfo = {
@@ -45,9 +49,7 @@ function stripBulletPrefix(input: string): string {
  * @param input Title that may start with `type(scope):`.
  * @returns Title without the conventional prefix.
  */
-function stripConventionalPrefix(input: string): string {
-  return input.replace(CONVENTIONAL_PREFIX_RE, '').trim();
-}
+// stripConventionalPrefix moved to utils/title-normalize
 
 /**
  * Strip trailing "by"/"in" tokens used in GitHub release lines.
@@ -266,22 +268,49 @@ export function buildSectionFromRelease(params: {
   sections?: ReleaseSection[];
 }): string {
   const { version, date, items, categories, sections = [] } = params;
+
+  // Normalize titles for fuzzy matching: lowercase, strip conventional prefix,
+  // collapse non-alphanumerics to spaces, and trim.
+  const normalize = (s: string) => normalizeTitle(s);
+
+  // Build both exact and normalized lookup maps.
   const titleToItem = new Map<string, ReleaseItem>();
+  const normalizedToItem = new Map<string, ReleaseItem>();
   for (const item of items) {
-    titleToItem.set(item.title, item);
-    if (item.rawTitle) titleToItem.set(item.rawTitle, item);
-    titleToItem.set(item.title.toLowerCase(), item);
-    if (item.rawTitle) titleToItem.set(item.rawTitle.toLowerCase(), item);
+    const keys = [item.title, item.rawTitle].filter(Boolean) as string[];
+    // WHY: Avoid redundant insertions when title === rawTitle or keys differ only
+    // by reference; Set preserves lookup flexibility without extra work.
+    const uniqueKeys = new Set(keys);
+    for (const key of uniqueKeys) {
+      titleToItem.set(key, item);
+      titleToItem.set(key.toLowerCase(), item);
+      const norm = normalize(key);
+      normalizedToItem.set(norm, item);
+    }
   }
 
   const findItem = (lookupTitle: string): ReleaseItem | undefined => {
     if (!lookupTitle) return undefined;
-    return (
+    const direct =
       titleToItem.get(lookupTitle) ||
       titleToItem.get(lookupTitle.toLowerCase()) ||
       titleToItem.get(stripConventionalPrefix(lookupTitle)) ||
-      titleToItem.get(stripConventionalPrefix(lookupTitle).toLowerCase())
-    );
+      titleToItem.get(stripConventionalPrefix(lookupTitle).toLowerCase());
+    if (direct) return direct;
+
+    // Fuzzy: try normalized matching with bidirectional prefix check.
+    const normalizedLookup = normalize(lookupTitle);
+    const exact = normalizedToItem.get(normalizedLookup);
+    if (exact) return exact;
+    for (const [k, item] of normalizedToItem) {
+      const minLen = Math.min(k.length, normalizedLookup.length);
+      const maxLen = Math.max(k.length, normalizedLookup.length);
+      // Only match if the shorter string is at least 50% of the longer
+      if (minLen / maxLen < 0.5) continue;
+      if (k.startsWith(normalizedLookup) || normalizedLookup.startsWith(k))
+        return item;
+    }
+    return undefined;
   };
   const lines: string[] = [`## [v${version}] - ${date}`, ''];
 
@@ -292,13 +321,22 @@ export function buildSectionFromRelease(params: {
     return line;
   }
 
+  // Track items already assigned to enforce single-category membership within this version
+  const seen = new Set<string>();
+
   for (const section of SECTION_ORDER) {
     const titles = categories[section] || [];
     const entries: ReleaseItem[] = [];
     for (const candidateTitle of titles) {
       const item = findItem(candidateTitle);
-      if (item && !entries.includes(item)) {
-        entries.push(item);
+      if (item) {
+        const key = item.pr
+          ? `pr-${item.pr}`
+          : `title-${item.title}-${item.rawTitle ?? ''}`;
+        if (!seen.has(key)) {
+          entries.push(item);
+          seen.add(key);
+        }
       }
     }
     if (!entries.length) continue;
