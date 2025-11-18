@@ -29,9 +29,9 @@ describe('github-auth utils', () => {
     process.env = { ...originalEnv };
     // default: undefined token/app vars
     delete process.env.GITHUB_TOKEN;
-    delete process.env.GITHUB_APP_ID;
-    delete process.env.GITHUB_APP_PRIVATE_KEY;
-    delete process.env.GITHUB_APP_INSTALLATION_ID;
+    delete process.env.CHANGELOG_BOT_APP_ID;
+    delete process.env.CHANGELOG_BOT_APP_PRIVATE_KEY;
+    delete process.env.CHANGELOG_BOT_APP_INSTALLATION_ID;
     delete process.env.GITHUB_API_BASE;
   });
 
@@ -49,9 +49,9 @@ describe('github-auth utils', () => {
   });
 
   test('exchanges App credentials for installation token (auto-detect install)', async () => {
-    process.env.GITHUB_APP_ID = '12345';
+    process.env.CHANGELOG_BOT_APP_ID = '12345';
     // Provide a private key with \n escapes; normalization should handle it
-    process.env.GITHUB_APP_PRIVATE_KEY =
+    process.env.CHANGELOG_BOT_APP_PRIVATE_KEY =
       '-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n';
 
     const calls: Array<{ url: string; options: any }> = [];
@@ -91,10 +91,10 @@ describe('github-auth utils', () => {
   });
 
   test('uses provided installation id and skips detection', async () => {
-    process.env.GITHUB_APP_ID = '12345';
-    process.env.GITHUB_APP_PRIVATE_KEY =
+    process.env.CHANGELOG_BOT_APP_ID = '12345';
+    process.env.CHANGELOG_BOT_APP_PRIVATE_KEY =
       '-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n';
-    process.env.GITHUB_APP_INSTALLATION_ID = '777';
+    process.env.CHANGELOG_BOT_APP_INSTALLATION_ID = '777';
 
     let requestCount = 0;
     global.fetch = jest.fn().mockImplementation(async (url: string) => {

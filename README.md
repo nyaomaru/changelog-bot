@@ -109,9 +109,9 @@ Bring your own keys and tokens as needed—`changelog-bot` only asks for what it
 - Environment variables:
   - `GITHUB_TOKEN` (required for PR creation; not required for `--dry-run`)
   - Or GitHub App auth (recommended for branding and least-privilege):
-    - `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY` (required)
-    - `GITHUB_APP_INSTALLATION_ID` (optional; auto-detected per repo)
-    - `GITHUB_API_BASE` (optional; GHES, e.g., `https://ghe.example.com/api/v3`)
+    - `CHANGELOG_BOT_APP_ID` and `CHANGELOG_BOT_APP_PRIVATE_KEY` (required)
+    - `CHANGELOG_BOT_APP_INSTALLATION_ID` (optional; auto-detected per repo)
+    - `CHANGELOG_BOT_API_BASE` (optional; GHES, e.g., `https://ghe.example.com/api/v3`)
   - `OPENAI_API_KEY` (optional)
   - `ANTHROPIC_API_KEY` (optional)
   - `REPO_FULL_NAME` (optional, `owner/repo`; used for link resolution)
@@ -271,12 +271,12 @@ jobs:
           release-name: ${{ github.event.release.tag_name }}
         env:
           # Use App auth (do not set GITHUB_TOKEN to force App path)
-          GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
-          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          CHANGELOG_BOT_APP_ID: ${{ secrets.CHANGELOG_BOT_APP_ID }}
+          CHANGELOG_BOT_APP_PRIVATE_KEY: ${{ secrets.CHANGELOG_BOT_APP_PRIVATE_KEY }}
           # Optional: hardcode installation id; otherwise auto-detected
-          # GITHUB_APP_INSTALLATION_ID: ${{ secrets.GITHUB_APP_INSTALLATION_ID }}
+          # CHANGELOG_BOT_APP_INSTALLATION_ID: ${{ secrets.CHANGELOG_BOT_APP_INSTALLATION_ID }}
           # Optional: GHES
-          # GITHUB_API_BASE: https://ghe.example.com/api/v3
+          # CHANGELOG_BOT_API_BASE: https://ghe.example.com/api/v3
           # Optional: AI keys
           # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -312,10 +312,10 @@ jobs:
             --provider openai
         env:
           REPO_FULL_NAME: ${{ github.repository }}
-          GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
-          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
-          # GITHUB_APP_INSTALLATION_ID: ${{ secrets.GITHUB_APP_INSTALLATION_ID }}
-          # GITHUB_API_BASE: https://ghe.example.com/api/v3
+          CHANGELOG_BOT_APP_ID: ${{ secrets.CHANGELOG_BOT_APP_ID }}
+          CHANGELOG_BOT_APP_PRIVATE_KEY: ${{ secrets.CHANGELOG_BOT_APP_PRIVATE_KEY }}
+          # CHANGELOG_BOT_APP_INSTALLATION_ID: ${{ secrets.CHANGELOG_BOT_APP_INSTALLATION_ID }}
+          # CHANGELOG_BOT_API_BASE: https://ghe.example.com/api/v3
           # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
@@ -328,13 +328,13 @@ Notes
 
 If you install `changelog-bot` as a GitHub App in your org, the PRs will be authored by the App’s account and you can scope permissions cleanly.
 
-Set the following in your workflow or environment:
+Set the following in your workflow or environment (use aliases; no `GITHUB_` prefix required):
 
 ```sh
-export GITHUB_APP_ID=123456
-export GITHUB_APP_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+export CHANGELOG_BOT_APP_ID=123456
+export CHANGELOG_BOT_APP_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 # Optional: hardcode installation id; otherwise we auto-detect from the repo
-# export GITHUB_APP_INSTALLATION_ID=987654
+# export CHANGELOG_BOT_APP_INSTALLATION_ID=987654
 ```
 
 The CLI exchanges the App credentials for an installation access token at runtime and uses it for:

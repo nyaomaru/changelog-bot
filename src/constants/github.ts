@@ -5,7 +5,9 @@ export const PRS_LOOKUP_COMMIT_LIMIT = 200;
 // API base; override for GHES via env
 export const GITHUB_API_BASE_DEFAULT = 'https://api.github.com';
 export const GITHUB_API_BASE =
-  process.env.GITHUB_API_BASE || GITHUB_API_BASE_DEFAULT;
+  process.env.CHANGELOG_BOT_API_BASE ||
+  process.env.GITHUB_API_BASE ||
+  GITHUB_API_BASE_DEFAULT;
 
 // GitHub App JWT parameters
 export const GITHUB_APP_JWT_SKEW_SECONDS = 60; // allow small clock drift
