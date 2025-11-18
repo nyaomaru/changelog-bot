@@ -212,7 +212,7 @@ export function tuneCategoriesByTitle(
   // placing features under Chore/Changed due to generic verbs like "add/support").
   // Match conventional feat prefixes including optional scope and optional breaking '!'
   // Examples: feat: msg, feat!: msg, feat(scope): msg, feat(scope)!: msg
-  const FEAT_PREFIX_RE = /^feat(?:\([^)]*\))?!?:/i;
+  const FEAT_PREFIX_RE = /^feat(?:!:|(?:\([^)]*\))?!?:)/i;
   const toAdded: string[] = [];
   for (const title of knownTitles) {
     if (FEAT_PREFIX_RE.test(title)) toAdded.push(title);
