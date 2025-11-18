@@ -280,10 +280,14 @@ export function buildSectionFromRelease(params: {
   const normalizedToItem = new Map<string, ReleaseItem>();
   for (const item of items) {
     const keys = [item.title, item.rawTitle].filter(Boolean) as string[];
-    for (const key of keys) {
+    // WHY: Avoid redundant insertions when title === rawTitle or keys differ only
+    // by reference; Set preserves lookup flexibility without extra work.
+    const uniqueKeys = new Set(keys);
+    for (const key of uniqueKeys) {
       titleToItem.set(key, item);
       titleToItem.set(key.toLowerCase(), item);
-      normalizedToItem.set(normalize(key), item);
+      const norm = normalize(key);
+      normalizedToItem.set(norm, item);
     }
   }
 
