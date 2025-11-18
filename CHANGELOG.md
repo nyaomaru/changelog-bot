@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.7] - 2025-11-18
+
+### Added
+
+- Support GitHub App authentication for PR creation (PAT fallback) by @nyaomaru in [#29](https://github.com/nyaomaru/changelog-bot/pull/29)
+
+### Fixed
+
+- add App auth via installation tokens + CI-safe env by @nyaomaru in [#31](https://github.com/nyaomaru/changelog-bot/pull/31)
+- classification to use json base response by @nyaomaru in [#32](https://github.com/nyaomaru/changelog-bot/pull/32)
+
+### Docs
+
+- 0.0.6 by [bot] by @github-actions in [#27](https://github.com/nyaomaru/changelog-bot/pull/27)
+
+### Chore
+
+- Release: 0.0.7 by [bot] by @github-actions in [#30](https://github.com/nyaomaru/changelog-bot/pull/30)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.7
+
+[v0.0.7]: https://github.com/nyaomaru/changelog-bot/compare/v0.0.6...v0.0.7
+
 ## [v0.0.6] - 2025-11-15
 
 ### Fixed
