@@ -176,7 +176,9 @@ export function tuneCategoriesByTitle(
   if (toMove.length) moveTitlesToCategory(adjusted, toMove, 'Fixed');
 
   // Rule: Conventional `fix:` prefix should map to Fixed (guard against LLM misclassifying as Chore).
-  const FIX_PREFIX_RE = /^fix!?(\(|:)/i;
+  // Match conventional fix prefixes including optional scope and optional breaking '!'
+  // Examples: fix: msg, fix!: msg, fix(scope): msg, fix(scope)!: msg
+  const FIX_PREFIX_RE = /^fix(?:\([^)]*\))?!?:/i;
   const conventionalFixes: string[] = [];
   for (const title of knownTitles) {
     if (FIX_PREFIX_RE.test(title)) conventionalFixes.push(title);
@@ -208,7 +210,9 @@ export function tuneCategoriesByTitle(
 
   // Rule: Conventional `feat:` prefix should map to Added (guard against LLM
   // placing features under Chore/Changed due to generic verbs like "add/support").
-  const FEAT_PREFIX_RE = /^feat!?(\(|:)/i;
+  // Match conventional feat prefixes including optional scope and optional breaking '!'
+  // Examples: feat: msg, feat!: msg, feat(scope): msg, feat(scope)!: msg
+  const FEAT_PREFIX_RE = /^feat(?:\([^)]*\))?!?:/i;
   const toAdded: string[] = [];
   for (const title of knownTitles) {
     if (FEAT_PREFIX_RE.test(title)) toAdded.push(title);

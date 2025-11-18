@@ -29,5 +29,17 @@ describe('tuneCategoriesByTitle', () => {
     // Ensure it is removed from Chore
     expect(out.Chore?.includes('feat: Support GitHub App auth')).toBeFalsy();
   });
-});
 
+  test('matches feat(scope)!: and fix(scope)!: forms', () => {
+    const items = [
+      { title: 'Breaking feature', rawTitle: 'feat(core)!: new something' },
+      { title: 'Critical fix', rawTitle: 'fix(api)!: patch issue' },
+    ];
+    const categories = {
+      Chore: ['feat(core)!: new something', 'fix(api)!: patch issue'],
+    };
+    const out = tuneCategoriesByTitle(items as any, categories as any);
+    expect(out.Added).toContain('feat(core)!: new something');
+    expect(out.Fixed).toContain('fix(api)!: patch issue');
+  });
+});
