@@ -1,5 +1,4 @@
 import { SECTION_ORDER } from '@/constants/changelog.js';
-import { CONVENTIONAL_PREFIX_RE } from '@/constants/conventional.js';
 import type { CategoryScores } from '@/types/changelog.js';
 import { normalizeTitle } from '@/utils/title-normalize.js';
 
