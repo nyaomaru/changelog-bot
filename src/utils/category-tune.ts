@@ -4,6 +4,7 @@ import {
 } from '@/constants/conventional.js';
 import type { CategoryMap } from '@/types/changelog.js';
 import type { ReleaseItem } from '@/types/release.js';
+import { bestCategory, scoreCategories, SCORE_THRESHOLDS } from '@/utils/category-score.js';
 
 /**
  * Move given titles to a target category on a mutable CategoryMap.
@@ -218,6 +219,35 @@ export function tuneCategoriesByTitle(
     if (FEAT_PREFIX_RE.test(title)) toAdded.push(title);
   }
   if (toAdded.length) moveTitlesToCategory(adjusted, toAdded, 'Added');
+
+  // Scoring-based remap from weak buckets when confident
+  const WEAK_BUCKETS = new Set(['Chore', 'Docs', 'Test']);
+  for (const title of knownTitles) {
+    const current = findCategory(title);
+    if (!current || !WEAK_BUCKETS.has(current)) continue;
+    const scores = scoreCategories(title);
+    const guide = bestCategory(scores);
+    if (guide === 'Fixed' && scores.Fixed >= SCORE_THRESHOLDS.fixed) {
+      moveTitlesToCategory(adjusted, [title], 'Fixed');
+      continue;
+    }
+    if (guide === 'Changed' && scores.Changed >= SCORE_THRESHOLDS.changed) {
+      moveTitlesToCategory(adjusted, [title], 'Changed');
+      continue;
+    }
+    if (guide === 'Added' && scores.Added >= SCORE_THRESHOLDS.added) {
+      moveTitlesToCategory(adjusted, [title], 'Added');
+      continue;
+    }
+    if (
+      guide === 'Breaking Changes' &&
+      scores['Breaking Changes'] >= SCORE_THRESHOLDS.breaking
+    ) {
+      // Only elevate to Breaking when very confident
+      moveTitlesToCategory(adjusted, [title], 'Breaking Changes');
+      continue;
+    }
+  }
 
   return adjusted;
 }

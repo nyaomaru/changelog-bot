@@ -28,7 +28,6 @@ const TYPE_TO_SECTION_REGEX = {
   Fixed: /^fix(\(|:)/i,
   Changed: /^(refactor|perf|style)(\(|:)/i,
   Docs: /^docs(\(|:)/i,
-  Build: /^(build|ci)(\(|:)/i,
   Test: /^test(\(|:)/i,
   Reverted: /^revert(\(|:)/i,
 } as const;
@@ -84,7 +83,8 @@ function detectBucket(subject: string): BucketName {
   if (TYPE_TO_SECTION_REGEX.Fixed.test(lower)) return 'Fixed';
   if (TYPE_TO_SECTION_REGEX.Changed.test(lower)) return 'Changed';
   if (TYPE_TO_SECTION_REGEX.Docs.test(lower)) return 'Docs';
-  if (TYPE_TO_SECTION_REGEX.Build.test(lower)) return 'Build';
+  // Map build/ci to Chore (we do not emit a Build section)
+  if (/^(build|ci)(\(|:)/i.test(lower)) return 'Chore';
   if (TYPE_TO_SECTION_REGEX.Test.test(lower)) return 'Test';
   if (TYPE_TO_SECTION_REGEX.Reverted.test(lower)) return 'Reverted';
   if (BREAKING_MARKER_REGEX.test(subject)) return 'Breaking Changes';

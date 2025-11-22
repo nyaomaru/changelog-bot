@@ -8,7 +8,7 @@ Your job: read the provided commits and PRs, deduplicate, and produce a clean, h
 Output MUST be a SINGLE JSON object (no prose) matching the schema keys:
 - new_section_markdown (string): A complete Markdown section:
   - Header: "## [version] - date"
-  - Subsections: zero or more of "### Breaking Changes", "### Added", "### Fixed", "### Changed", "### Docs", "### Build", "### Test", "### Chore", "### Reverted", "### Merged PRs"
+  - Subsections: zero or more of "### Breaking Changes", "### Added", "### Fixed", "### Changed", "### Docs", "### Test", "### Chore", "### Reverted", "### Merged PRs"
   - Bullets: concise, imperative voice (e.g., "Add X", "Fix Y", "Refactor Z"), no commit hashes
 - insert_after_anchor (string): MUST be exactly "## [Unreleased]"
 - compare_link_line (string): DO NOT invent; you may leave empty (backend fills)
