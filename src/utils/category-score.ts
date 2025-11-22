@@ -203,25 +203,25 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   const prefixFamilyDeltas: Partial<Record<SectionName, number>> = {};
   if (hasBreakingMarkerInPrefix(rawTitle))
     prefixFamilyDeltas['Breaking Changes'] = CATEGORY_WEIGHTS.prefix.breaking;
-  if (/^feat(\(|:)/i.test(lowercasedTitle))
+  if (/^feat(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
     prefixFamilyDeltas.Added = CATEGORY_WEIGHTS.prefix.feat;
-  if (/^fix(\(|:)/i.test(lowercasedTitle))
+  if (/^fix(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
     prefixFamilyDeltas.Fixed = CATEGORY_WEIGHTS.prefix.fix;
-  if (/^(refactor|perf|style)(\(|:)/i.test(lowercasedTitle)) {
+  if (/^(refactor|perf|style)(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle)) {
     prefixFamilyDeltas.Changed = Math.max(
       CATEGORY_WEIGHTS.prefix.refactor,
-      /^(perf)(\(|:)/i.test(lowercasedTitle)
+      /^(perf)(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle)
         ? CATEGORY_WEIGHTS.prefix.perf
         : CATEGORY_WEIGHTS.prefix.refactor
     );
   }
-  if (/^docs(\(|:)/i.test(lowercasedTitle))
+  if (/^docs(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
     prefixFamilyDeltas.Docs = CATEGORY_WEIGHTS.prefix.docs;
-  if (/^test(\(|:)/i.test(lowercasedTitle))
+  if (/^test(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
     prefixFamilyDeltas.Test = CATEGORY_WEIGHTS.prefix.test;
-  if (/^revert(\(|:)/i.test(lowercasedTitle))
+  if (/^revert(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
     prefixFamilyDeltas.Reverted = CATEGORY_WEIGHTS.prefix.revert;
-  if (/^chore(\(|:)/i.test(lowercasedTitle))
+  if (/^chore(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
     prefixFamilyDeltas.Chore = CATEGORY_WEIGHTS.prefix.chore;
   for (const [sectionName, weight] of Object.entries(prefixFamilyDeltas))
     scores[sectionName as SectionName] += weight || 0;
