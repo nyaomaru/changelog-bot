@@ -18,6 +18,7 @@ export function buildTitlesForClassification(items: ReleaseItem[]): string[] {
   const out: string[] = [];
   const FIX_PREFIX_RE = /^fix(\(|:)/i;
   const REFACTOR_PREFIX_RE = /^refactor(\(|:)/i;
+  const FEAT_PREFIX_RE = /^feat(\(|:)/i;
   for (const item of items) {
     const base = (item.rawTitle ?? item.title ?? '').trim();
     if (!base) continue;
@@ -55,7 +56,7 @@ export function buildTitlesForClassification(items: ReleaseItem[]): string[] {
       out.push(`refactor: ${core}`);
       continue;
     }
-    if (guide === 'Added' && !/^feat(\(|:)/i.test(lower)) {
+    if (guide === 'Added' && !FEAT_PREFIX_RE.test(lower)) {
       out.push(`feat: ${core}`);
       continue;
     }
