@@ -362,8 +362,7 @@ function buildWeakKeywordIndex() {
       if (
         !Number.isNaN(from) &&
         !Number.isNaN(to) &&
-        to > from &&
-        to - from >= 1
+        to > from
       ) {
         scores['Breaking Changes'] += 2;
         scores.Changed += 1;
