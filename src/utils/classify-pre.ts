@@ -1,6 +1,7 @@
 import { CONVENTIONAL_PREFIX_RE, REFACTOR_LIKE_RE } from '@/constants/conventional.js';
 import type { ReleaseItem } from '@/types/release.js';
 import { isImplicitFixTitle, isChangeLikeTitle } from '@/utils/category-tune.js';
+import { bestCategory, scoreCategories } from '@/utils/category-score.js';
 
 
 /**
@@ -40,6 +41,22 @@ export function buildTitlesForClassification(items: ReleaseItem[]): string[] {
     // Nudge change-like improvements toward Changed by presenting as refactor.
     if (isChangeLikeTitle(base)) {
       out.push(REFACTOR_PREFIX_RE.test(lower) ? base : `refactor: ${core}`);
+      continue;
+    }
+
+    // Scoring-guided normalization when no earlier rule matched
+    const scores = scoreCategories(base);
+    const guide = bestCategory(scores);
+    if (guide === 'Fixed' && !FIX_PREFIX_RE.test(lower)) {
+      out.push(`fix: ${core}`);
+      continue;
+    }
+    if (guide === 'Changed' && !REFACTOR_PREFIX_RE.test(lower)) {
+      out.push(`refactor: ${core}`);
+      continue;
+    }
+    if (guide === 'Added' && !/^feat(\(|:)/i.test(lower)) {
+      out.push(`feat: ${core}`);
       continue;
     }
 

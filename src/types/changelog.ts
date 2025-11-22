@@ -1,2 +1,5 @@
 /** Maps changelog section names to the titles that belong in each. */
 export type CategoryMap = Record<string, string[]>;
+
+/** Numeric score per section name used for heuristic category scoring. */
+export type CategoryScores = Record<string, number>;
