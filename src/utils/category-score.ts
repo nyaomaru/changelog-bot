@@ -272,19 +272,20 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     return index;
   }
   // Module-level caches for keyword indices
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const globalCache = globalThis as any;
-  const strongKeywordIndex: Map<
+  let strongKeywordIndex: Map<
     string,
     Array<{ section: SectionName; weight: number }>
-  > = globalCache.__CATEGORY_SCORE_STRONG_INDEX__ ||
-  (globalCache.__CATEGORY_SCORE_STRONG_INDEX__ = buildStrongKeywordIndex());
-  const weakKeywordIndex: Map<
+  > | null = null;
+  let weakKeywordIndex: Map<
     string,
     Array<{ section: SectionName; weight: number }>
-  > = globalCache.__CATEGORY_SCORE_WEAK_INDEX__ ||
-  (globalCache.__CATEGORY_SCORE_WEAK_INDEX__ = buildWeakKeywordIndex());
-
+  > | null = null;
+  if (!strongKeywordIndex) {
+    strongKeywordIndex = buildStrongKeywordIndex();
+  }
+  if (!weakKeywordIndex) {
+    weakKeywordIndex = buildWeakKeywordIndex();
+  }
   // Strong family accumulation with family cap per section
   const strongFamilyDeltas: Partial<Record<SectionName, number>> = {};
   for (const phrase of normalizedPhrases) {
