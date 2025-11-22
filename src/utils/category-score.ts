@@ -87,7 +87,17 @@ const CATEGORY_WEIGHTS = {
       'tweak',
     ],
     docs: ['docs', 'readme', 'guide', 'tutorial', 'reference', 'comment'],
-    test: ['test', 'tests', 'e2e', 'integration', 'unit', 'snapshot', 'coverage', 'mock', 'fixture'],
+    test: [
+      'test',
+      'tests',
+      'e2e',
+      'integration',
+      'unit',
+      'snapshot',
+      'coverage',
+      'mock',
+      'fixture',
+    ],
     chore: [
       'build',
       'pipeline',
@@ -114,9 +124,25 @@ const CATEGORY_WEIGHTS = {
     ],
   },
   weak: {
-    added: ['allow', 'add-on', 'hook', 'wire', 'default flag', 'parameter', 'option', 'expose'],
+    added: [
+      'allow',
+      'add-on',
+      'hook',
+      'wire',
+      'default flag',
+      'parameter',
+      'option',
+      'expose',
+    ],
     fixed: ['mitigate', 'patch', 'guard', 'handle'],
-    changed: ['tune', 'retune', 'calibrate', 'rearrange', 'reorganize', 'restructure'],
+    changed: [
+      'tune',
+      'retune',
+      'calibrate',
+      'rearrange',
+      'reorganize',
+      'restructure',
+    ],
     docs: ['typo', 'wording', 'rename section', 'rename header'],
     chore: ['bump', 'upgrade', 'pin', 'deps', 'dependency'],
   },
@@ -150,7 +176,7 @@ function createEmptyScores(): CategoryScores {
 
 function hasBreakingMarkerInPrefix(rawTitle: string): boolean {
   // Accept both `type!: msg` and `type(scope)!: msg` forms
-  return /!:\s*/.test((rawTitle.split('\n')[0] || ''));
+  return /!:\s*/.test(rawTitle.split('\n')[0] || '');
 }
 
 /**
@@ -164,37 +190,62 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   const words = normalizedTitle.split(/\s+/).filter(Boolean);
   const biGrams: string[] = [];
   const triGrams: string[] = [];
-  for (let i = 0; i < words.length - 1; i++) biGrams.push(`${words[i]} ${words[i + 1]}`);
-  for (let i = 0; i < words.length - 2; i++) triGrams.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
-  const normalizedPhrases = new Set<string>([...words, ...biGrams, ...triGrams]);
+  for (let i = 0; i < words.length - 1; i++)
+    biGrams.push(`${words[i]} ${words[i + 1]}`);
+  for (let i = 0; i < words.length - 2; i++)
+    triGrams.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
+  const normalizedPhrases = new Set<string>([
+    ...words,
+    ...biGrams,
+    ...triGrams,
+  ]);
 
   // Prefix family
   const prefixFamilyDeltas: Partial<Record<SectionName, number>> = {};
-  if (hasBreakingMarkerInPrefix(rawTitle)) prefixFamilyDeltas['Breaking Changes'] = CATEGORY_WEIGHTS.prefix.breaking;
-  if (/^feat(\(|:)/i.test(lowercasedTitle)) prefixFamilyDeltas.Added = CATEGORY_WEIGHTS.prefix.feat;
-  if (/^fix(\(|:)/i.test(lowercasedTitle)) prefixFamilyDeltas.Fixed = CATEGORY_WEIGHTS.prefix.fix;
+  if (hasBreakingMarkerInPrefix(rawTitle))
+    prefixFamilyDeltas['Breaking Changes'] = CATEGORY_WEIGHTS.prefix.breaking;
+  if (/^feat(\(|:)/i.test(lowercasedTitle))
+    prefixFamilyDeltas.Added = CATEGORY_WEIGHTS.prefix.feat;
+  if (/^fix(\(|:)/i.test(lowercasedTitle))
+    prefixFamilyDeltas.Fixed = CATEGORY_WEIGHTS.prefix.fix;
   if (/^(refactor|perf|style)(\(|:)/i.test(lowercasedTitle)) {
     prefixFamilyDeltas.Changed = Math.max(
       CATEGORY_WEIGHTS.prefix.refactor,
-      /^(perf)(\(|:)/i.test(lowercasedTitle) ? CATEGORY_WEIGHTS.prefix.perf : CATEGORY_WEIGHTS.prefix.refactor
+      /^(perf)(\(|:)/i.test(lowercasedTitle)
+        ? CATEGORY_WEIGHTS.prefix.perf
+        : CATEGORY_WEIGHTS.prefix.refactor
     );
   }
-  if (/^docs(\(|:)/i.test(lowercasedTitle)) prefixFamilyDeltas.Docs = CATEGORY_WEIGHTS.prefix.docs;
-  if (/^test(\(|:)/i.test(lowercasedTitle)) prefixFamilyDeltas.Test = CATEGORY_WEIGHTS.prefix.test;
-  if (/^revert(\(|:)/i.test(lowercasedTitle)) prefixFamilyDeltas.Reverted = CATEGORY_WEIGHTS.prefix.revert;
-  if (/^chore(\(|:)/i.test(lowercasedTitle)) prefixFamilyDeltas.Chore = CATEGORY_WEIGHTS.prefix.chore;
-  for (const [sectionName, weight] of Object.entries(prefixFamilyDeltas)) scores[sectionName as SectionName] += weight || 0;
+  if (/^docs(\(|:)/i.test(lowercasedTitle))
+    prefixFamilyDeltas.Docs = CATEGORY_WEIGHTS.prefix.docs;
+  if (/^test(\(|:)/i.test(lowercasedTitle))
+    prefixFamilyDeltas.Test = CATEGORY_WEIGHTS.prefix.test;
+  if (/^revert(\(|:)/i.test(lowercasedTitle))
+    prefixFamilyDeltas.Reverted = CATEGORY_WEIGHTS.prefix.revert;
+  if (/^chore(\(|:)/i.test(lowercasedTitle))
+    prefixFamilyDeltas.Chore = CATEGORY_WEIGHTS.prefix.chore;
+  for (const [sectionName, weight] of Object.entries(prefixFamilyDeltas))
+    scores[sectionName as SectionName] += weight || 0;
 
   // Build hash maps for strong/weak keywords at module init time (simple closure cache)
   function buildStrongKeywordIndex() {
-    const index = new Map<string, Array<{ section: SectionName; weight: number }>>();
-    const add = (section: SectionName, entry: string | { kw: string; w: number }, defaultWeight = 3) => {
-      const { kw, w } = typeof entry === 'string' ? { kw: entry, w: defaultWeight } : entry;
+    const index = new Map<
+      string,
+      Array<{ section: SectionName; weight: number }>
+    >();
+    const add = (
+      section: SectionName,
+      entry: string | { kw: string; w: number },
+      defaultWeight = 3
+    ) => {
+      const { kw, w } =
+        typeof entry === 'string' ? { kw: entry, w: defaultWeight } : entry;
       const list = index.get(kw) || [];
       list.push({ section, weight: w });
       index.set(kw, list);
     };
-    for (const e of CATEGORY_WEIGHTS.strong.breaking) add('Breaking Changes', e, 3);
+    for (const e of CATEGORY_WEIGHTS.strong.breaking)
+      add('Breaking Changes', e, 3);
     for (const e of CATEGORY_WEIGHTS.strong.added) add('Added', e, 3);
     for (const e of CATEGORY_WEIGHTS.strong.fixed) add('Fixed', e, 3);
     for (const e of CATEGORY_WEIGHTS.strong.changed) add('Changed', e, 3);
@@ -204,7 +255,10 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     return index;
   }
   function buildWeakKeywordIndex() {
-    const index = new Map<string, Array<{ section: SectionName; weight: number }>>();
+    const index = new Map<
+      string,
+      Array<{ section: SectionName; weight: number }>
+    >();
     const add = (section: SectionName, keyword: string) => {
       const list = index.get(keyword) || [];
       list.push({ section, weight: 1 });
@@ -220,10 +274,16 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   // Module-level caches for keyword indices
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const globalCache = globalThis as any;
-  const strongKeywordIndex: Map<string, Array<{ section: SectionName; weight: number }>> =
-    globalCache.__CATEGORY_SCORE_STRONG_INDEX__ || (globalCache.__CATEGORY_SCORE_STRONG_INDEX__ = buildStrongKeywordIndex());
-  const weakKeywordIndex: Map<string, Array<{ section: SectionName; weight: number }>> =
-    globalCache.__CATEGORY_SCORE_WEAK_INDEX__ || (globalCache.__CATEGORY_SCORE_WEAK_INDEX__ = buildWeakKeywordIndex());
+  const strongKeywordIndex: Map<
+    string,
+    Array<{ section: SectionName; weight: number }>
+  > = globalCache.__CATEGORY_SCORE_STRONG_INDEX__ ||
+  (globalCache.__CATEGORY_SCORE_STRONG_INDEX__ = buildStrongKeywordIndex());
+  const weakKeywordIndex: Map<
+    string,
+    Array<{ section: SectionName; weight: number }>
+  > = globalCache.__CATEGORY_SCORE_WEAK_INDEX__ ||
+  (globalCache.__CATEGORY_SCORE_WEAK_INDEX__ = buildWeakKeywordIndex());
 
   // Strong family accumulation with family cap per section
   const strongFamilyDeltas: Partial<Record<SectionName, number>> = {};
@@ -231,10 +291,14 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     const keywordHits = strongKeywordIndex.get(phrase);
     if (!keywordHits) continue;
     for (const { section, weight } of keywordHits) {
-      strongFamilyDeltas[section] = Math.max(strongFamilyDeltas[section] || 0, weight);
+      strongFamilyDeltas[section] = Math.max(
+        strongFamilyDeltas[section] || 0,
+        weight
+      );
     }
   }
-  for (const [sectionName, weight] of Object.entries(strongFamilyDeltas)) scores[sectionName as SectionName] += weight || 0;
+  for (const [sectionName, weight] of Object.entries(strongFamilyDeltas))
+    scores[sectionName as SectionName] += weight || 0;
 
   // Weak family accumulation with cap
   const weakFamilyDeltas: Partial<Record<SectionName, number>> = {};
@@ -242,25 +306,22 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     const keywordHits = weakKeywordIndex.get(phrase);
     if (!keywordHits) continue;
     for (const { section, weight } of keywordHits) {
-      weakFamilyDeltas[section] = Math.max(weakFamilyDeltas[section] || 0, weight);
+      weakFamilyDeltas[section] = Math.max(
+        weakFamilyDeltas[section] || 0,
+        weight
+      );
     }
   }
-  for (const [sectionName, weight] of Object.entries(weakFamilyDeltas)) scores[sectionName as SectionName] += weight || 0;
-
-  // Weak keywords family
-  const weakAdds: Partial<Record<Section, number>> = {};
-  for (const kw of WEIGHTS.weak.added) if (norm.includes(kw)) weakAdds.Added = Math.max(weakAdds.Added || 0, 1);
-  for (const kw of WEIGHTS.weak.fixed) if (norm.includes(kw)) weakAdds.Fixed = Math.max(weakAdds.Fixed || 0, 1);
-  for (const kw of WEIGHTS.weak.changed) if (norm.includes(kw)) weakAdds.Changed = Math.max(weakAdds.Changed || 0, 1);
-  for (const kw of WEIGHTS.weak.docs) if (norm.includes(kw)) weakAdds.Docs = Math.max(weakAdds.Docs || 0, 1);
-  for (const kw of WEIGHTS.weak.chore) if (norm.includes(kw)) weakAdds.Chore = Math.max(weakAdds.Chore || 0, 1);
-  for (const [sec, w] of Object.entries(weakAdds)) scores[sec as Section] += w || 0;
+  for (const [sectionName, weight] of Object.entries(weakFamilyDeltas))
+    scores[sectionName as SectionName] += weight || 0;
 
   // Negative signals family (attenuation applied to strongest of Fixed/Changed/Added)
-  const hasNegative = WEIGHTS.negative.some(({ kw }) => phrases.has(kw));
+  const hasNegative = CATEGORY_WEIGHTS.negative.some(({ kw }) =>
+    normalizedPhrases.has(kw)
+  );
   if (hasNegative) {
-    const strongest: Section[] = ['Fixed', 'Changed', 'Added'];
-    let best: Section | null = null;
+    const strongest: SectionName[] = ['Fixed', 'Changed', 'Added'];
+    let best: SectionName | null = null;
     let bestVal = -Infinity;
     for (const s of strongest) {
       if (scores[s] > bestVal) {
@@ -298,7 +359,12 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     if (versionRangeMatch) {
       const from = parseInt(versionRangeMatch[1], 10);
       const to = parseInt(versionRangeMatch[2], 10);
-      if (!Number.isNaN(from) && !Number.isNaN(to) && to > from && (to - from) >= 1) {
+      if (
+        !Number.isNaN(from) &&
+        !Number.isNaN(to) &&
+        to > from &&
+        to - from >= 1
+      ) {
         scores['Breaking Changes'] += 2;
         scores.Changed += 1;
       }
@@ -319,10 +385,16 @@ export function bestCategory(scores: CategoryScores): SectionName | null {
   let topSection: SectionName | null = null;
   let secondSection: SectionName | null = null;
   for (const section of SECTION_ORDER) {
-    if (topSection === null || scores[section] > (topSection ? scores[topSection] : -Infinity)) {
+    if (
+      topSection === null ||
+      scores[section] > (topSection ? scores[topSection] : -Infinity)
+    ) {
       secondSection = topSection;
       topSection = section;
-    } else if (secondSection === null || scores[section] > (secondSection ? scores[secondSection] : -Infinity)) {
+    } else if (
+      secondSection === null ||
+      scores[section] > (secondSection ? scores[secondSection] : -Infinity)
+    ) {
       secondSection = section;
     }
   }
