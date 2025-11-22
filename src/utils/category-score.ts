@@ -386,13 +386,13 @@ export function bestCategory(scores: CategoryScores): SectionName | null {
   for (const section of SECTION_ORDER) {
     if (
       topSection === null ||
-      scores[section] > (topSection ? scores[topSection] : -Infinity)
+      scores[section] > scores[topSection]
     ) {
       secondSection = topSection;
       topSection = section;
     } else if (
       secondSection === null ||
-      scores[section] > (secondSection ? scores[secondSection] : -Infinity)
+      scores[section] > scores[secondSection]
     ) {
       secondSection = section;
     }
