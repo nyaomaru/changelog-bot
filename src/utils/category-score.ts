@@ -125,7 +125,7 @@ const CATEGORY_WEIGHTS = {
   weak: {
     added: [
       'allow',
-      'add-on',
+      'add on',
       'hook',
       'wire',
       'default flag',
