@@ -2,6 +2,7 @@
  * Conventional Commit helpers and shared patterns.
  * WHY: Centralize prefixes and regex to keep stripping/classification consistent.
  */
+import { flexPrefixRe } from '@/utils/conventional.js';
 export const COMMIT_TYPES = [
   'feat',
   'fix',
@@ -35,16 +36,7 @@ export const INLINE_PR_PRESENT_RE = /\(#\d+\)|\[#\d+\]/; // test presence only
 // Refactor-like conventional types (mapped to Changed by default)
 export const REFACTOR_LIKE_RE = /^(refactor|perf|style)(\(|:)/i;
 
-/**
- * Build a flexible conventional prefix regex that accepts optional scope and
- * optional breaking marker `!` before the colon.
- * Matches: type: msg, type!: msg, type(scope): msg, type(scope)!: msg
- */
-export function flexPrefixRe(types: string | string[]): RegExp {
-  const body = Array.isArray(types) ? types.join('|') : types;
-  // ^(type)(!:| (scope)!: | (scope): ) with non-capturing alternation
-  return new RegExp(`^(${body})(?:!:|(?:\\([^)]*\\))?!?:)`, 'i');
-}
+// Flex conventional prefix regex helper imported from utils
 
 export const FEAT_PREFIX_FLEX_RE = flexPrefixRe('feat');
 export const FIX_PREFIX_FLEX_RE = flexPrefixRe('fix');
