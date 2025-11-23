@@ -5,6 +5,7 @@ import {
   SECTION_CHORE,
   SECTION_DOCS,
   SECTION_FIXED,
+  SECTION_TEST,
   SECTION_REVERTED,
   SECTION_BREAKING_CHANGES,
 } from '@/constants/changelog.js';
