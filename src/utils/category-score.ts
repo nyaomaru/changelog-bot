@@ -270,20 +270,14 @@ function buildWeakKeywordIndex() {
   return index;
 }
   // Module-level caches for keyword indices
-  let strongKeywordIndex: Map<
+  const strongKeywordIndex: Map<
     string,
     Array<{ section: SectionName; weight: number }>
-  > | null = null;
-  let weakKeywordIndex: Map<
+  > = buildStrongKeywordIndex();
+  const weakKeywordIndex: Map<
     string,
     Array<{ section: SectionName; weight: number }>
-  > | null = null;
-  if (!strongKeywordIndex) {
-    strongKeywordIndex = buildStrongKeywordIndex();
-  }
-  if (!weakKeywordIndex) {
-    weakKeywordIndex = buildWeakKeywordIndex();
-  }
+  > = buildWeakKeywordIndex();
   // Strong family accumulation with family cap per section
   const strongFamilyDeltas: Partial<Record<SectionName, number>> = {};
   for (const phrase of normalizedPhrases) {
