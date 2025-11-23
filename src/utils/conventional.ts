@@ -8,7 +8,8 @@
  */
 export function flexPrefixRe(types: string | string[]): RegExp {
   const body = Array.isArray(types) ? types.join('|') : types;
-  // ^(type)(!:| (scope)!: | (scope): ) with non-capturing alternation
+  // Matches: "type!:", "type(scope):", "type(scope)!:" (no space between type and scope)
+  // Pattern: ^(type)(!:|(\(scope\))?:|(\(scope\))!:) with non-capturing alternation for scope and breaking marker
   return new RegExp(`^(${body})(?:!:|(?:\\([^)]*\\))?!?:)`, 'i');
 }
 
