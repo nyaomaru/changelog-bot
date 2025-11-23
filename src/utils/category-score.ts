@@ -247,6 +247,66 @@ export const SCORE_THRESHOLDS = {
 
 type SectionName = (typeof SECTION_ORDER)[number];
 
+type KeywordIndex = Map<string, Array<{ section: SectionName; weight: number }>>;
+
+// WHY: Build keyword indices once at module init time to avoid per-call allocation.
+/**
+ * Build an index of strong keywords to section/weight mappings.
+ * @returns Map from keyword phrase to section-weight pairs.
+ */
+function buildStrongKeywordIndex(): KeywordIndex {
+  const index: KeywordIndex = new Map();
+  const add = (
+    section: SectionName,
+    entry: string | { keyword: string; weight: number },
+    defaultWeight = WEIGHT.strong.default
+  ) => {
+    const { keyword, weight } =
+      typeof entry === 'string' ? { keyword: entry, weight: defaultWeight } : entry;
+    const existing = index.get(keyword) || [];
+    existing.push({ section, weight });
+    index.set(keyword, existing);
+  };
+  for (const entry of CATEGORY_WEIGHTS.strong.breaking)
+    add(SECTION_BREAKING_CHANGES, entry, WEIGHT.strong.default);
+  for (const entry of CATEGORY_WEIGHTS.strong.added)
+    add(SECTION_ADDED, entry, WEIGHT.strong.default);
+  for (const entry of CATEGORY_WEIGHTS.strong.fixed)
+    add(SECTION_FIXED, entry, WEIGHT.strong.default);
+  for (const entry of CATEGORY_WEIGHTS.strong.changed)
+    add(SECTION_CHANGED, entry, WEIGHT.strong.default);
+  for (const entry of CATEGORY_WEIGHTS.strong.docs)
+    add(SECTION_DOCS, entry, WEIGHT.strong.default);
+  for (const entry of CATEGORY_WEIGHTS.strong.test)
+    add(SECTION_TEST, entry, WEIGHT.strong.default);
+  for (const entry of CATEGORY_WEIGHTS.strong.chore)
+    add(SECTION_CHORE, entry, WEIGHT.strong.default);
+  return index;
+}
+
+/**
+ * Build an index of weak keywords to section/weight mappings.
+ * @returns Map from keyword phrase to section-weight pairs.
+ */
+function buildWeakKeywordIndex(): KeywordIndex {
+  const index: KeywordIndex = new Map();
+  const add = (section: SectionName, keyword: string) => {
+    const existing = index.get(keyword) || [];
+    existing.push({ section, weight: WEAK_KEYWORD_WEIGHT });
+    index.set(keyword, existing);
+  };
+  for (const keyword of CATEGORY_WEIGHTS.weak.added) add(SECTION_ADDED, keyword);
+  for (const keyword of CATEGORY_WEIGHTS.weak.fixed) add(SECTION_FIXED, keyword);
+  for (const keyword of CATEGORY_WEIGHTS.weak.changed) add(SECTION_CHANGED, keyword);
+  for (const keyword of CATEGORY_WEIGHTS.weak.docs) add(SECTION_DOCS, keyword);
+  for (const keyword of CATEGORY_WEIGHTS.weak.chore) add(SECTION_CHORE, keyword);
+  return index;
+}
+
+// Module-level caches
+const STRONG_KEYWORD_INDEX: KeywordIndex = buildStrongKeywordIndex();
+const WEAK_KEYWORD_INDEX: KeywordIndex = buildWeakKeywordIndex();
+
 /**
  * Initialize an empty score object with zero for every section.
  * @returns Fresh `CategoryScores` with all sections set to 0.
@@ -319,81 +379,11 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   for (const [sectionName, weight] of Object.entries(prefixFamilyDeltas))
     scores[sectionName as SectionName] += weight || 0;
 
-  // Build hash maps for strong/weak keywords at module init time (simple closure cache)
-  /**
-   * Build an index of strong keywords to section/weight mappings.
-   * @returns Map from keyword phrase to section-weight pairs.
-   */
-  function buildStrongKeywordIndex() {
-    const index = new Map<
-      string,
-      Array<{ section: SectionName; weight: number }>
-    >();
-    const add = (
-      section: SectionName,
-      entry: string | { keyword: string; weight: number },
-      defaultWeight = WEIGHT.strong.default
-    ) => {
-      // Normalize entry into semantic fields for readability
-      const { keyword, weight } =
-        typeof entry === 'string'
-          ? { keyword: entry, weight: defaultWeight }
-          : entry;
-      const existing = index.get(keyword) || [];
-      existing.push({ section, weight });
-      index.set(keyword, existing);
-    };
-    for (const entry of CATEGORY_WEIGHTS.strong.breaking)
-      add(SECTION_BREAKING_CHANGES, entry, WEIGHT.strong.default);
-    for (const entry of CATEGORY_WEIGHTS.strong.added)
-      add(SECTION_ADDED, entry, WEIGHT.strong.default);
-    for (const entry of CATEGORY_WEIGHTS.strong.fixed)
-      add(SECTION_FIXED, entry, WEIGHT.strong.default);
-    for (const entry of CATEGORY_WEIGHTS.strong.changed)
-      add(SECTION_CHANGED, entry, WEIGHT.strong.default);
-    for (const entry of CATEGORY_WEIGHTS.strong.docs)
-      add(SECTION_DOCS, entry, WEIGHT.strong.default);
-    for (const entry of CATEGORY_WEIGHTS.strong.test)
-      add(SECTION_TEST, entry, WEIGHT.strong.default);
-    for (const entry of CATEGORY_WEIGHTS.strong.chore)
-      add(SECTION_CHORE, entry, WEIGHT.strong.default);
-    return index;
-  }
-  /**
-   * Build an index of weak keywords to section/weight mappings.
-   * @returns Map from keyword phrase to section-weight pairs.
-   */
-  function buildWeakKeywordIndex() {
-    const index = new Map<
-      string,
-      Array<{ section: SectionName; weight: number }>
-    >();
-    const add = (section: SectionName, keyword: string) => {
-      const existing = index.get(keyword) || [];
-      existing.push({ section, weight: WEAK_KEYWORD_WEIGHT });
-      index.set(keyword, existing);
-    };
-    for (const keyword of CATEGORY_WEIGHTS.weak.added) add(SECTION_ADDED, keyword);
-    for (const keyword of CATEGORY_WEIGHTS.weak.fixed) add(SECTION_FIXED, keyword);
-    for (const keyword of CATEGORY_WEIGHTS.weak.changed)
-      add(SECTION_CHANGED, keyword);
-    for (const keyword of CATEGORY_WEIGHTS.weak.docs) add(SECTION_DOCS, keyword);
-    for (const keyword of CATEGORY_WEIGHTS.weak.chore) add(SECTION_CHORE, keyword);
-    return index;
-  }
-  // Module-level caches for keyword indices
-  const strongKeywordIndex: Map<
-    string,
-    Array<{ section: SectionName; weight: number }>
-  > = buildStrongKeywordIndex();
-  const weakKeywordIndex: Map<
-    string,
-    Array<{ section: SectionName; weight: number }>
-  > = buildWeakKeywordIndex();
+  // Keyword indices are prebuilt once at module init time
   // Strong family accumulation with family cap per section
   const strongFamilyDeltas: Partial<Record<SectionName, number>> = {};
   for (const phrase of normalizedPhrases) {
-    const keywordHits = strongKeywordIndex.get(phrase);
+    const keywordHits = STRONG_KEYWORD_INDEX.get(phrase);
     if (!keywordHits) continue;
     for (const { section, weight } of keywordHits) {
       strongFamilyDeltas[section] = Math.max(
@@ -408,7 +398,7 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   // Weak family accumulation with cap
   const weakFamilyDeltas: Partial<Record<SectionName, number>> = {};
   for (const phrase of normalizedPhrases) {
-    const keywordHits = weakKeywordIndex.get(phrase);
+    const keywordHits = WEAK_KEYWORD_INDEX.get(phrase);
     if (!keywordHits) continue;
     for (const { section, weight } of keywordHits) {
       weakFamilyDeltas[section] = Math.max(
