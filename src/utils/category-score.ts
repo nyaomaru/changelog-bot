@@ -227,49 +227,50 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     scores[sectionName as SectionName] += weight || 0;
 
 // Build hash maps for strong/weak keywords at module init time (simple closure cache)
-function buildStrongKeywordIndex() {
-  const index = new Map<
-    string,
-    Array<{ section: SectionName; weight: number }>
-  >();
-  const add = (
-    section: SectionName,
-    entry: string | { kw: string; w: number },
-    defaultWeight = 3
-  ) => {
-    const { kw, w } =
-      typeof entry === 'string' ? { kw: entry, w: defaultWeight } : entry;
-    const list = index.get(kw) || [];
-    list.push({ section, weight: w });
-    index.set(kw, list);
-  };
-  for (const e of CATEGORY_WEIGHTS.strong.breaking)
-    add('Breaking Changes', e, 3);
-  for (const e of CATEGORY_WEIGHTS.strong.added) add('Added', e, 3);
-  for (const e of CATEGORY_WEIGHTS.strong.fixed) add('Fixed', e, 3);
-  for (const e of CATEGORY_WEIGHTS.strong.changed) add('Changed', e, 3);
-  for (const e of CATEGORY_WEIGHTS.strong.docs) add('Docs', e, 3);
-  for (const e of CATEGORY_WEIGHTS.strong.test) add('Test', e, 3);
-  for (const e of CATEGORY_WEIGHTS.strong.chore) add('Chore', e, 3);
-  return index;
-}
-function buildWeakKeywordIndex() {
-  const index = new Map<
-    string,
-    Array<{ section: SectionName; weight: number }>
-  >();
-  const add = (section: SectionName, keyword: string) => {
-    const list = index.get(keyword) || [];
-    list.push({ section, weight: 1 });
-    index.set(keyword, list);
-  };
-  for (const e of CATEGORY_WEIGHTS.weak.added) add('Added', e);
-  for (const e of CATEGORY_WEIGHTS.weak.fixed) add('Fixed', e);
-  for (const e of CATEGORY_WEIGHTS.weak.changed) add('Changed', e);
-  for (const e of CATEGORY_WEIGHTS.weak.docs) add('Docs', e);
-  for (const e of CATEGORY_WEIGHTS.weak.chore) add('Chore', e);
-  return index;
-}
+  function buildStrongKeywordIndex() {
+    const index = new Map<
+      string,
+      Array<{ section: SectionName; weight: number }>
+    >();
+    const add = (
+      section: SectionName,
+      entry: string | { kw: string; w: number },
+      defaultWeight = 3
+    ) => {
+      // Normalize entry into semantic fields for readability
+      const { kw: keyword, w: weight } =
+        typeof entry === 'string' ? { kw: entry, w: defaultWeight } : entry;
+      const existing = index.get(keyword) || [];
+      existing.push({ section, weight });
+      index.set(keyword, existing);
+    };
+    for (const entry of CATEGORY_WEIGHTS.strong.breaking)
+      add('Breaking Changes', entry, 3);
+    for (const entry of CATEGORY_WEIGHTS.strong.added) add('Added', entry, 3);
+    for (const entry of CATEGORY_WEIGHTS.strong.fixed) add('Fixed', entry, 3);
+    for (const entry of CATEGORY_WEIGHTS.strong.changed) add('Changed', entry, 3);
+    for (const entry of CATEGORY_WEIGHTS.strong.docs) add('Docs', entry, 3);
+    for (const entry of CATEGORY_WEIGHTS.strong.test) add('Test', entry, 3);
+    for (const entry of CATEGORY_WEIGHTS.strong.chore) add('Chore', entry, 3);
+    return index;
+  }
+  function buildWeakKeywordIndex() {
+    const index = new Map<
+      string,
+      Array<{ section: SectionName; weight: number }>
+    >();
+    const add = (section: SectionName, keyword: string) => {
+      const existing = index.get(keyword) || [];
+      existing.push({ section, weight: 1 });
+      index.set(keyword, existing);
+    };
+    for (const keyword of CATEGORY_WEIGHTS.weak.added) add('Added', keyword);
+    for (const keyword of CATEGORY_WEIGHTS.weak.fixed) add('Fixed', keyword);
+    for (const keyword of CATEGORY_WEIGHTS.weak.changed) add('Changed', keyword);
+    for (const keyword of CATEGORY_WEIGHTS.weak.docs) add('Docs', keyword);
+    for (const keyword of CATEGORY_WEIGHTS.weak.chore) add('Chore', keyword);
+    return index;
+  }
   // Module-level caches for keyword indices
   const strongKeywordIndex: Map<
     string,
@@ -310,20 +311,22 @@ function buildWeakKeywordIndex() {
     scores[sectionName as SectionName] += weight || 0;
 
   // Negative signals family (attenuation applied to strongest of Fixed/Changed/Added)
-  const hasNegative = CATEGORY_WEIGHTS.negative.some(({ kw }) =>
-    normalizedPhrases.has(kw)
+  const hasNegative = CATEGORY_WEIGHTS.negative.some(({ kw: keyword }) =>
+    normalizedPhrases.has(keyword)
   );
   if (hasNegative) {
-    const strongest: SectionName[] = ['Fixed', 'Changed', 'Added'];
-    let best: SectionName | null = null;
-    let bestVal = -Infinity;
-    for (const s of strongest) {
-      if (scores[s] > bestVal) {
-        bestVal = scores[s];
-        best = s;
+    const candidateSections: SectionName[] = ['Fixed', 'Changed', 'Added'];
+    let bestSection: SectionName | null = null;
+    let bestScore = -Infinity;
+    for (const section of candidateSections) {
+      if (scores[section] > bestScore) {
+        bestScore = scores[section];
+        bestSection = section;
       }
     }
-    if (best) scores[best] = Math.max(scores[best] - 1, 0);
+    if (bestSection) {
+      scores[bestSection] = Math.max(scores[bestSection] - 1, 0);
+    }
   }
 
   // Combos (pattern-based)
