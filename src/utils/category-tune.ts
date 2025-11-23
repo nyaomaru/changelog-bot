@@ -14,6 +14,12 @@ import {
 } from '@/constants/changelog.js';
 import type { ReleaseItem } from '@/types/release.js';
 import { bestCategory, scoreCategories, SCORE_THRESHOLDS } from '@/utils/category-score.js';
+import { SECTION_ORDER } from '@/constants/changelog.js';
+
+type BucketName = (typeof SECTION_ORDER)[number];
+function isBucketName(section: string): section is BucketName {
+  return (SECTION_ORDER as readonly string[]).includes(section);
+}
 
 /**
  * Move given titles to a target category on a mutable CategoryMap.
@@ -202,9 +208,10 @@ export function tuneCategoriesByTitle(
   const isChangeLike = (raw: string) => isChangeLikeTitle(raw);
 
   // Helper to find current category of a title.
-  const findCategory = (title: string): string | undefined => {
+  const findCategory = (title: string): BucketName | undefined => {
     for (const [section, list] of Object.entries(adjusted)) {
-      if (Array.isArray(list) && list.includes(title)) return section;
+      if (Array.isArray(list) && list.includes(title) && isBucketName(section))
+        return section;
     }
     return undefined;
   };
@@ -233,7 +240,11 @@ export function tuneCategoriesByTitle(
   if (toAdded.length) moveTitlesToCategory(adjusted, toAdded, SECTION_ADDED);
 
   // Scoring-based remap from weak buckets when confident
-  const WEAK_BUCKETS = new Set([SECTION_CHORE, SECTION_DOCS, SECTION_TEST]);
+  const WEAK_BUCKETS = new Set<BucketName>([
+    SECTION_CHORE,
+    SECTION_DOCS,
+    SECTION_TEST,
+  ]);
   for (const title of knownTitles) {
     const current = findCategory(title);
     if (!current || !WEAK_BUCKETS.has(current)) continue;
