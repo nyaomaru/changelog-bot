@@ -38,7 +38,7 @@ const CATEGORY_WEIGHTS = {
       'create',
       'new',
       'initial',
-      'opt-in',
+      'opt in',
       'integrate',
     ],
     fixed: [
