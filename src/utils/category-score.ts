@@ -19,6 +19,7 @@ import {
   TEST_PREFIX_FLEX_RE,
   REVERT_PREFIX_FLEX_RE,
   CHORE_PREFIX_FLEX_RE,
+  PERF_PREFIX_FLEX_RE,
 } from '@/constants/conventional.js';
 import {
   BREAKING_PREFIX_MARKER_RE,
@@ -29,6 +30,7 @@ import {
   BUMP_OR_UPGRADE_RE,
   VERSION_FROM_TO_RE,
 } from '@/constants/scoring.js';
+import { isNullable } from '@/utils/is.js';
 
 // WHY: Centralize weight levels to avoid magic numbers and to make tuning clearer.
 const WEIGHT_LEVEL = {
@@ -247,7 +249,10 @@ export const SCORE_THRESHOLDS = {
 
 type SectionName = (typeof SECTION_ORDER)[number];
 
-type KeywordIndex = Map<string, Array<{ section: SectionName; weight: number }>>;
+type KeywordIndex = Map<
+  string,
+  Array<{ section: SectionName; weight: number }>
+>;
 
 // WHY: Build keyword indices once at module init time to avoid per-call allocation.
 /**
@@ -262,7 +267,9 @@ function buildStrongKeywordIndex(): KeywordIndex {
     defaultWeight = WEIGHT.strong.default
   ) => {
     const { keyword, weight } =
-      typeof entry === 'string' ? { keyword: entry, weight: defaultWeight } : entry;
+      typeof entry === 'string'
+        ? { keyword: entry, weight: defaultWeight }
+        : entry;
     const existing = index.get(keyword) || [];
     existing.push({ section, weight });
     index.set(keyword, existing);
@@ -295,11 +302,15 @@ function buildWeakKeywordIndex(): KeywordIndex {
     existing.push({ section, weight: WEAK_KEYWORD_WEIGHT });
     index.set(keyword, existing);
   };
-  for (const keyword of CATEGORY_WEIGHTS.weak.added) add(SECTION_ADDED, keyword);
-  for (const keyword of CATEGORY_WEIGHTS.weak.fixed) add(SECTION_FIXED, keyword);
-  for (const keyword of CATEGORY_WEIGHTS.weak.changed) add(SECTION_CHANGED, keyword);
+  for (const keyword of CATEGORY_WEIGHTS.weak.added)
+    add(SECTION_ADDED, keyword);
+  for (const keyword of CATEGORY_WEIGHTS.weak.fixed)
+    add(SECTION_FIXED, keyword);
+  for (const keyword of CATEGORY_WEIGHTS.weak.changed)
+    add(SECTION_CHANGED, keyword);
   for (const keyword of CATEGORY_WEIGHTS.weak.docs) add(SECTION_DOCS, keyword);
-  for (const keyword of CATEGORY_WEIGHTS.weak.chore) add(SECTION_CHORE, keyword);
+  for (const keyword of CATEGORY_WEIGHTS.weak.chore)
+    add(SECTION_CHORE, keyword);
   return index;
 }
 
@@ -355,7 +366,8 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   // Prefix family
   const prefixFamilyDeltas: Partial<Record<SectionName, number>> = {};
   if (hasBreakingMarkerInPrefix(rawTitle))
-    prefixFamilyDeltas[SECTION_BREAKING_CHANGES] = CATEGORY_WEIGHTS.prefix.breaking;
+    prefixFamilyDeltas[SECTION_BREAKING_CHANGES] =
+      CATEGORY_WEIGHTS.prefix.breaking;
   if (FEAT_PREFIX_FLEX_RE.test(lowercasedTitle))
     prefixFamilyDeltas[SECTION_ADDED] = CATEGORY_WEIGHTS.prefix.feat;
   if (FIX_PREFIX_FLEX_RE.test(lowercasedTitle))
@@ -363,7 +375,7 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   if (REFACTOR_PERF_STYLE_PREFIX_FLEX_RE.test(lowercasedTitle)) {
     prefixFamilyDeltas[SECTION_CHANGED] = Math.max(
       CATEGORY_WEIGHTS.prefix.refactor,
-      /^(perf)(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle)
+      PERF_PREFIX_FLEX_RE.test(lowercasedTitle)
         ? CATEGORY_WEIGHTS.prefix.perf
         : CATEGORY_WEIGHTS.prefix.refactor
     );
@@ -483,22 +495,22 @@ export function scoreCategories(rawTitle: string): CategoryScores {
  * @returns Best section name, or null if inconclusive.
  */
 export function bestCategory(scores: CategoryScores): SectionName | null {
-  let topSection: SectionName | null = null;
-  let secondSection: SectionName | null = null;
+  let topSection: SectionName | undefined;
+  let secondSection: SectionName | undefined;
   for (const section of SECTION_ORDER) {
-    if (topSection === null || scores[section] > scores[topSection]) {
+    if (isNullable(topSection) || scores[section] > scores[topSection]) {
       secondSection = topSection;
       topSection = section;
     } else if (
-      secondSection === null ||
+      isNullable(secondSection) ||
       scores[section] > scores[secondSection]
     ) {
       secondSection = section;
     }
   }
-  if (!topSection) return null;
+  if (isNullable(topSection)) return null;
   const topScore = scores[topSection];
-  const secondScore = secondSection ? scores[secondSection] : 0;
+  const secondScore = isNullable(secondSection) ? 0 : scores[secondSection];
   if (
     topScore >= BEST_CATEGORY_MIN_SCORE &&
     topScore - secondScore >= BEST_CATEGORY_REQUIRED_MARGIN

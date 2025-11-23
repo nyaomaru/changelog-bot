@@ -45,6 +45,7 @@ export const REFACTOR_PERF_STYLE_PREFIX_FLEX_RE = flexPrefixRe([
   'perf',
   'style',
 ]);
+export const PERF_PREFIX_FLEX_RE = flexPrefixRe('perf');
 export const DOCS_PREFIX_FLEX_RE = flexPrefixRe('docs');
 export const TEST_PREFIX_FLEX_RE = flexPrefixRe('test');
 export const REVERT_PREFIX_FLEX_RE = flexPrefixRe('revert');
