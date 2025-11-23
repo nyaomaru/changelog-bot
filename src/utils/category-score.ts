@@ -186,17 +186,18 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   const lowercasedTitle = rawTitle.toLowerCase();
   const normalizedTitle = normalizeTitle(lowercasedTitle);
   const words = normalizedTitle.split(/\s+/).filter(Boolean);
+  const useNgrams = words.length <= 50;
   const biGrams: string[] = [];
   const triGrams: string[] = [];
-  for (let i = 0; i < words.length - 1; i++)
-    biGrams.push(`${words[i]} ${words[i + 1]}`);
-  for (let i = 0; i < words.length - 2; i++)
-    triGrams.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
-  const normalizedPhrases = new Set<string>([
-    ...words,
-    ...biGrams,
-    ...triGrams,
-  ]);
+  if (useNgrams) {
+    for (let i = 0; i < words.length - 1; i++)
+      biGrams.push(`${words[i]} ${words[i + 1]}`);
+    for (let i = 0; i < words.length - 2; i++)
+      triGrams.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
+  }
+  const normalizedPhrases = new Set<string>(
+    useNgrams ? [...words, ...biGrams, ...triGrams] : words
+  );
 
   // Prefix family
   const prefixFamilyDeltas: Partial<Record<SectionName, number>> = {};
