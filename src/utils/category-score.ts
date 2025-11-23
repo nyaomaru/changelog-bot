@@ -1,10 +1,27 @@
 import { SECTION_ORDER } from '@/constants/changelog.js';
 import type { CategoryScores } from '@/types/changelog.js';
 import { normalizeTitle } from '@/utils/title-normalize.js';
+import {
+  FEAT_PREFIX_FLEX_RE,
+  FIX_PREFIX_FLEX_RE,
+  REFACTOR_PERF_STYLE_PREFIX_FLEX_RE,
+  DOCS_PREFIX_FLEX_RE,
+  TEST_PREFIX_FLEX_RE,
+  REVERT_PREFIX_FLEX_RE,
+  CHORE_PREFIX_FLEX_RE,
+} from '@/constants/conventional.js';
+import {
+  BREAKING_PREFIX_MARKER_RE,
+  COMBO_ADD_TO_IMPROVE_RE,
+  COMBO_TIGHTEN_TYPE_RE,
+  COMBO_FIX_BY_ADDING_RE,
+  COMBO_REMOVE_WITHOUT_REPLACEMENT_RE,
+  BUMP_OR_UPGRADE_RE,
+  VERSION_FROM_TO_RE,
+} from '@/constants/scoring.js';
 
-// WHY: Keep weights deterministic and simple. Phase 2 can load overrides.
-// Default weights used by the scoring heuristic.
-const CATEGORY_WEIGHTS = {
+// WHY: Keep weights deterministic and self-descriptive (no magic numbers).
+const WEIGHT = {
   prefix: {
     breaking: 5,
     feat: 4,
@@ -16,17 +33,43 @@ const CATEGORY_WEIGHTS = {
     test: 3,
     revert: 4,
     chore: 2,
+  },
+  strong: {
+    default: 3,
+    high: 4,
+    veryHigh: 5,
+  },
+  negative: {
+    mild: -1,
+    medium: -2,
+    strong: -3,
+  },
+} as const;
+
+// Default weights used by the scoring heuristic.
+const CATEGORY_WEIGHTS = {
+  prefix: {
+    breaking: WEIGHT.prefix.breaking,
+    feat: WEIGHT.prefix.feat,
+    fix: WEIGHT.prefix.fix,
+    refactor: WEIGHT.prefix.refactor,
+    perf: WEIGHT.prefix.perf,
+    style: WEIGHT.prefix.style,
+    docs: WEIGHT.prefix.docs,
+    test: WEIGHT.prefix.test,
+    revert: WEIGHT.prefix.revert,
+    chore: WEIGHT.prefix.chore,
     // build/ci contribute to chore via keywords, not separate section
   },
   strong: {
     breaking: [
-      { kw: 'breaking change', w: 5 },
-      { kw: 'incompatible', w: 4 },
-      { kw: 'remove support', w: 4 },
-      { kw: 'drop support', w: 4 },
-      { kw: 'deprecate', w: 3 },
-      { kw: 'removal', w: 3 },
-      { kw: 'api change', w: 3 },
+      { keyword: 'breaking change', weight: WEIGHT.strong.veryHigh },
+      { keyword: 'incompatible', weight: WEIGHT.strong.high },
+      { keyword: 'remove support', weight: WEIGHT.strong.high },
+      { keyword: 'drop support', weight: WEIGHT.strong.high },
+      { keyword: 'deprecate', weight: WEIGHT.strong.default },
+      { keyword: 'removal', weight: WEIGHT.strong.default },
+      { keyword: 'api change', weight: WEIGHT.strong.default },
     ],
     added: [
       'add',
@@ -42,8 +85,8 @@ const CATEGORY_WEIGHTS = {
       'integrate',
     ],
     fixed: [
-      { kw: 'regression', w: 4 },
-      { kw: 'crash', w: 4 },
+      { keyword: 'regression', weight: WEIGHT.strong.high },
+      { keyword: 'crash', weight: WEIGHT.strong.high },
       'fix',
       'bug',
       'prevent',
@@ -57,13 +100,13 @@ const CATEGORY_WEIGHTS = {
       'undefined',
       'edge case',
       'panic',
-      { kw: 'security', w: 4 },
-      { kw: 'vuln', w: 4 },
-      { kw: 'cve', w: 5 },
-      { kw: 'xss', w: 5 },
-      { kw: 'csrf', w: 5 },
-      { kw: 'rce', w: 5 },
-      { kw: 'dos', w: 5 },
+      { keyword: 'security', weight: WEIGHT.strong.high },
+      { keyword: 'vuln', weight: WEIGHT.strong.high },
+      { keyword: 'cve', weight: WEIGHT.strong.veryHigh },
+      { keyword: 'xss', weight: WEIGHT.strong.veryHigh },
+      { keyword: 'csrf', weight: WEIGHT.strong.veryHigh },
+      { keyword: 'rce', weight: WEIGHT.strong.veryHigh },
+      { keyword: 'dos', weight: WEIGHT.strong.veryHigh },
     ],
     changed: [
       'improve',
@@ -145,11 +188,11 @@ const CATEGORY_WEIGHTS = {
     chore: ['bump', 'upgrade', 'pin', 'deps', 'dependency'],
   },
   negative: [
-    { kw: 'workaround', w: -2 },
-    { kw: 'temporary', w: -2 },
-    { kw: 'hack', w: -2 },
-    { kw: 'wip', w: -3 },
-    { kw: 'experimental', w: -1 },
+    { keyword: 'workaround', weight: WEIGHT.negative.medium },
+    { keyword: 'temporary', weight: WEIGHT.negative.medium },
+    { keyword: 'hack', weight: WEIGHT.negative.medium },
+    { keyword: 'wip', weight: WEIGHT.negative.strong },
+    { keyword: 'experimental', weight: WEIGHT.negative.mild },
   ],
 };
 
@@ -174,7 +217,7 @@ function createEmptyScores(): CategoryScores {
 
 function hasBreakingMarkerInPrefix(rawTitle: string): boolean {
   // Accept both `type!: msg` and `type(scope)!: msg` forms
-  return /!:\s*/.test(rawTitle.split('\n')[0] || '');
+  return BREAKING_PREFIX_MARKER_RE.test(rawTitle.split('\n')[0] || '');
 }
 
 /**
@@ -203,11 +246,11 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   const prefixFamilyDeltas: Partial<Record<SectionName, number>> = {};
   if (hasBreakingMarkerInPrefix(rawTitle))
     prefixFamilyDeltas['Breaking Changes'] = CATEGORY_WEIGHTS.prefix.breaking;
-  if (/^feat(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
+  if (FEAT_PREFIX_FLEX_RE.test(lowercasedTitle))
     prefixFamilyDeltas.Added = CATEGORY_WEIGHTS.prefix.feat;
-  if (/^fix(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
+  if (FIX_PREFIX_FLEX_RE.test(lowercasedTitle))
     prefixFamilyDeltas.Fixed = CATEGORY_WEIGHTS.prefix.fix;
-  if (/^(refactor|perf|style)(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle)) {
+  if (REFACTOR_PERF_STYLE_PREFIX_FLEX_RE.test(lowercasedTitle)) {
     prefixFamilyDeltas.Changed = Math.max(
       CATEGORY_WEIGHTS.prefix.refactor,
       /^(perf)(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle)
@@ -215,18 +258,18 @@ export function scoreCategories(rawTitle: string): CategoryScores {
         : CATEGORY_WEIGHTS.prefix.refactor
     );
   }
-  if (/^docs(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
+  if (DOCS_PREFIX_FLEX_RE.test(lowercasedTitle))
     prefixFamilyDeltas.Docs = CATEGORY_WEIGHTS.prefix.docs;
-  if (/^test(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
+  if (TEST_PREFIX_FLEX_RE.test(lowercasedTitle))
     prefixFamilyDeltas.Test = CATEGORY_WEIGHTS.prefix.test;
-  if (/^revert(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
+  if (REVERT_PREFIX_FLEX_RE.test(lowercasedTitle))
     prefixFamilyDeltas.Reverted = CATEGORY_WEIGHTS.prefix.revert;
-  if (/^chore(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle))
+  if (CHORE_PREFIX_FLEX_RE.test(lowercasedTitle))
     prefixFamilyDeltas.Chore = CATEGORY_WEIGHTS.prefix.chore;
   for (const [sectionName, weight] of Object.entries(prefixFamilyDeltas))
     scores[sectionName as SectionName] += weight || 0;
 
-// Build hash maps for strong/weak keywords at module init time (simple closure cache)
+  // Build hash maps for strong/weak keywords at module init time (simple closure cache)
   function buildStrongKeywordIndex() {
     const index = new Map<
       string,
@@ -234,24 +277,34 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     >();
     const add = (
       section: SectionName,
-      entry: string | { kw: string; w: number },
-      defaultWeight = 3
+      entry: string | { keyword: string; weight: number } | { kw: string; w: number },
+      defaultWeight = WEIGHT.strong.default
     ) => {
-      // Normalize entry into semantic fields for readability
-      const { kw: keyword, w: weight } =
-        typeof entry === 'string' ? { kw: entry, w: defaultWeight } : entry;
+      // Normalize entry into semantic fields for readability and backward-compat
+      const { keyword, weight } =
+        typeof entry === 'string'
+          ? { keyword: entry, weight: defaultWeight }
+          : 'keyword' in entry
+          ? (entry as { keyword: string; weight: number })
+          : { keyword: (entry as any).kw, weight: (entry as any).w };
       const existing = index.get(keyword) || [];
       existing.push({ section, weight });
       index.set(keyword, existing);
     };
     for (const entry of CATEGORY_WEIGHTS.strong.breaking)
-      add('Breaking Changes', entry, 3);
-    for (const entry of CATEGORY_WEIGHTS.strong.added) add('Added', entry, 3);
-    for (const entry of CATEGORY_WEIGHTS.strong.fixed) add('Fixed', entry, 3);
-    for (const entry of CATEGORY_WEIGHTS.strong.changed) add('Changed', entry, 3);
-    for (const entry of CATEGORY_WEIGHTS.strong.docs) add('Docs', entry, 3);
-    for (const entry of CATEGORY_WEIGHTS.strong.test) add('Test', entry, 3);
-    for (const entry of CATEGORY_WEIGHTS.strong.chore) add('Chore', entry, 3);
+      add('Breaking Changes', entry, WEIGHT.strong.default);
+    for (const entry of CATEGORY_WEIGHTS.strong.added)
+      add('Added', entry, WEIGHT.strong.default);
+    for (const entry of CATEGORY_WEIGHTS.strong.fixed)
+      add('Fixed', entry, WEIGHT.strong.default);
+    for (const entry of CATEGORY_WEIGHTS.strong.changed)
+      add('Changed', entry, WEIGHT.strong.default);
+    for (const entry of CATEGORY_WEIGHTS.strong.docs)
+      add('Docs', entry, WEIGHT.strong.default);
+    for (const entry of CATEGORY_WEIGHTS.strong.test)
+      add('Test', entry, WEIGHT.strong.default);
+    for (const entry of CATEGORY_WEIGHTS.strong.chore)
+      add('Chore', entry, WEIGHT.strong.default);
     return index;
   }
   function buildWeakKeywordIndex() {
@@ -266,7 +319,8 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     };
     for (const keyword of CATEGORY_WEIGHTS.weak.added) add('Added', keyword);
     for (const keyword of CATEGORY_WEIGHTS.weak.fixed) add('Fixed', keyword);
-    for (const keyword of CATEGORY_WEIGHTS.weak.changed) add('Changed', keyword);
+    for (const keyword of CATEGORY_WEIGHTS.weak.changed)
+      add('Changed', keyword);
     for (const keyword of CATEGORY_WEIGHTS.weak.docs) add('Docs', keyword);
     for (const keyword of CATEGORY_WEIGHTS.weak.chore) add('Chore', keyword);
     return index;
@@ -311,7 +365,7 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     scores[sectionName as SectionName] += weight || 0;
 
   // Negative signals family (attenuation applied to strongest of Fixed/Changed/Added)
-  const hasNegative = CATEGORY_WEIGHTS.negative.some(({ kw: keyword }) =>
+  const hasNegative = CATEGORY_WEIGHTS.negative.some(({ keyword }) =>
     normalizedPhrases.has(keyword)
   );
   if (hasNegative) {
@@ -331,36 +385,32 @@ export function scoreCategories(rawTitle: string): CategoryScores {
 
   // Combos (pattern-based)
   const comboText = normalizedTitle;
-  if (/add .* to (improve|optimiz|refine|streamline|simplif)/.test(comboText)) {
+  if (COMBO_ADD_TO_IMPROVE_RE.test(comboText)) {
     scores.Added += 1;
     scores.Changed += 3;
   }
-  if (/(tighten|narrow).* (type|contract)/.test(comboText)) {
+  if (COMBO_TIGHTEN_TYPE_RE.test(comboText)) {
     scores.Fixed += 3;
     scores.Changed += 1;
   }
-  if (/fix .* by add(ing)?/.test(comboText)) {
+  if (COMBO_FIX_BY_ADDING_RE.test(comboText)) {
     scores.Fixed += 3;
     scores.Added += 1;
   }
-  if (/remove .* (without|no) (replacement|fallback)/.test(comboText)) {
+  if (COMBO_REMOVE_WITHOUT_REPLACEMENT_RE.test(comboText)) {
     scores['Breaking Changes'] += 4;
     scores.Changed += 1;
   }
 
   // Dependency major bump heuristic (e.g., bump X from 1 to 2)
-  const hasBumpOrUpgradeKeyword = /bump|upgrade/.test(comboText);
+  const hasBumpOrUpgradeKeyword = BUMP_OR_UPGRADE_RE.test(comboText);
   if (hasBumpOrUpgradeKeyword) {
     scores.Chore += 2;
-    const versionRangeMatch = comboText.match(/from\s+(\d+)\b.*to\s+(\d+)\b/);
+    const versionRangeMatch = comboText.match(VERSION_FROM_TO_RE);
     if (versionRangeMatch) {
       const from = parseInt(versionRangeMatch[1], 10);
       const to = parseInt(versionRangeMatch[2], 10);
-      if (
-        !Number.isNaN(from) &&
-        !Number.isNaN(to) &&
-        to > from
-      ) {
+      if (!Number.isNaN(from) && !Number.isNaN(to) && to > from) {
         scores['Breaking Changes'] += 2;
         scores.Changed += 1;
       }
@@ -381,10 +431,7 @@ export function bestCategory(scores: CategoryScores): SectionName | null {
   let topSection: SectionName | null = null;
   let secondSection: SectionName | null = null;
   for (const section of SECTION_ORDER) {
-    if (
-      topSection === null ||
-      scores[section] > scores[topSection]
-    ) {
+    if (topSection === null || scores[section] > scores[topSection]) {
       secondSection = topSection;
       topSection = section;
     } else if (
