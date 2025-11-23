@@ -131,7 +131,6 @@ const CATEGORY_WEIGHTS = {
       'default flag',
       'parameter',
       'option',
-      'expose',
     ],
     fixed: ['mitigate', 'patch', 'guard', 'handle'],
     changed: [
