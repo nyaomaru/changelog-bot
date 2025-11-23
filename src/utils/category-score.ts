@@ -81,7 +81,7 @@ const CATEGORY_WEIGHTS = {
       'stabilize',
       'harden',
       'tuning',
-      'fine-tune',
+      'fine tune',
       'adjust',
       'tweak',
     ],
