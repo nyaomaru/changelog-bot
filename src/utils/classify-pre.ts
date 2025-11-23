@@ -2,6 +2,11 @@ import { CONVENTIONAL_PREFIX_RE, REFACTOR_LIKE_RE } from '@/constants/convention
 import type { ReleaseItem } from '@/types/release.js';
 import { isImplicitFixTitle, isChangeLikeTitle } from '@/utils/category-tune.js';
 import { bestCategory, scoreCategories } from '@/utils/category-score.js';
+import {
+  SECTION_ADDED,
+  SECTION_CHANGED,
+  SECTION_FIXED,
+} from '@/constants/changelog.js';
 
 
 /**
@@ -48,15 +53,15 @@ export function buildTitlesForClassification(items: ReleaseItem[]): string[] {
     // Scoring-guided normalization when no earlier rule matched
     const scores = scoreCategories(base);
     const guide = bestCategory(scores);
-    if (guide === 'Fixed' && !FIX_PREFIX_RE.test(lower)) {
+    if (guide === SECTION_FIXED && !FIX_PREFIX_RE.test(lower)) {
       out.push(`fix: ${core}`);
       continue;
     }
-    if (guide === 'Changed' && !REFACTOR_PREFIX_RE.test(lower)) {
+    if (guide === SECTION_CHANGED && !REFACTOR_PREFIX_RE.test(lower)) {
       out.push(`refactor: ${core}`);
       continue;
     }
-    if (guide === 'Added' && !FEAT_PREFIX_RE.test(lower)) {
+    if (guide === SECTION_ADDED && !FEAT_PREFIX_RE.test(lower)) {
       out.push(`feat: ${core}`);
       continue;
     }

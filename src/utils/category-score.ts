@@ -1,4 +1,14 @@
-import { SECTION_ORDER } from '@/constants/changelog.js';
+import {
+  SECTION_ORDER,
+  SECTION_ADDED,
+  SECTION_CHANGED,
+  SECTION_CHORE,
+  SECTION_DOCS,
+  SECTION_FIXED,
+  SECTION_REVERTED,
+  SECTION_TEST,
+  SECTION_BREAKING_CHANGES,
+} from '@/constants/changelog.js';
 import type { CategoryScores } from '@/types/changelog.js';
 import { normalizeTitle } from '@/utils/title-normalize.js';
 import {
@@ -20,29 +30,43 @@ import {
   VERSION_FROM_TO_RE,
 } from '@/constants/scoring.js';
 
+// WHY: Centralize weight levels to avoid magic numbers and to make tuning clearer.
+const WEIGHT_LEVEL = {
+  low: 2,
+  default: 3,
+  high: 4,
+  veryHigh: 5,
+} as const;
+
+const NEGATIVE_LEVEL = {
+  mild: -1,
+  medium: -2,
+  strong: -3,
+} as const;
+
 // WHY: Keep weights deterministic and self-descriptive (no magic numbers).
 const WEIGHT = {
   prefix: {
-    breaking: 5,
-    feat: 4,
-    fix: 4,
-    refactor: 3,
-    perf: 3,
-    style: 2,
-    docs: 3,
-    test: 3,
-    revert: 4,
-    chore: 2,
+    breaking: WEIGHT_LEVEL.veryHigh,
+    feat: WEIGHT_LEVEL.high,
+    fix: WEIGHT_LEVEL.high,
+    refactor: WEIGHT_LEVEL.default,
+    perf: WEIGHT_LEVEL.default,
+    style: WEIGHT_LEVEL.low,
+    docs: WEIGHT_LEVEL.default,
+    test: WEIGHT_LEVEL.default,
+    revert: WEIGHT_LEVEL.high,
+    chore: WEIGHT_LEVEL.low,
   },
   strong: {
-    default: 3,
-    high: 4,
-    veryHigh: 5,
+    default: WEIGHT_LEVEL.default,
+    high: WEIGHT_LEVEL.high,
+    veryHigh: WEIGHT_LEVEL.veryHigh,
   },
   negative: {
-    mild: -1,
-    medium: -2,
-    strong: -3,
+    mild: NEGATIVE_LEVEL.mild,
+    medium: NEGATIVE_LEVEL.medium,
+    strong: NEGATIVE_LEVEL.strong,
   },
 } as const;
 
@@ -199,7 +223,21 @@ const CATEGORY_WEIGHTS = {
 const SCORE_MIN = 0;
 const SCORE_MAX = 12;
 
-// Thresholds used by tuning (documented in plan.md). Exported for reuse if needed.
+// Decision thresholds for selecting the best category
+const BEST_CATEGORY_MIN_SCORE = 4;
+const BEST_CATEGORY_REQUIRED_MARGIN = 2;
+
+// WHY: Shared weights for weak keywords, attenuation, and combo heuristics.
+const WEAK_KEYWORD_WEIGHT = 1;
+const NEGATIVE_ATTENUATION_WEIGHT = 1;
+
+// WHY: Build n-grams only for reasonably short titles to limit cost.
+const NGRAM_MAX_WORDS = 50;
+
+/**
+ * Thresholds for interpreting category scores.
+ * Background: Tuned to balance precision vs. recall for Fixed/Changed/Added.
+ */
 export const SCORE_THRESHOLDS = {
   fixed: 4,
   changed: 4,
@@ -209,12 +247,22 @@ export const SCORE_THRESHOLDS = {
 
 type SectionName = (typeof SECTION_ORDER)[number];
 
+/**
+ * Initialize an empty score object with zero for every section.
+ * @returns Fresh `CategoryScores` with all sections set to 0.
+ */
 function createEmptyScores(): CategoryScores {
   const categoryScores = {} as CategoryScores;
   for (const section of SECTION_ORDER) categoryScores[section] = 0;
   return categoryScores;
 }
 
+/**
+ * Check whether a raw commit/title includes a breaking marker in the prefix.
+ * Accepts both `type!: msg` and `type(scope)!: msg` forms.
+ * @param rawTitle Original PR title or commit subject.
+ * @returns True when a breaking marker is found in the prefix.
+ */
 function hasBreakingMarkerInPrefix(rawTitle: string): boolean {
   // Accept both `type!: msg` and `type(scope)!: msg` forms
   return BREAKING_PREFIX_MARKER_RE.test(rawTitle.split('\n')[0] || '');
@@ -222,6 +270,8 @@ function hasBreakingMarkerInPrefix(rawTitle: string): boolean {
 
 /**
  * Compute heuristic scores per category from a raw title.
+ * @param rawTitle Original PR title or commit subject.
+ * @returns Scores for each CHANGELOG section.
  */
 export function scoreCategories(rawTitle: string): CategoryScores {
   const scores = createEmptyScores();
@@ -229,7 +279,7 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   const lowercasedTitle = rawTitle.toLowerCase();
   const normalizedTitle = normalizeTitle(lowercasedTitle);
   const words = normalizedTitle.split(/\s+/).filter(Boolean);
-  const useNgrams = words.length <= 50;
+  const useNgrams = words.length <= NGRAM_MAX_WORDS;
   const biGrams: string[] = [];
   const triGrams: string[] = [];
   if (useNgrams) {
@@ -245,13 +295,13 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   // Prefix family
   const prefixFamilyDeltas: Partial<Record<SectionName, number>> = {};
   if (hasBreakingMarkerInPrefix(rawTitle))
-    prefixFamilyDeltas['Breaking Changes'] = CATEGORY_WEIGHTS.prefix.breaking;
+    prefixFamilyDeltas[SECTION_BREAKING_CHANGES] = CATEGORY_WEIGHTS.prefix.breaking;
   if (FEAT_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas.Added = CATEGORY_WEIGHTS.prefix.feat;
+    prefixFamilyDeltas[SECTION_ADDED] = CATEGORY_WEIGHTS.prefix.feat;
   if (FIX_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas.Fixed = CATEGORY_WEIGHTS.prefix.fix;
+    prefixFamilyDeltas[SECTION_FIXED] = CATEGORY_WEIGHTS.prefix.fix;
   if (REFACTOR_PERF_STYLE_PREFIX_FLEX_RE.test(lowercasedTitle)) {
-    prefixFamilyDeltas.Changed = Math.max(
+    prefixFamilyDeltas[SECTION_CHANGED] = Math.max(
       CATEGORY_WEIGHTS.prefix.refactor,
       /^(perf)(?:!:|(?:\([^)]*\))?!?:)/i.test(lowercasedTitle)
         ? CATEGORY_WEIGHTS.prefix.perf
@@ -259,17 +309,21 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     );
   }
   if (DOCS_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas.Docs = CATEGORY_WEIGHTS.prefix.docs;
+    prefixFamilyDeltas[SECTION_DOCS] = CATEGORY_WEIGHTS.prefix.docs;
   if (TEST_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas.Test = CATEGORY_WEIGHTS.prefix.test;
+    prefixFamilyDeltas[SECTION_TEST] = CATEGORY_WEIGHTS.prefix.test;
   if (REVERT_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas.Reverted = CATEGORY_WEIGHTS.prefix.revert;
+    prefixFamilyDeltas[SECTION_REVERTED] = CATEGORY_WEIGHTS.prefix.revert;
   if (CHORE_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas.Chore = CATEGORY_WEIGHTS.prefix.chore;
+    prefixFamilyDeltas[SECTION_CHORE] = CATEGORY_WEIGHTS.prefix.chore;
   for (const [sectionName, weight] of Object.entries(prefixFamilyDeltas))
     scores[sectionName as SectionName] += weight || 0;
 
   // Build hash maps for strong/weak keywords at module init time (simple closure cache)
+  /**
+   * Build an index of strong keywords to section/weight mappings.
+   * @returns Map from keyword phrase to section-weight pairs.
+   */
   function buildStrongKeywordIndex() {
     const index = new Map<
       string,
@@ -277,36 +331,38 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     >();
     const add = (
       section: SectionName,
-      entry: string | { keyword: string; weight: number } | { kw: string; w: number },
+      entry: string | { keyword: string; weight: number },
       defaultWeight = WEIGHT.strong.default
     ) => {
-      // Normalize entry into semantic fields for readability and backward-compat
+      // Normalize entry into semantic fields for readability
       const { keyword, weight } =
         typeof entry === 'string'
           ? { keyword: entry, weight: defaultWeight }
-          : 'keyword' in entry
-          ? (entry as { keyword: string; weight: number })
-          : { keyword: (entry as any).kw, weight: (entry as any).w };
+          : entry;
       const existing = index.get(keyword) || [];
       existing.push({ section, weight });
       index.set(keyword, existing);
     };
     for (const entry of CATEGORY_WEIGHTS.strong.breaking)
-      add('Breaking Changes', entry, WEIGHT.strong.default);
+      add(SECTION_BREAKING_CHANGES, entry, WEIGHT.strong.default);
     for (const entry of CATEGORY_WEIGHTS.strong.added)
-      add('Added', entry, WEIGHT.strong.default);
+      add(SECTION_ADDED, entry, WEIGHT.strong.default);
     for (const entry of CATEGORY_WEIGHTS.strong.fixed)
-      add('Fixed', entry, WEIGHT.strong.default);
+      add(SECTION_FIXED, entry, WEIGHT.strong.default);
     for (const entry of CATEGORY_WEIGHTS.strong.changed)
-      add('Changed', entry, WEIGHT.strong.default);
+      add(SECTION_CHANGED, entry, WEIGHT.strong.default);
     for (const entry of CATEGORY_WEIGHTS.strong.docs)
-      add('Docs', entry, WEIGHT.strong.default);
+      add(SECTION_DOCS, entry, WEIGHT.strong.default);
     for (const entry of CATEGORY_WEIGHTS.strong.test)
-      add('Test', entry, WEIGHT.strong.default);
+      add(SECTION_TEST, entry, WEIGHT.strong.default);
     for (const entry of CATEGORY_WEIGHTS.strong.chore)
-      add('Chore', entry, WEIGHT.strong.default);
+      add(SECTION_CHORE, entry, WEIGHT.strong.default);
     return index;
   }
+  /**
+   * Build an index of weak keywords to section/weight mappings.
+   * @returns Map from keyword phrase to section-weight pairs.
+   */
   function buildWeakKeywordIndex() {
     const index = new Map<
       string,
@@ -314,15 +370,15 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     >();
     const add = (section: SectionName, keyword: string) => {
       const existing = index.get(keyword) || [];
-      existing.push({ section, weight: 1 });
+      existing.push({ section, weight: WEAK_KEYWORD_WEIGHT });
       index.set(keyword, existing);
     };
-    for (const keyword of CATEGORY_WEIGHTS.weak.added) add('Added', keyword);
-    for (const keyword of CATEGORY_WEIGHTS.weak.fixed) add('Fixed', keyword);
+    for (const keyword of CATEGORY_WEIGHTS.weak.added) add(SECTION_ADDED, keyword);
+    for (const keyword of CATEGORY_WEIGHTS.weak.fixed) add(SECTION_FIXED, keyword);
     for (const keyword of CATEGORY_WEIGHTS.weak.changed)
-      add('Changed', keyword);
-    for (const keyword of CATEGORY_WEIGHTS.weak.docs) add('Docs', keyword);
-    for (const keyword of CATEGORY_WEIGHTS.weak.chore) add('Chore', keyword);
+      add(SECTION_CHANGED, keyword);
+    for (const keyword of CATEGORY_WEIGHTS.weak.docs) add(SECTION_DOCS, keyword);
+    for (const keyword of CATEGORY_WEIGHTS.weak.chore) add(SECTION_CHORE, keyword);
     return index;
   }
   // Module-level caches for keyword indices
@@ -369,7 +425,11 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     normalizedPhrases.has(keyword)
   );
   if (hasNegative) {
-    const candidateSections: SectionName[] = ['Fixed', 'Changed', 'Added'];
+    const candidateSections: SectionName[] = [
+      SECTION_FIXED,
+      SECTION_CHANGED,
+      SECTION_ADDED,
+    ];
     let bestSection: SectionName | null = null;
     let bestScore = -Infinity;
     for (const section of candidateSections) {
@@ -379,40 +439,43 @@ export function scoreCategories(rawTitle: string): CategoryScores {
       }
     }
     if (bestSection) {
-      scores[bestSection] = Math.max(scores[bestSection] - 1, 0);
+      scores[bestSection] = Math.max(
+        scores[bestSection] - NEGATIVE_ATTENUATION_WEIGHT,
+        0
+      );
     }
   }
 
   // Combos (pattern-based)
   const comboText = normalizedTitle;
   if (COMBO_ADD_TO_IMPROVE_RE.test(comboText)) {
-    scores.Added += 1;
-    scores.Changed += 3;
+    scores[SECTION_ADDED] += WEAK_KEYWORD_WEIGHT;
+    scores[SECTION_CHANGED] += WEIGHT.strong.default;
   }
   if (COMBO_TIGHTEN_TYPE_RE.test(comboText)) {
-    scores.Fixed += 3;
-    scores.Changed += 1;
+    scores[SECTION_FIXED] += WEIGHT.strong.default;
+    scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
   }
   if (COMBO_FIX_BY_ADDING_RE.test(comboText)) {
-    scores.Fixed += 3;
-    scores.Added += 1;
+    scores[SECTION_FIXED] += WEIGHT.strong.default;
+    scores[SECTION_ADDED] += WEAK_KEYWORD_WEIGHT;
   }
   if (COMBO_REMOVE_WITHOUT_REPLACEMENT_RE.test(comboText)) {
-    scores['Breaking Changes'] += 4;
-    scores.Changed += 1;
+    scores[SECTION_BREAKING_CHANGES] += WEIGHT.strong.high;
+    scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
   }
 
   // Dependency major bump heuristic (e.g., bump X from 1 to 2)
   const hasBumpOrUpgradeKeyword = BUMP_OR_UPGRADE_RE.test(comboText);
   if (hasBumpOrUpgradeKeyword) {
-    scores.Chore += 2;
+    scores[SECTION_CHORE] += WEIGHT_LEVEL.low;
     const versionRangeMatch = comboText.match(VERSION_FROM_TO_RE);
     if (versionRangeMatch) {
       const from = parseInt(versionRangeMatch[1], 10);
       const to = parseInt(versionRangeMatch[2], 10);
       if (!Number.isNaN(from) && !Number.isNaN(to) && to > from) {
-        scores['Breaking Changes'] += 2;
-        scores.Changed += 1;
+        scores[SECTION_BREAKING_CHANGES] += WEIGHT_LEVEL.low;
+        scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
       }
     }
   }
@@ -425,7 +488,9 @@ export function scoreCategories(rawTitle: string): CategoryScores {
 }
 
 /**
- * Select the best category with a margin rule. Returns null when inconclusive.
+ * Select the best category using a minimum score and margin rule.
+ * @param scores Category scores computed by `scoreCategories`.
+ * @returns Best section name, or null if inconclusive.
  */
 export function bestCategory(scores: CategoryScores): SectionName | null {
   let topSection: SectionName | null = null;
@@ -444,6 +509,10 @@ export function bestCategory(scores: CategoryScores): SectionName | null {
   if (!topSection) return null;
   const topScore = scores[topSection];
   const secondScore = secondSection ? scores[secondSection] : 0;
-  if (topScore >= 4 && topScore - secondScore >= 2) return topSection;
+  if (
+    topScore >= BEST_CATEGORY_MIN_SCORE &&
+    topScore - secondScore >= BEST_CATEGORY_REQUIRED_MARGIN
+  )
+    return topSection;
   return null;
 }

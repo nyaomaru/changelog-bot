@@ -3,6 +3,15 @@ import {
   REFACTOR_LIKE_RE,
 } from '@/constants/conventional.js';
 import type { CategoryMap } from '@/types/changelog.js';
+import {
+  SECTION_ADDED,
+  SECTION_CHANGED,
+  SECTION_FIXED,
+  SECTION_CHORE,
+  SECTION_BREAKING_CHANGES,
+  SECTION_DOCS,
+  SECTION_TEST,
+} from '@/constants/changelog.js';
 import type { ReleaseItem } from '@/types/release.js';
 import { bestCategory, scoreCategories, SCORE_THRESHOLDS } from '@/utils/category-score.js';
 
@@ -163,9 +172,9 @@ export function tuneCategoriesByTitle(
       Array.isArray(list) ? list.slice() : [],
     ])
   );
-  if (!adjusted.Fixed) adjusted.Fixed = [];
-  if (!adjusted.Changed) adjusted.Changed = [];
-  if (!adjusted.Added) adjusted.Added = [];
+  if (!adjusted[SECTION_FIXED]) adjusted[SECTION_FIXED] = [];
+  if (!adjusted[SECTION_CHANGED]) adjusted[SECTION_CHANGED] = [];
+  if (!adjusted[SECTION_ADDED]) adjusted[SECTION_ADDED] = [];
 
   // Collect titles that should be moved.
   const toMove: string[] = [];
@@ -174,7 +183,7 @@ export function tuneCategoriesByTitle(
   }
 
   // Remove from any existing buckets and add to Fixed, ensuring uniqueness.
-  if (toMove.length) moveTitlesToCategory(adjusted, toMove, 'Fixed');
+  if (toMove.length) moveTitlesToCategory(adjusted, toMove, SECTION_FIXED);
 
   // Rule: Conventional `fix:` prefix should map to Fixed (guard against LLM misclassifying as Chore).
   // Match conventional fix prefixes including optional scope and optional breaking '!'
@@ -184,7 +193,8 @@ export function tuneCategoriesByTitle(
   for (const title of knownTitles) {
     if (FIX_PREFIX_RE.test(title)) conventionalFixes.push(title);
   }
-  if (conventionalFixes.length) moveTitlesToCategory(adjusted, conventionalFixes, 'Fixed');
+  if (conventionalFixes.length)
+    moveTitlesToCategory(adjusted, conventionalFixes, SECTION_FIXED);
 
   // Secondary rule: refactor/perf/style-like items should land in Changed when misclassified as Chore or missing.
   const isRefactorLike = (raw: string) =>
@@ -203,11 +213,13 @@ export function tuneCategoriesByTitle(
   for (const title of knownTitles) {
     if (!isRefactorLike(title) && !isChangeLike(title)) continue;
     const current = findCategory(title);
-    if (current === 'Fixed') continue; // don't override explicit/implicit fixes
-    if (current && current !== 'Chore' && current !== 'Added') continue; // already in a specific bucket
+    if (current === SECTION_FIXED) continue; // don't override explicit/implicit fixes
+    if (current && current !== SECTION_CHORE && current !== SECTION_ADDED)
+      continue; // already in a specific bucket
     toChanged.push(title);
   }
-  if (toChanged.length) moveTitlesToCategory(adjusted, toChanged, 'Changed');
+  if (toChanged.length)
+    moveTitlesToCategory(adjusted, toChanged, SECTION_CHANGED);
 
   // Rule: Conventional `feat:` prefix should map to Added (guard against LLM
   // placing features under Chore/Changed due to generic verbs like "add/support").
@@ -218,33 +230,36 @@ export function tuneCategoriesByTitle(
   for (const title of knownTitles) {
     if (FEAT_PREFIX_RE.test(title)) toAdded.push(title);
   }
-  if (toAdded.length) moveTitlesToCategory(adjusted, toAdded, 'Added');
+  if (toAdded.length) moveTitlesToCategory(adjusted, toAdded, SECTION_ADDED);
 
   // Scoring-based remap from weak buckets when confident
-  const WEAK_BUCKETS = new Set(['Chore', 'Docs', 'Test']);
+  const WEAK_BUCKETS = new Set([SECTION_CHORE, SECTION_DOCS, SECTION_TEST]);
   for (const title of knownTitles) {
     const current = findCategory(title);
     if (!current || !WEAK_BUCKETS.has(current)) continue;
     const scores = scoreCategories(title);
     const guide = bestCategory(scores);
-    if (guide === 'Fixed' && scores.Fixed >= SCORE_THRESHOLDS.fixed) {
-      moveTitlesToCategory(adjusted, [title], 'Fixed');
-      continue;
-    }
-    if (guide === 'Changed' && scores.Changed >= SCORE_THRESHOLDS.changed) {
-      moveTitlesToCategory(adjusted, [title], 'Changed');
-      continue;
-    }
-    if (guide === 'Added' && scores.Added >= SCORE_THRESHOLDS.added) {
-      moveTitlesToCategory(adjusted, [title], 'Added');
+    if (guide === SECTION_FIXED && scores[SECTION_FIXED] >= SCORE_THRESHOLDS.fixed) {
+      moveTitlesToCategory(adjusted, [title], SECTION_FIXED);
       continue;
     }
     if (
-      guide === 'Breaking Changes' &&
-      scores['Breaking Changes'] >= SCORE_THRESHOLDS.breaking
+      guide === SECTION_CHANGED &&
+      scores[SECTION_CHANGED] >= SCORE_THRESHOLDS.changed
+    ) {
+      moveTitlesToCategory(adjusted, [title], SECTION_CHANGED);
+      continue;
+    }
+    if (guide === SECTION_ADDED && scores[SECTION_ADDED] >= SCORE_THRESHOLDS.added) {
+      moveTitlesToCategory(adjusted, [title], SECTION_ADDED);
+      continue;
+    }
+    if (
+      guide === SECTION_BREAKING_CHANGES &&
+      scores[SECTION_BREAKING_CHANGES] >= SCORE_THRESHOLDS.breaking
     ) {
       // Only elevate to Breaking when very confident
-      moveTitlesToCategory(adjusted, [title], 'Breaking Changes');
+      moveTitlesToCategory(adjusted, [title], SECTION_BREAKING_CHANGES);
       continue;
     }
   }
