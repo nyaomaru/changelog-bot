@@ -1,13 +1,12 @@
-import {
-  isString,
-  isNumber,
-  isBoolean,
-  isNull,
-  isObject,
-  define,
-} from 'is-kit';
+import { isString, isBoolean, isNull, isObject, define } from 'is-kit';
 
-export { isString, isNumber, isBoolean, isNull };
+export { isString, isBoolean, isNull };
+
+/**
+ * Narrow unknown values to number (including NaN and Infinity).
+ * WHY: Project semantics consider NaN/Infinity as numbers.
+ */
+export const isNumber = define<number>((value) => typeof value === 'number');
 
 /**
  * Determine whether a value is null or undefined.
