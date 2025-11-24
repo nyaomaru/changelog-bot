@@ -7,6 +7,7 @@ import {
   firstCommit,
   gitMergedPRs,
   commitsInRange,
+  dateForRef,
 } from '@/lib/git.js';
 import { buildLLMInput } from '@/lib/prompt.js';
 import {
@@ -119,7 +120,10 @@ export async function runCli(): Promise<void> {
     tryDetectPrevTag(releaseRef, repoPath) || firstCommit(repoPath);
 
   // Inputs
-  const date = new Date().toISOString().slice(0, DATE_YYYY_MM_DD_LEN);
+  // Prefer the release/tag commit date for CHANGELOG entries; fallback to today when unavailable.
+  const date =
+    dateForRef(releaseRef, repoPath) ||
+    new Date().toISOString().slice(0, DATE_YYYY_MM_DD_LEN);
   const prs = gitMergedPRs(prevRef, releaseRef, repoPath);
   const changelogPath = cli.changelogPath;
   let existing = readChangelog(changelogPath);

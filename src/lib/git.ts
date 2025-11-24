@@ -121,6 +121,19 @@ export function commitsInRange(prev: string, next: string, repoPath = '.') {
 }
 
 /**
+ * Get the commit date (YYYY-MM-DD) for a given ref/tag.
+ * WHY: Use the release/tag commit date for the changelog entry instead of the generation time.
+ * @param ref Git ref or tag (e.g., a tag like "v1.2.3" or a SHA).
+ * @param cwd Optional working directory for the git command.
+ * @returns Date string in YYYY-MM-DD format, or null when unavailable.
+ */
+export function dateForRef(ref: string, cwd?: string): string | null {
+  assertSafeGitRef(ref, 'ref');
+  // %cs is the committer date in YYYY-MM-DD; --date=short ensures format for older git versions
+  return tryRun(['show', '-s', '--date=short', '--format=%cs', ref], cwd);
+}
+
+/**
  * Extract PR numbers (e.g., "#123") from text.
  * @returns Numeric PR identifiers (deduped).
  */
