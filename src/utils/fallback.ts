@@ -1,4 +1,14 @@
-import { SECTION_ORDER } from '@/constants/changelog.js';
+import {
+  SECTION_ORDER,
+  SECTION_ADDED,
+  SECTION_CHANGED,
+  SECTION_CHORE,
+  SECTION_DOCS,
+  SECTION_FIXED,
+  SECTION_TEST,
+  SECTION_REVERTED,
+  SECTION_BREAKING_CHANGES,
+} from '@/constants/changelog.js';
 import {
   CONVENTIONAL_PREFIX_RE,
   INLINE_PR_NUMBER_RE,
@@ -28,7 +38,6 @@ const TYPE_TO_SECTION_REGEX = {
   Fixed: /^fix(\(|:)/i,
   Changed: /^(refactor|perf|style)(\(|:)/i,
   Docs: /^docs(\(|:)/i,
-  Build: /^(build|ci)(\(|:)/i,
   Test: /^test(\(|:)/i,
   Reverted: /^revert(\(|:)/i,
 } as const;
@@ -80,15 +89,16 @@ function parseLogLine(line: string): { sha: string; subject: string } {
  */
 function detectBucket(subject: string): BucketName {
   const lower = subject.toLowerCase();
-  if (TYPE_TO_SECTION_REGEX.Added.test(lower)) return 'Added';
-  if (TYPE_TO_SECTION_REGEX.Fixed.test(lower)) return 'Fixed';
-  if (TYPE_TO_SECTION_REGEX.Changed.test(lower)) return 'Changed';
-  if (TYPE_TO_SECTION_REGEX.Docs.test(lower)) return 'Docs';
-  if (TYPE_TO_SECTION_REGEX.Build.test(lower)) return 'Build';
-  if (TYPE_TO_SECTION_REGEX.Test.test(lower)) return 'Test';
-  if (TYPE_TO_SECTION_REGEX.Reverted.test(lower)) return 'Reverted';
-  if (BREAKING_MARKER_REGEX.test(subject)) return 'Breaking Changes';
-  return 'Chore';
+  if (TYPE_TO_SECTION_REGEX.Added.test(lower)) return SECTION_ADDED;
+  if (TYPE_TO_SECTION_REGEX.Fixed.test(lower)) return SECTION_FIXED;
+  if (TYPE_TO_SECTION_REGEX.Changed.test(lower)) return SECTION_CHANGED;
+  if (TYPE_TO_SECTION_REGEX.Docs.test(lower)) return SECTION_DOCS;
+  // Map build/ci to Chore (we do not emit a Build section)
+  if (/^(build|ci)(\(|:)/i.test(lower)) return SECTION_CHORE;
+  if (TYPE_TO_SECTION_REGEX.Test.test(lower)) return SECTION_TEST;
+  if (TYPE_TO_SECTION_REGEX.Reverted.test(lower)) return SECTION_REVERTED;
+  if (BREAKING_MARKER_REGEX.test(subject)) return SECTION_BREAKING_CHANGES;
+  return SECTION_CHORE;
 }
 
 /**

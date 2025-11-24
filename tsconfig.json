@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"],
-      "is-kit": ["./src/vendor/is-kit/index.ts"]
+      
     },
     "verbatimModuleSyntax": true,
     "baseUrl": "."

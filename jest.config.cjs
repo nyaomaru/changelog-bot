@@ -15,7 +15,6 @@ module.exports = {
     '^@/(.*)\\.js$': '<rootDir>/src/$1.ts',
     '^@/(.*)\\.ts$': '<rootDir>/src/$1',
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^is-kit$': '<rootDir>/src/vendor/is-kit/index.ts',
     // Allow ESM-style relative imports with .ts to resolve TS
     '^(\\.{1,2}/.*)\\.ts$': '$1',
   },

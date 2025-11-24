@@ -9,8 +9,7 @@
     "types": ["node", "jest"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "is-kit": ["./src/vendor/is-kit/index.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["tests/**/*.ts"],
