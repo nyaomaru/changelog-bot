@@ -1,6 +1,6 @@
 {
   "name": "@nyaomaru/changelog-bot",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "description": "CLI and GitHub Action to auto-update CHANGELOG.md from git history and release notes, optionally using LLMs.",
   "type": "module",
   "bin": {
