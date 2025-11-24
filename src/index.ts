@@ -74,6 +74,8 @@ import { buildPrMapBySha, buildTitleToPr } from '@/utils/pr-mapping.js';
  */
 export async function runCli(): Promise<void> {
   const argv = await yargs(hideBin(process.argv))
+    // Force English help/messages regardless of system locale
+    .locale('en')
     .option('repo-path', { type: 'string', default: '.' })
     .option('changelog-path', {
       type: 'string',
