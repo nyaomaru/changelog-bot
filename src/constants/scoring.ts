@@ -2,7 +2,7 @@
 // Extracted for readability and future configurability.
 
 // Conventional prefix breaking marker: matches `type!: message` and `type(scope)!: message`
-export const BREAKING_PREFIX_MARKER_RE = /!:\s*/;
+export const BREAKING_PREFIX_MARKER_RE = /^[a-z]+(?:\([^)]*\))?!:/i;
 
 // Combo patterns
 export const COMBO_ADD_TO_IMPROVE_RE = /add .* to (improve|optimiz|refine|streamline|simplif)/i;
