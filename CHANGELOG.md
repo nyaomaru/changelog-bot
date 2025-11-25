@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.0] - 2025-11-25
+
+### Added
+
+- add weighted scoring + LLM prefix guidance by @nyaomaru in [#41](https://github.com/nyaomaru/changelog-bot/pull/41)
+
+### Fixed
+
+- help message should be in English by @nyaomaru in [#42](https://github.com/nyaomaru/changelog-bot/pull/42)
+- release date by @nyaomaru in [#43](https://github.com/nyaomaru/changelog-bot/pull/43)
+
+### Docs
+
+- 0.0.8 by [bot] by @github-actions in [#40](https://github.com/nyaomaru/changelog-bot/pull/40)
+
+### Chore
+
+- Release: 0.1.0 by [bot] by @github-actions in [#44](https://github.com/nyaomaru/changelog-bot/pull/44)
+
+### What's new 🚀
+
+- Adds weighted heuristic scoring to classify PR titles into `Added/Changed/Fixed/Breaking` with higher accuracy and consistency.
+- Introduces LLM prefix guidance: injects conventional prefixes like `fix:`, `refactor:`, `feat:` for the classifier input to steer the model.
+- Preserves original titles for display; prefixes affect only LLM input, not the rendered changelog.
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.0
+
+[v0.1.0]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.0
+
 ## [v0.0.8] - 2025-11-18
 
 ### Added
