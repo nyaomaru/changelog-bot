@@ -203,9 +203,9 @@ export async function runCli(): Promise<void> {
       }
     }
     const titlesForLLM = buildTitlesForClassification(parsedRelease.items);
-    let categories = await classifyTitles(titlesForLLM, provider.name);
-    // Mark that an LLM was used when classification ran with a valid provider key.
-    aiUsed = aiUsed || hasProviderKey;
+    const { categories, aiUsed: llmUsed } = await classifyTitles(titlesForLLM, provider.name);
+    // Mark that an LLM was used when classification actually succeeded.
+    aiUsed = aiUsed || llmUsed;
     // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.
     categories = tuneCategoriesByTitle(parsedRelease.items, categories);
     const section = buildSectionFromRelease({
