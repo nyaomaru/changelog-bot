@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.1] - 2025-11-25
+
+### Fixed
+
+- ai used flag by @nyaomaru in [#46](https://github.com/nyaomaru/changelog-bot/pull/46)
+
+### Docs
+
+- 0.1.0 by [bot] by @github-actions in [#45](https://github.com/nyaomaru/changelog-bot/pull/45)
+
+### Chore
+
+- Release: 0.1.1 by [bot] by @github-actions in [#47](https://github.com/nyaomaru/changelog-bot/pull/47)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.1
+
+[v0.1.1]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.1
+
 ## [v0.1.0] - 2025-11-25
 
 ### Added
