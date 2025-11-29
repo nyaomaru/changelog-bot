@@ -1,14 +1,12 @@
-// @ts-nocheck
-import {
-  describe,
-  test,
-  expect,
-  beforeEach,
-  afterEach,
-  jest,
-} from '@jest/globals';
+// WHY: This test focuses on behavior via fetch mocking; we avoid strict types for mocked shapes.
 
 // Mock crypto signing so we don't need a real PEM
+// WHY: ESM-style Jest puts helpers under '@jest/globals'; typings for this subpath can be
+// finicky with NodeNext + ts-jest. Import with a targeted suppression to keep the test focused.
+ 
+// @ts-ignore -- runtime module exists; types are covered by "types: ['jest']" in tsconfig.tests.json
+import { jest } from '@jest/globals';
+// @ts-ignore: ESM mocking API is available at runtime; typings for unstable_mockModule are missing in @types/jest.
 jest.unstable_mockModule('node:crypto', () => ({
   createSign: () => ({
     update: () => undefined,
@@ -18,6 +16,10 @@ jest.unstable_mockModule('node:crypto', () => ({
 
 // Import after mocks
 const { resolveGitHubAuth } = await import('@/utils/github-auth.js');
+
+type FetchOptions = {
+  headers?: Record<string, string>;
+} & Record<string, unknown>;
 
 describe('github-auth utils', () => {
   const originalEnv = { ...process.env };
@@ -36,8 +38,7 @@ describe('github-auth utils', () => {
   });
 
   afterEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    global.fetch = originalFetch as any;
+    global.fetch = originalFetch as unknown as typeof fetch;
     process.env = originalEnv;
   });
 
@@ -54,11 +55,12 @@ describe('github-auth utils', () => {
     process.env.CHANGELOG_BOT_APP_PRIVATE_KEY =
       '-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n';
 
-    const calls: Array<{ url: string; options: any }> = [];
+    const calls: Array<{ url: string; options: FetchOptions }>
+      = [];
     // Mock fetch for: GET /repos/{owner}/{repo}/installation then POST /app/installations/{id}/access_tokens
     global.fetch = jest
       .fn()
-      .mockImplementation(async (url: string, options: any) => {
+      .mockImplementation(async (url: string, options: FetchOptions) => {
         calls.push({ url, options });
         if (String(url).includes('/repos/acme/repo/installation')) {
           return { ok: true, text: async () => JSON.stringify({ id: 999 }) };

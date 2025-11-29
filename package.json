@@ -12,7 +12,9 @@
     "start": "node dist/cli.js",
     "dev": "ts-node-esm src/cli.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
-    "prepack": "pnpm build"
+    "check:dist": "node scripts/check-dist-alias.mjs",
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm build && pnpm run check:dist"
   },
   "files": [
     "dist",
