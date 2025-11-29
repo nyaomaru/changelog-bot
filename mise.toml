@@ -24,4 +24,4 @@ run = "pnpm run test:unit"
 run = "pnpm run test:performance"
 
 [tasks.qa]
-run = ["pnpm lint", "pnpm test", "pnpm build"]
+run = ["pnpm lint", "pnpm test", "pnpm build", "pnpm run check:dist"]
