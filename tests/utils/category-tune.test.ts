@@ -1,5 +1,4 @@
 // eslint-disable @typescript-eslint/no-explicit-any -- Tests may coerce types when focusing on behavior, not type surfaces.
-import { describe, test, expect } from '@jest/globals';
 import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
 import type { ReleaseItem } from '@/types/release.js';
 import type { CategoryMap } from '@/types/changelog.js';

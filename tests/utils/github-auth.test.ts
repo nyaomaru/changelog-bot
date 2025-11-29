@@ -1,14 +1,12 @@
 // WHY: This test focuses on behavior via fetch mocking; we avoid strict types for mocked shapes.
-import {
-  describe,
-  test,
-  expect,
-  beforeEach,
-  afterEach,
-  jest,
-} from '@jest/globals';
 
 // Mock crypto signing so we don't need a real PEM
+// WHY: ESM-style Jest puts helpers under '@jest/globals'; typings for this subpath can be
+// finicky with NodeNext + ts-jest. Import with a targeted suppression to keep the test focused.
+ 
+// @ts-ignore -- runtime module exists; types are covered by "types: ['jest']" in tsconfig.tests.json
+import { jest } from '@jest/globals';
+// @ts-ignore: ESM mocking API is available at runtime; typings for unstable_mockModule are missing in @types/jest.
 jest.unstable_mockModule('node:crypto', () => ({
   createSign: () => ({
     update: () => undefined,
