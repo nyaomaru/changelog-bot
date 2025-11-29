@@ -13,7 +13,6 @@ const PR_URL_RE = /https?:\/\/\S+\/pull\/(\d+)/; // captures PR number
 const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
 const AUTHOR_RE = /@([A-Za-z0-9_-]+)/;
 const TRAILING_BY_IN_RE = /\s*(by|in)\s*$/i; // strip noisy trailing tokens
-import { CONVENTIONAL_PREFIX_RE } from '@/constants/conventional.js';
 import {
   stripConventionalPrefix,
   normalizeTitle,

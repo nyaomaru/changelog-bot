@@ -44,7 +44,6 @@ function buildNormalizedLookup(titleToPr: TitleToPr): Map<string, number> {
       // WHY: Collisions happen when titles differ only by punctuation/case.
       // Prefer the higher PR number (usually newer) and log for visibility.
       if (prNumber !== existing) {
-        // eslint-disable-next-line no-console
         console.warn(
           `Title collision: "${originalTitle}" -> "${key}" (PR #${prNumber} vs #${existing})`
         );
