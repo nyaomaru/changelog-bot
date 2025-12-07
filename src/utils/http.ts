@@ -1,16 +1,5 @@
 import type { HttpError } from '@/types/http.js';
-
-/**
- * Attempt to parse a JSON string, returning undefined on failure.
- * @param input JSON string candidate.
- */
-function safeJsonParse<T>(input: string): T | undefined {
-  try {
-    return JSON.parse(input) as T;
-  } catch {
-    return undefined;
-  }
-}
+import { safeJsonParse } from '@/utils/json.js';
 
 /**
  * Build a rich HttpError instance containing status code and parsed body details.
