@@ -34,8 +34,10 @@ describe('is utilities', () => {
   });
 
   test('isNumber', () => {
-    expect(isNumber(Infinity)).toBe(true);
+    expect(isNumber(NaN)).toBe(false);
+    expect(isNumber(Infinity)).toBe(false);
     expect(isNumber('1')).toBe(false);
+    expect(isNumber(123)).toBe(true);
   });
 
   test('isReasoningModel', () => {
