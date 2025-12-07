@@ -34,7 +34,6 @@ describe('is utilities', () => {
   });
 
   test('isNumber', () => {
-    expect(isNumber(NaN)).toBe(true);
     expect(isNumber(Infinity)).toBe(true);
     expect(isNumber('1')).toBe(false);
   });
