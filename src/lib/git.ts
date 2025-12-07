@@ -18,7 +18,9 @@ const SAFE_SHA_PATTERN = /^[0-9a-f]{7,40}$/i;
  */
 function assertSafeGitRef(value: string, label: string): void {
   if (!SAFE_REF_PATTERN.test(value) && !SAFE_SHA_PATTERN.test(value)) {
-    throw new Error(`Invalid ${label}: "${value}" contains unsupported characters.`);
+    throw new Error(
+      `Invalid ${label}: "${value}" contains unsupported characters.`
+    );
   }
 }
 
@@ -75,17 +77,14 @@ export function firstCommit(cwd?: string): string {
   return list[list.length - 1].trim();
 }
 
-/** Git log in short format: `<short-sha> <subject>` per line. */
-export function gitLog(from: string, to: string, cwd?: string): string {
-  assertSafeGitRef(from, 'from ref');
-  assertSafeGitRef(to, 'to ref');
-  return run(['log', '--pretty=format:%h %s', `${from}..${to}`], cwd);
-}
 /** Git log of merge commits with body: used to infer merged PRs. */
 export function gitMergedPRs(from: string, to: string, cwd?: string): string {
   assertSafeGitRef(from, 'from ref');
   assertSafeGitRef(to, 'to ref');
-  return run(['log', '--merges', '--pretty=format:%H %b', `${from}..${to}`], cwd);
+  return run(
+    ['log', '--merges', '--pretty=format:%H %b', `${from}..${to}`],
+    cwd
+  );
 }
 
 /** List commit SHAs contained in a merge commit (parent1..parent2 range). */

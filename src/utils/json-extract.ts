@@ -1,15 +1,4 @@
-/**
- * Safely parse JSON, returning `undefined` on failure.
- * @param input Raw string to parse.
- * @returns Parsed value or `undefined`.
- */
-function safeJsonParse<T>(input: string): T | undefined {
-  try {
-    return JSON.parse(input) as T;
-  } catch {
-    return undefined;
-  }
-}
+import { safeJsonParse } from '@/utils/json.js';
 
 /**
  * Extract a JSON object from raw LLM text which might include prose around it.
