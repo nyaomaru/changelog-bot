@@ -1,6 +1,6 @@
-import { isString, isBoolean, isNull, isObject, define } from 'is-kit';
+import { isString, isNull, isObject, define } from 'is-kit';
 
-export { isString, isBoolean, isNull };
+export { isString, isNull };
 
 /**
  * Narrow unknown values to number (including NaN and Infinity).

@@ -5,7 +5,6 @@ import {
   isString,
   isPrimitive,
   isNumber,
-  isBoolean,
   isReasoningModel,
   isBulletLine,
 } from '@/utils/is.js';
@@ -34,12 +33,10 @@ describe('is utilities', () => {
     expect(isPrimitive(() => {})).toBe(false);
   });
 
-  test('isNumber and isBoolean', () => {
+  test('isNumber', () => {
     expect(isNumber(NaN)).toBe(true);
     expect(isNumber(Infinity)).toBe(true);
     expect(isNumber('1')).toBe(false);
-    expect(isBoolean(true)).toBe(true);
-    expect(isBoolean('true' as unknown as boolean)).toBe(false);
   });
 
   test('isReasoningModel', () => {
