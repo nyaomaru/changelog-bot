@@ -1,12 +1,13 @@
-import { isString, isNull, isObject, define } from 'is-kit';
+import {
+  isString,
+  isNull,
+  isObject,
+  define,
+  isPrimitive,
+  isNumber,
+} from 'is-kit';
 
-export { isString, isNull };
-
-/**
- * Narrow unknown values to number (including NaN and Infinity).
- * WHY: Project semantics consider NaN/Infinity as numbers.
- */
-export const isNumber = define<number>((value) => typeof value === 'number');
+export { isString, isNumber, isNull, isPrimitive };
 
 /**
  * Determine whether a value is null or undefined.
@@ -22,17 +23,6 @@ export const isNullable = define<null | undefined>((value) => value == null);
  */
 export const isRecord = define<Record<string | number | symbol, unknown>>(
   (value) => isObject(value) && !isNull(value)
-);
-/**
- * Determine whether a value is a JavaScript primitive (including null/undefined).
- * @param value Unknown candidate.
- * @returns True when the value is a primitive.
- */
-export const isPrimitive = define<
-  string | number | boolean | symbol | bigint | undefined | null
->(
-  (value) =>
-    isNullable(value) || (!isObject(value) && typeof value !== 'function')
 );
 
 /**
