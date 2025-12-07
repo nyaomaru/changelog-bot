@@ -285,8 +285,6 @@ export async function runCli(): Promise<void> {
       }
     }
 
-    llm = sanitizeLLMOutput(llm);
-
     if (!llm) {
       llm = {
         new_section_markdown: fallbackSection({
@@ -330,6 +328,11 @@ export async function runCli(): Promise<void> {
     }
   }
 
+  // Unify LLM output sanitization across both paths (release-notes/LLM/fallback).
+  // Type guard: logic above guarantees llm is set; enforce at runtime for safety.
+  if (!llm) throw new Error('Internal error: LLM output was not constructed');
+  llm = sanitizeLLMOutput(llm) as LLMOutput;
+
   if (llm.new_section_markdown) {
     llm.new_section_markdown = postprocessSection(
       llm.new_section_markdown,
@@ -360,7 +363,9 @@ export async function runCli(): Promise<void> {
     llm.new_section_markdown &&
     !FULL_CHANGELOG_RE.test(llm.new_section_markdown)
   ) {
-    const fullUrl = `https://github.com/${owner}/${repo}/compare/${encodeURIComponent(prevRef)}...${encodeURIComponent(releaseRef)}`;
+    const fullUrl = `https://github.com/${owner}/${repo}/compare/${encodeURIComponent(
+      prevRef
+    )}...${encodeURIComponent(releaseRef)}`;
     llm.new_section_markdown = `${llm.new_section_markdown}\n**Full Changelog**: ${fullUrl}\n`;
   }
 
