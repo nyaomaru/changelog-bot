@@ -13,13 +13,13 @@ import {
   SECTION_TEST,
 } from '@/constants/changelog.js';
 import type { ReleaseItem } from '@/types/release.js';
-import { bestCategory, scoreCategories, SCORE_THRESHOLDS } from '@/utils/category-score.js';
-import { SECTION_ORDER } from '@/constants/changelog.js';
-
-type BucketName = (typeof SECTION_ORDER)[number];
-function isBucketName(section: string): section is BucketName {
-  return (SECTION_ORDER as readonly string[]).includes(section);
-}
+import {
+  bestCategory,
+  scoreCategories,
+  SCORE_THRESHOLDS,
+} from '@/utils/category-score.js';
+import { isBucketName } from '@/utils/is.js';
+import type { BucketName } from '@/types/changelog.js';
 
 /**
  * Move given titles to a target category on a mutable CategoryMap.
@@ -32,7 +32,7 @@ function moveTitlesToCategory(
   targetCategory: string
 ): void {
   if (!Array.isArray(adjusted[targetCategory])) adjusted[targetCategory] = [];
-  const target = adjusted[targetCategory] as string[];
+  const target = adjusted[targetCategory];
   for (const title of titles) {
     for (const list of Object.values(adjusted)) {
       if (!Array.isArray(list)) continue;
@@ -250,7 +250,10 @@ export function tuneCategoriesByTitle(
     if (!current || !WEAK_BUCKETS.has(current)) continue;
     const scores = scoreCategories(title);
     const guide = bestCategory(scores);
-    if (guide === SECTION_FIXED && scores[SECTION_FIXED] >= SCORE_THRESHOLDS.fixed) {
+    if (
+      guide === SECTION_FIXED &&
+      scores[SECTION_FIXED] >= SCORE_THRESHOLDS.fixed
+    ) {
       moveTitlesToCategory(adjusted, [title], SECTION_FIXED);
       continue;
     }
@@ -261,7 +264,10 @@ export function tuneCategoriesByTitle(
       moveTitlesToCategory(adjusted, [title], SECTION_CHANGED);
       continue;
     }
-    if (guide === SECTION_ADDED && scores[SECTION_ADDED] >= SCORE_THRESHOLDS.added) {
+    if (
+      guide === SECTION_ADDED &&
+      scores[SECTION_ADDED] >= SCORE_THRESHOLDS.added
+    ) {
       moveTitlesToCategory(adjusted, [title], SECTION_ADDED);
       continue;
     }
