@@ -47,9 +47,6 @@ export function isBulletLine(line: string): boolean {
 }
 
 /**
- * Changelog section bucket name type derived from SECTION_ORDER.
- */
-/**
  * Type guard for changelog bucket names.
  * WHY: Keep the predicate reusable and composable via `define` so it
  * plays nicely with other guard combinators from is-kit.
