@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.3] - 2025-12-07
+
+### Changed
+
+- remove unused gitLog, centralize safeJsonParse, unify LLM sanitization by @nyaomaru in [#52](https://github.com/nyaomaru/changelog-bot/pull/52)
+
+### Docs
+
+- 0.1.2 by [bot] by @github-actions in [#51](https://github.com/nyaomaru/changelog-bot/pull/51)
+
+### Chore
+
+- Release: 0.1.3 by [bot] by @github-actions in [#53](https://github.com/nyaomaru/changelog-bot/pull/53)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.3
+
+[v0.1.3]: https://github.com/nyaomaru/changelog-bot/compare/v0.1.2...v0.1.3
+
 ## [v0.1.2] - 2025-11-29
 
 ### Fixed
