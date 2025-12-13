@@ -6,6 +6,8 @@ import {
   isPrimitive,
   isNumber,
 } from 'is-kit';
+import { SECTION_ORDER } from '@/constants/changelog.js';
+import type { BucketName } from '@/types/changelog.js';
 
 export { isString, isNumber, isNull, isPrimitive };
 
@@ -43,3 +45,18 @@ export function isReasoningModel(modelName: string): boolean {
 export function isBulletLine(line: string): boolean {
   return /^\s*[-*]\s+/.test(line);
 }
+
+/**
+ * Changelog section bucket name type derived from SECTION_ORDER.
+ */
+/**
+ * Type guard for changelog bucket names.
+ * WHY: Keep the predicate reusable and composable via `define` so it
+ * plays nicely with other guard combinators from is-kit.
+ * @param section Arbitrary section candidate.
+ * @returns True when `section` is one of SECTION_ORDER.
+ */
+export const isBucketName = define<BucketName>((section) =>
+  typeof section === 'string' &&
+  (SECTION_ORDER as readonly string[]).includes(section)
+);

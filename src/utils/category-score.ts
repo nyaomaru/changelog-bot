@@ -31,6 +31,7 @@ import {
   VERSION_FROM_TO_RE,
 } from '@/constants/scoring.js';
 import { isNullable } from '@/utils/is.js';
+import type { BucketName } from '@/types/changelog.js';
 
 // WHY: Centralize weight levels to avoid magic numbers and to make tuning clearer.
 const WEIGHT_LEVEL = {
@@ -247,12 +248,10 @@ export const SCORE_THRESHOLDS = {
   breaking: 6,
 };
 
-type SectionName = (typeof SECTION_ORDER)[number];
+// Use centralized BucketName type for section identifiers.
+type SectionName = BucketName;
 
-type KeywordIndex = Map<
-  string,
-  Array<{ section: SectionName; weight: number }>
->;
+type KeywordIndex = Map<string, Array<{ section: SectionName; weight: number }>>;
 
 // WHY: Build keyword indices once at module init time to avoid per-call allocation.
 /**

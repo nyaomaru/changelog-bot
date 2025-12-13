@@ -9,6 +9,7 @@ import {
   SECTION_REVERTED,
   SECTION_BREAKING_CHANGES,
 } from '@/constants/changelog.js';
+import type { BucketName } from '@/types/changelog.js';
 import {
   CONVENTIONAL_PREFIX_RE,
   INLINE_PR_NUMBER_RE,
@@ -42,7 +43,7 @@ const TYPE_TO_SECTION_REGEX = {
   Reverted: /^revert(\(|:)/i,
 } as const;
 
-type BucketName = (typeof SECTION_ORDER)[number];
+// BucketName centralized in types/changelog.ts
 
 /** Mapping of commit SHAs to the PR numbers they reference. */
 type PrNumbersBySha = Record<string, number[]>;
