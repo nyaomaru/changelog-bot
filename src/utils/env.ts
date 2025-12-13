@@ -11,4 +11,3 @@ export function getEnv<K extends keyof Env>(
   if (parsed) return parsed[key];
   return process.env[key] as unknown as Env[K] | undefined;
 }
-

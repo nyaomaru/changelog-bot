@@ -15,13 +15,6 @@ type BulletParts = {
 };
 
 /**
- * Normalize bullet titles for fuzzy matching by lowercasing and stripping punctuation.
- * @param rawTitle Original bullet text.
- * @returns Normalized key for lookups.
- */
-// title normalization moved to shared util: normalizeTitle
-
-/**
  * Check whether a line already includes an inline PR reference (e.g., "(#123)").
  * @param line Markdown line to inspect.
  */
