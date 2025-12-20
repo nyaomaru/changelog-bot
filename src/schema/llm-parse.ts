@@ -9,6 +9,7 @@ import { LLM_TRUNCATE_LIMIT } from '@/constants/prompt.js';
  * WHY: Providers sometimes overrun budgets; retry with truncated inputs improves success odds.
  * @param provider Provider implementation to call.
  * @param input Normalized input payload.
+ * @returns Validated LLM output conforming to the schema.
  */
 export async function parseOrRetryLLMOutput(
   provider: Provider,
