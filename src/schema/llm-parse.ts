@@ -1,4 +1,4 @@
-import type { Provider } from '@/providers/types.js';
+import type { Provider } from '@/types/provider.js';
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import { LLMOutputSchema } from '@/schema/schema.js';
 import { LlmError, ValidationError } from '@/lib/errors.js';
@@ -44,4 +44,3 @@ export async function parseOrRetryLLMOutput(
     'LLM output did not match schema after retry'
   );
 }
-

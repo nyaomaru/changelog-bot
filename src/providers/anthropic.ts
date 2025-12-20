@@ -1,5 +1,5 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
-import type { Provider } from '@/providers/types.js';
+import type { Provider } from '@/types/provider.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
 import { postJson } from '@/utils/http.js';

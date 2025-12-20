@@ -1,4 +1,4 @@
-import type { LLMInput, LLMOutput } from '@/types/llm.js';
+import type { LLMInput, LLMOutput, ProviderName } from '@/types/llm.js';
 
 /** Capability flags for a provider implementation. */
 export type ProviderCapabilities = {
@@ -15,7 +15,7 @@ export type ProviderCapabilities = {
 /** Light-weight provider info exposed to callers. */
 export type ProviderInfo = {
   /** Provider ID used in flags/env. */
-  name: 'openai' | 'anthropic';
+  name: ProviderName;
   /** Concrete model identifier. */
   modelName: string;
   /** Capability flags. */

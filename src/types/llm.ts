@@ -44,4 +44,4 @@ export type LLMOutput = {
 };
 
 /** Contract implemented by provider adapters. */
-// Provider contract moved to '@/providers/types'.
+// Provider contract moved to '@/types/provider'.
