@@ -25,21 +25,27 @@ export async function parseOrRetryLLMOutput(
   ];
 
   let lastErr: unknown;
+  let lastWasProviderError = false;
   for (const attempt of attempts) {
     try {
       const raw = await provider.generate(attempt);
       const parsed = LLMOutputSchema.safeParse(raw as unknown);
       if (parsed.success) return parsed.data;
       lastErr = parsed.error;
+      lastWasProviderError = false;
     } catch (e) {
       lastErr = e;
-      // Wrap provider errors for clearer upstream handling.
-      throw new LlmError(
-        e instanceof Error ? e.message : 'Unknown LLM provider error'
-      );
+      lastWasProviderError = true;
+      // Defer throwing until all attempts are exhausted to allow retry with truncated inputs.
     }
   }
 
+  if (lastWasProviderError) {
+    // Wrap provider errors for clearer upstream handling after retries.
+    throw new LlmError(
+      lastErr instanceof Error ? lastErr.message : 'Unknown LLM provider error'
+    );
+  }
   throw new ValidationError(
     'LLM output did not match schema after retry'
   );
