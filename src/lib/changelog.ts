@@ -235,3 +235,86 @@ export function ensureCompareLinks(opts: {
     unreleasedLine,
   };
 }
+
+/**
+ * Compute the next changelog content deterministically from inputs.
+ * WHY: Keep I/O out of core logic so dry-runs and tests remain pure/idempotent.
+ * @param current Existing changelog text.
+ * @param options Operation parameters.
+ * @returns Updated changelog.
+ */
+export function computeChangelog(
+  current: string,
+  options: {
+    version: string;
+    newSection: string;
+    insertAfterAnchor?: string;
+    compareLine?: string;
+    unreleasedLine?: string;
+  }
+): string {
+  const {
+    version,
+    newSection,
+    insertAfterAnchor = UNRELEASED_ANCHOR,
+    compareLine,
+    unreleasedLine,
+  } = options;
+
+  let next = current;
+  if (hasDuplicateVersion(next, version)) {
+    next = removeAllSections(next, version);
+  }
+
+  if (hasSection(next, version)) {
+    next = replaceSection(next, version, newSection);
+  } else {
+    next = insertSection(next, insertAfterAnchor, newSection);
+  }
+
+  next = updateCompareLinks(next, compareLine, unreleasedLine);
+  return next;
+}
+
+/**
+ * Produce a minimal unified-style diff between two strings.
+ * NOTE: Lightweight LCS; adequate for CLI preview. For large files, prefer a proper diff lib.
+ */
+export function diffChangelog(a: string, b: string): string {
+  const aLines = a.split('\n');
+  const bLines = b.split('\n');
+
+  // Build LCS matrix
+  const m = aLines.length;
+  const n = bLines.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () =>
+    Array(n + 1).fill(0)
+  );
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      if (aLines[i] === bLines[j]) dp[i][j] = dp[i + 1][j + 1] + 1;
+      else dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+
+  // Reconstruct diff
+  const out: string[] = ['--- a/CHANGELOG.md', '+++ b/CHANGELOG.md'];
+  let i = 0,
+    j = 0;
+  while (i < m && j < n) {
+    if (aLines[i] === bLines[j]) {
+      out.push(' ' + aLines[i]);
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      out.push('-' + aLines[i]);
+      i++;
+    } else {
+      out.push('+' + bLines[j]);
+      j++;
+    }
+  }
+  while (i < m) out.push('-' + aLines[i++]);
+  while (j < n) out.push('+' + bLines[j++]);
+  return out.join('\n');
+}

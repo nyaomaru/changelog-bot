@@ -12,14 +12,9 @@ import {
 import { buildLLMInput } from '@/lib/prompt.js';
 import {
   readChangelog,
-  insertSection,
-  updateCompareLinks,
   writeChangelog,
   ensureCompareLinks,
-  hasSection,
-  replaceSection,
-  removeAllSections,
-  hasDuplicateVersion,
+  computeChangelog,
 } from '@/lib/changelog.js';
 import { createPR } from '@/lib/pr.js';
 import {
@@ -28,7 +23,7 @@ import {
   fetchPRInfo,
 } from '@/lib/github.js';
 
-import { LLMOutputSchema } from '@/schema/schema.js';
+import { parseOrRetryLLMOutput } from '@/schema/llm-parse.js';
 import { CliOptionsSchema } from '@/schema/cli.js';
 import { EnvSchema, ensureGithubTokenRequired } from '@/schema/env.js';
 import { resolveGitHubAuth } from '@/utils/github-auth.js';
@@ -63,7 +58,6 @@ import {
   PR_TITLE_PREFIX,
   UNRELEASED_ANCHOR,
 } from '@/constants/changelog.js';
-import { LLM_TRUNCATE_LIMIT } from '@/constants/prompt.js';
 import { DATE_YYYY_MM_DD_LEN } from '@/constants/time.js';
 import { PROVIDER_NAMES, PROVIDER_OPENAI } from '@/constants/provider.js';
 import { sanitizeLLMOutput } from '@/utils/sanitize.js';
@@ -259,26 +253,8 @@ export async function runCli(): Promise<void> {
       fallbackReasons.push(`Missing API key for provider: ${provider.name}`);
     } else {
       try {
-        const first = await provider.generate(llmInput);
-        const parsed = LLMOutputSchema.safeParse(first);
-        if (parsed.success) {
-          llm = parsed.data;
-          aiUsed = true;
-        } else {
-          const shorter = {
-            ...llmInput,
-            releaseBody: llmInput.releaseBody.slice(0, LLM_TRUNCATE_LIMIT),
-            gitLog: llmInput.gitLog.slice(0, LLM_TRUNCATE_LIMIT),
-          };
-          const second = await provider.generate(shorter);
-          const parsed2 = LLMOutputSchema.safeParse(second);
-          if (parsed2.success) {
-            llm = parsed2.data;
-            aiUsed = true;
-          } else {
-            fallbackReasons.push('LLM output did not match schema after retry');
-          }
-        }
+        llm = await parseOrRetryLLMOutput(provider, llmInput);
+        aiUsed = true;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         fallbackReasons.push(`LLM generation failed: ${message}`);
@@ -369,27 +345,14 @@ export async function runCli(): Promise<void> {
     llm.new_section_markdown = `${llm.new_section_markdown}\n**Full Changelog**: ${fullUrl}\n`;
   }
 
-  // Remove duplicate sections before applying changes
-  if (hasDuplicateVersion(existing, version)) {
-    existing = removeAllSections(existing, version);
-  }
-
-  // Apply changes
-  let updated: string;
-  if (hasSection(existing, version)) {
-    updated = replaceSection(existing, version, llm.new_section_markdown);
-  } else {
-    updated = insertSection(
-      existing,
-      llm.insert_after_anchor!,
-      llm.new_section_markdown
-    );
-  }
-  updated = updateCompareLinks(
-    updated,
-    undefined,
-    llm.unreleased_compare_update ?? unreleasedLine
-  );
+  // Compute next changelog content (pure function)
+  const updated = computeChangelog(existing, {
+    version,
+    newSection: llm.new_section_markdown,
+    insertAfterAnchor: llm.insert_after_anchor!,
+    compareLine: undefined, // compare ref already embedded in section
+    unreleasedLine: llm.unreleased_compare_update ?? unreleasedLine,
+  });
 
   // Dry run: print result without writing or PR
   if (cli.dryRun) {
