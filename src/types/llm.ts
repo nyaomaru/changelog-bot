@@ -44,13 +44,4 @@ export type LLMOutput = {
 };
 
 /** Contract implemented by provider adapters. */
-export interface LLMProvider {
-  /** Provider identifier matching CLI flag values. */
-  name: ProviderName;
-  /**
-   * Generate structured changelog content from the given input.
-   * @param input Normalized payload to feed into the provider.
-   * @returns Structured output that drives changelog updates and PR creation.
-   */
-  generate(input: LLMInput): Promise<LLMOutput>;
-}
+// Provider contract moved to '@/types/provider'.

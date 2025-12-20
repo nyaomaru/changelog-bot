@@ -1,4 +1,5 @@
-import type { LLMInput, LLMOutput, LLMProvider } from '@/types/llm.js';
+import type { LLMInput, LLMOutput } from '@/types/llm.js';
+import type { Provider } from '@/types/provider.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
 import { postJson } from '@/utils/http.js';
@@ -16,8 +17,15 @@ import { RELEASE_NOTES_SYSTEM_PROMPT } from '@/constants/system-prompts.js';
 
 const MODEL = DEFAULT_ANTHROPIC_MODEL;
 
-export class AnthropicProvider implements LLMProvider {
+export class AnthropicProvider implements Provider {
   name = PROVIDER_ANTHROPIC;
+  modelName = MODEL;
+  supports = {
+    jsonMode: true,
+    streaming: false,
+    reasoning: false,
+    maxOutputTokens: LLM_GENERATE_MAX_TOKENS,
+  } as const;
 
   async generate(input: LLMInput): Promise<LLMOutput> {
     const payload: Record<string, unknown> = {

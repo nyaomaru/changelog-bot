@@ -1,4 +1,5 @@
-import type { LLMInput, LLMOutput, LLMProvider } from '@/types/llm.js';
+import type { LLMInput, LLMOutput } from '@/types/llm.js';
+import type { Provider } from '@/types/provider.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
 import { postJson } from '@/utils/http.js';
@@ -31,8 +32,15 @@ type OpenAIResponse = {
   }>;
 };
 
-export class OpenAIProvider implements LLMProvider {
+export class OpenAIProvider implements Provider {
   name = PROVIDER_OPENAI;
+  modelName = MODEL;
+  supports = {
+    jsonMode: true,
+    streaming: false,
+    reasoning: isReasoningModel(MODEL),
+    maxOutputTokens: LLM_GENERATE_MAX_TOKENS,
+  } as const;
 
   async generate(input: LLMInput): Promise<LLMOutput> {
     const base: Record<string, unknown> = {
