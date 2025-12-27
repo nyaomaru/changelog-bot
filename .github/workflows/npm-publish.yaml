@@ -16,13 +16,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node (for npm auth)
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
-          always-auth: true
-          scope: '@nyaomaru'
 
       - name: Setup mise
         uses: jdx/mise-action@v2
@@ -65,8 +62,5 @@ jobs:
             exit 1
           fi
 
-      - name: Publish to npm (provenance)
+      - name: Publish to npm (Trusted Publishing)
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
