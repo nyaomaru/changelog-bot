@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.5] - 2025-12-20
+
+### Fixed
+
+- provider interface, typed errors, parse-or-retry, pure changelog by @nyaomaru in [#60](https://github.com/nyaomaru/changelog-bot/pull/60)
+
+### Docs
+
+- 0.1.4 by [bot] by @github-actions in [#57](https://github.com/nyaomaru/changelog-bot/pull/57)
+
+### Chore
+
+- setup renovate by @nyaomaru in [#59](https://github.com/nyaomaru/changelog-bot/pull/59)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.5
+
+[v0.1.5]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.5
+
 ## [v0.1.4] - 2025-12-13
 
 ### Changed
