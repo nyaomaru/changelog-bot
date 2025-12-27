@@ -31,11 +31,8 @@ import { resolveGitHubAuth } from '@/utils/github-auth.js';
 import type { LLMOutput, ProviderName } from '@/types/llm.js';
 import { normalizeSectionCategories } from '@/utils/section-normalize.js';
 import { postprocessSection } from '@/utils/section-postprocess.js';
-import {
-  parseReleaseNotes,
-  buildSectionFromRelease,
-  FULL_CHANGELOG_RE,
-} from '@/utils/release.js';
+import { parseReleaseNotes, buildSectionFromRelease } from '@/utils/release.js';
+import { FULL_CHANGELOG_RE } from '@/constants/release.js';
 import { classifyTitles } from '@/utils/classify.js';
 import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
 import { buildTitlesForClassification } from '@/utils/classify-pre.js';

@@ -33,7 +33,7 @@ export const isRecord = define<Record<string | number | symbol, unknown>>(
  * @param modelName Model name (e.g., "gpt-4o", "o3-mini", "gpt-5.1-reasoning").
  * @returns True when the model implies reasoning features.
  */
-export function isReasoningModel(modelName: string): boolean {
+export const isReasoningModel = define<string>((modelName) => 
   return /(?:gpt-5|o3|o4|reason|thinking)/i.test(modelName);
 }
 
