@@ -5,18 +5,18 @@ import type {
 } from '@/types/release.js';
 import { ParsedReleaseSchema } from '@/schema/release.js';
 import { SECTION_ORDER } from '@/constants/changelog.js';
+import {
+  stripConventionalPrefix,
+  normalizeTitle,
+} from '@/utils/title-normalize.js';
+import { FULL_CHANGELOG_RE } from '@/constants/release.js';
 
 const H2_HEADING_RE = /^##\s+(.*)$/;
-export const FULL_CHANGELOG_RE = /Full Changelog[^:]*:\s*(\S+)/i;
 const BULLET_PREFIX_RE = /^[*-]\s+/;
 const PR_URL_RE = /https?:\/\/\S+\/pull\/(\d+)/; // captures PR number
 const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
 const AUTHOR_RE = /@([A-Za-z0-9_-]+)/;
 const TRAILING_BY_IN_RE = /\s*(by|in)\s*$/i; // strip noisy trailing tokens
-import {
-  stripConventionalPrefix,
-  normalizeTitle,
-} from '@/utils/title-normalize.js';
 
 /** GitHub repository owner/name pair used for compare link construction. */
 type RepoInfo = {
@@ -42,13 +42,6 @@ type RawSection = {
 function stripBulletPrefix(input: string): string {
   return input.replace(BULLET_PREFIX_RE, '').trim();
 }
-
-/**
- * Remove Conventional Commit type/scope prefixes from a title.
- * @param input Title that may start with `type(scope):`.
- * @returns Title without the conventional prefix.
- */
-// stripConventionalPrefix moved to utils/title-normalize
 
 /**
  * Strip trailing "by"/"in" tokens used in GitHub release lines.

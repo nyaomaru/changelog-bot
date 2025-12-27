@@ -53,7 +53,8 @@ export function isBulletLine(line: string): boolean {
  * @param section Arbitrary section candidate.
  * @returns True when `section` is one of SECTION_ORDER.
  */
-export const isBucketName = define<BucketName>((section) =>
-  typeof section === 'string' &&
-  (SECTION_ORDER as readonly string[]).includes(section)
+export const isBucketName = define<BucketName>(
+  (section) =>
+    typeof section === 'string' &&
+    (SECTION_ORDER as readonly string[]).includes(section)
 );
