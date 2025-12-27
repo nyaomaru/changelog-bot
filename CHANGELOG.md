@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.6] - 2025-12-27
+
+### Changed
+
+- move llm-parse by @nyaomaru in [#64](https://github.com/nyaomaru/changelog-bot/pull/64)
+- delete unused comments and move constants by @nyaomaru in [#65](https://github.com/nyaomaru/changelog-bot/pull/65)
+
+### Docs
+
+- 0.1.5 by [bot] by @github-actions in [#62](https://github.com/nyaomaru/changelog-bot/pull/62)
+
+### Chore
+
+- create release workflow by @nyaomaru in [#63](https://github.com/nyaomaru/changelog-bot/pull/63)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.6
+
+[v0.1.6]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.6
+
 ## [v0.1.5] - 2025-12-20
 
 ### Fixed
