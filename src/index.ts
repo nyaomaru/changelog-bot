@@ -23,7 +23,7 @@ import {
   fetchPRInfo,
 } from '@/lib/github.js';
 
-import { parseOrRetryLLMOutput } from '@/schema/llm-parse.js';
+import { parseOrRetryLLMOutput } from '@/utils/llm-parse.js';
 import { CliOptionsSchema } from '@/schema/cli.js';
 import { EnvSchema, ensureGithubTokenRequired } from '@/schema/env.js';
 import { resolveGitHubAuth } from '@/utils/github-auth.js';
