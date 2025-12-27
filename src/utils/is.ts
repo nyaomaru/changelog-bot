@@ -33,7 +33,7 @@ export const isRecord = define<Record<string | number | symbol, unknown>>(
  * @param modelName Model name (e.g., "gpt-4o", "o3-mini", "gpt-5.1-reasoning").
  * @returns True when the model implies reasoning features.
  */
-export const isReasoningModel = define<string>((modelName) => 
+export function isReasoningModel(modelName: string): boolean {
   return /(?:gpt-5|o3|o4|reason|thinking)/i.test(modelName);
 }
 
@@ -53,7 +53,8 @@ export function isBulletLine(line: string): boolean {
  * @param section Arbitrary section candidate.
  * @returns True when `section` is one of SECTION_ORDER.
  */
-export const isBucketName = define<BucketName>((section) =>
-  typeof section === 'string' &&
-  (SECTION_ORDER as readonly string[]).includes(section)
+export const isBucketName = define<BucketName>(
+  (section) =>
+    typeof section === 'string' &&
+    (SECTION_ORDER as readonly string[]).includes(section)
 );
