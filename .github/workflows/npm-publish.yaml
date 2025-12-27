@@ -61,7 +61,7 @@ jobs:
           TAG="${GITHUB_REF_NAME#v}"
           PKG_VERSION=$(jq -r .version package.json)
           if [ "$TAG" != "$PKG_VERSION" ]; then
-            echo "Tag v$TAG does not match package.json version $PKG_VERSION"
+            echo "Tag $TAG does not match package.json version $PKG_VERSION"
             exit 1
           fi
 
