@@ -1,6 +1,3 @@
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
-
 import {
   tryDetectLatestTag,
   tryDetectPrevTag,
@@ -9,7 +6,6 @@ import {
   commitsInRange,
   dateForRef,
 } from '@/lib/git.js';
-import { buildLLMInput } from '@/lib/prompt.js';
 import {
   readChangelog,
   writeChangelog,
@@ -17,46 +13,28 @@ import {
   computeChangelog,
 } from '@/lib/changelog.js';
 import { createPR } from '@/lib/pr.js';
-import {
-  mapCommitsToPrs,
-  fetchReleaseBody,
-  fetchPRInfo,
-} from '@/lib/github.js';
+import { mapCommitsToPrs, fetchReleaseBody } from '@/lib/github.js';
 
-import { parseOrRetryLLMOutput } from '@/utils/llm-parse.js';
-import { CliOptionsSchema } from '@/schema/cli.js';
 import { EnvSchema, ensureGithubTokenRequired } from '@/schema/env.js';
 import { resolveGitHubAuth } from '@/utils/github-auth.js';
 
-import type { LLMOutput, ProviderName } from '@/types/llm.js';
-import { normalizeSectionCategories } from '@/utils/section-normalize.js';
+import type { LLMOutput } from '@/types/llm.js';
 import { postprocessSection } from '@/utils/section-postprocess.js';
-import { parseReleaseNotes, buildSectionFromRelease } from '@/utils/release.js';
 import { FULL_CHANGELOG_RE } from '@/constants/release.js';
-import { classifyTitles } from '@/utils/classify.js';
-import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
-import { buildTitlesForClassification } from '@/utils/classify-pre.js';
 import { providerFactory } from '@/utils/provider.js';
 import { getRepoFullName } from '@/utils/repository.js';
 import { versionFromRef } from '@/utils/version.js';
-import { fallbackSection } from '@/utils/fallback.js';
 import { escapeRegExp } from '@/utils/escape.js';
-import { isNumber } from '@/utils/is.js';
+import { parseCliArgs } from '@/lib/cli-args.js';
+import { buildChangelogLlmOutput } from '@/utils/llm-output.js';
 
-import {
-  DEFAULT_BASE_BRANCH,
-  DEFAULT_CHANGELOG_FILE,
-  HEAD_REF,
-  SHA_SHORT_LENGTH,
-} from '@/constants/git.js';
+import { HEAD_REF } from '@/constants/git.js';
 import {
   DEFAULT_PR_LABELS,
   PR_BRANCH_PREFIX,
   PR_TITLE_PREFIX,
-  UNRELEASED_ANCHOR,
 } from '@/constants/changelog.js';
 import { DATE_YYYY_MM_DD_LEN } from '@/constants/time.js';
-import { PROVIDER_NAMES, PROVIDER_OPENAI } from '@/constants/provider.js';
 import { sanitizeLLMOutput } from '@/utils/sanitize.js';
 import { buildPrMapBySha, buildTitleToPr } from '@/utils/pr-mapping.js';
 
@@ -65,44 +43,11 @@ import { buildPrMapBySha, buildTitleToPr } from '@/utils/pr-mapping.js';
  * @returns Promise that resolves when the CLI flow completes.
  */
 export async function runCli(): Promise<void> {
-  const argv = await yargs(hideBin(process.argv))
-    // Force English help/messages regardless of system locale
-    .locale('en')
-    .option('repo-path', { type: 'string', default: '.' })
-    .option('changelog-path', {
-      type: 'string',
-      default: DEFAULT_CHANGELOG_FILE,
-    })
-    .option('base-branch', { type: 'string', default: DEFAULT_BASE_BRANCH })
-    .option('provider', {
-      type: 'string',
-      choices: [...PROVIDER_NAMES] as unknown as readonly string[],
-      default: PROVIDER_OPENAI,
-    })
-    .option('release-tag', { type: 'string' })
-    .option('release-name', { type: 'string' })
-    .option('release-body', { type: 'string', default: '' })
-    .option('dry-run', { type: 'boolean', default: false })
-    .strict()
-    .parse();
-
-  // Normalize and validate CLI options with Zod
-  const cli = CliOptionsSchema.parse({
-    repoPath: argv['repo-path'],
-    changelogPath: argv['changelog-path'],
-    baseBranch: argv['base-branch'],
-    provider: argv.provider as ProviderName,
-    releaseTag: argv['release-tag'],
-    releaseName: argv['release-name'],
-    releaseBody: argv['release-body'],
-    dryRun: argv['dry-run'],
-  });
+  const cli = await parseCliArgs(process.argv);
 
   const repoPath = cli.repoPath;
-  const provider = providerFactory(cli.provider as ProviderName);
+  const provider = providerFactory(cli.provider);
   const [owner, repo] = getRepoFullName().split('/');
-  let aiUsed = false;
-  const fallbackReasons: string[] = [];
 
   // Resolve refs
   const releaseRef = cli.releaseTag || tryDetectLatestTag(repoPath) || HEAD_REF;
@@ -148,8 +93,6 @@ export async function runCli(): Promise<void> {
   if (!releaseBody && cli.releaseTag) {
     releaseBody = await fetchReleaseBody(owner, repo, cli.releaseTag, token);
   }
-  const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
-
   const prMapBySha = buildPrMapBySha({
     commitList,
     prsLog: prs,
@@ -157,149 +100,23 @@ export async function runCli(): Promise<void> {
     apiPrMap,
   });
   const titleToPr = buildTitleToPr(commitList, prs, prMapBySha);
-
-  let llm: LLMOutput | null = null;
-  if (parsedRelease.items.length) {
-    // Non-LLM path using GitHub Release Notes as the source of truth.
-    aiUsed = false;
-    fallbackReasons.push(
-      'Used GitHub Release Notes as the source (no model call)'
-    );
-    for (const item of parsedRelease.items) {
-      if (!item.pr) {
-        const candidateKeys = [item.title, item.rawTitle]
-          .filter(Boolean)
-          .map((value) => value!.toLowerCase());
-        const num = candidateKeys
-          .map((key) => titleToPr[key])
-          .find((value) => isNumber(value));
-        if (num) {
-          item.pr = num;
-          item.url = `https://github.com/${owner}/${repo}/pull/${num}`;
-        }
-      }
-      if (item.pr) {
-        if (!item.url) {
-          item.url = `https://github.com/${owner}/${repo}/pull/${item.pr}`;
-        }
-        if (!item.author) {
-          try {
-            const pr = await fetchPRInfo(owner, repo, item.pr, token);
-            if (pr?.author) item.author = pr.author;
-            if (pr?.url) item.url = pr.url;
-          } catch {
-            console.warn(`Warning: Failed to fetch PR #${item.pr} info`);
-          }
-        }
-      }
-    }
-    const titlesForLLM = buildTitlesForClassification(parsedRelease.items);
-    let categories = await classifyTitles(titlesForLLM, provider.name);
-    // Mark that an LLM was used when classification ran with a valid provider key.
-    aiUsed = aiUsed || hasProviderKey;
-    // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.
-    categories = tuneCategoriesByTitle(parsedRelease.items, categories);
-    const section = buildSectionFromRelease({
-      version,
-      date,
-      items: parsedRelease.items,
-      categories,
-      fullChangelog: parsedRelease.fullChangelog,
-      sections: parsedRelease.sections,
-    });
-    llm = {
-      new_section_markdown: section,
-      insert_after_anchor: UNRELEASED_ANCHOR,
-      pr_title: `${PR_TITLE_PREFIX}${version}`,
-      pr_body: `Auto-generated CHANGELOG. Range: \`${prevRef}..${releaseRef}\``,
-      labels: [...DEFAULT_PR_LABELS],
-    };
-    if (!aiUsed && llm.pr_body) {
-      const reasonNote = fallbackReasons.length
-        ? `\n\nNote: Generated without LLM. Reason: ${fallbackReasons.join(
-            '; '
-          )}.`
-        : `\n\nNote: Generated without LLM.`;
-      llm.pr_body += reasonNote;
-    }
-  } else {
-    const logsForLLM = commitList
-      .map((commit) => {
-        const numbers = prMapBySha[commit.sha];
-        const suffix = numbers?.length ? ` (#${numbers[0]})` : '';
-        return `${commit.sha.slice(0, SHA_SHORT_LENGTH)} ${
-          commit.subject
-        }${suffix}`;
-      })
-      .join('\n');
-
-    const llmInput = buildLLMInput({
-      repo: `${owner}/${repo}`,
-      version,
-      date,
-      releaseTag: releaseRef,
-      prevTag: prevRef,
-      releaseBody: releaseBody,
-      gitLog: logsForLLM,
-      mergedPRs: prs,
-      changelog: existing,
-      language: 'en',
-    });
-
-    if (!hasProviderKey) {
-      fallbackReasons.push(`Missing API key for provider: ${provider.name}`);
-    } else {
-      try {
-        llm = await parseOrRetryLLMOutput(provider, llmInput);
-        aiUsed = true;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        fallbackReasons.push(`LLM generation failed: ${message}`);
-      }
-    }
-
-    if (!llm) {
-      llm = {
-        new_section_markdown: fallbackSection({
-          version,
-          date,
-          logs: commitList
-            .map(
-              (commit) =>
-                `${commit.sha.slice(0, SHA_SHORT_LENGTH)} ${commit.subject}`
-            )
-            .join('\n'),
-          prs,
-          prMapBySha,
-        }),
-        insert_after_anchor: UNRELEASED_ANCHOR,
-        pr_title: `${PR_TITLE_PREFIX}${version}`,
-        pr_body: `Auto-generated CHANGELOG (fallback). Range: \`${prevRef}..${releaseRef}\``,
-        labels: [...DEFAULT_PR_LABELS],
-      };
-    } else {
-      if (llm.new_section_markdown) {
-        llm.new_section_markdown = normalizeSectionCategories(
-          llm.new_section_markdown
-        );
-      }
-      if (!llm.pr_title) llm.pr_title = `${PR_TITLE_PREFIX}${version}`;
-      if (!llm.pr_body) {
-        llm.pr_body = `Auto-generated CHANGELOG. Range: \`${prevRef}..${releaseRef}\``;
-      }
-      if (!llm.insert_after_anchor) llm.insert_after_anchor = UNRELEASED_ANCHOR;
-      if (!llm.labels) llm.labels = [...DEFAULT_PR_LABELS];
-    }
-    // If this section was not produced by the LLM, annotate the PR body with reasons.
-    if (!aiUsed && llm.pr_body) {
-      const reasonNote = fallbackReasons.length
-        ? `\n\nNote: Generated without LLM. Reason: ${fallbackReasons.join(
-            '; '
-          )}.`
-        : `\n\nNote: Generated without LLM.`;
-      llm.pr_body += reasonNote;
-    }
-  }
+  let { llm } = await buildChangelogLlmOutput({
+    owner,
+    repo,
+    version,
+    date,
+    releaseRef,
+    prevRef,
+    releaseBody,
+    existingChangelog: existing,
+    commitList,
+    prs,
+    prMapBySha,
+    titleToPr,
+    provider,
+    hasProviderKey,
+    token,
+  });
 
   // Unify LLM output sanitization across both paths (release-notes/LLM/fallback).
   // Type guard: logic above guarantees llm is set; enforce at runtime for safety.
@@ -372,7 +189,7 @@ export async function runCli(): Promise<void> {
     branchName: branch,
     title: llm.pr_title || `${PR_TITLE_PREFIX}${version}`,
     body: llm.pr_body || '',
-    labels: llm.labels ?? ['changelog'],
+    labels: llm.labels ?? [...DEFAULT_PR_LABELS],
     token: ghToken,
     changelogEntry: cli.changelogPath,
   });
