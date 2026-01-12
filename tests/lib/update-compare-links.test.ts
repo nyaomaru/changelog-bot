@@ -7,11 +7,11 @@ test('appends compare link if missing', () => {
 
   const out = updateCompareLinks(
     base,
-    '[v1.2.3]: https://example.com/compare/v1.2.2...v1.2.3'
+    '[v1.2.3]: https://example.com/compare/v1.2.2...v1.2.3',
   );
 
   expect(out).toMatch(
-    /\n\n\[v1\.2\.3\]: https:\/\/example\.com\/compare\/v1\.2\.2\.\.\.v1\.2\.3\n?$/
+    /\n\n\[v1\.2\.3\]: https:\/\/example\.com\/compare\/v1\.2\.2\.\.\.v1\.2\.3\n?$/,
   );
 });
 
@@ -21,11 +21,11 @@ test('updates existing Unreleased link', () => {
   const out = updateCompareLinks(
     existing,
     undefined,
-    '[Unreleased]: https://example.com/compare/v1.2.3...HEAD'
+    '[Unreleased]: https://example.com/compare/v1.2.3...HEAD',
   );
 
   expect(
-    out.includes('[Unreleased]: https://example.com/compare/v1.2.3...HEAD')
+    out.includes('[Unreleased]: https://example.com/compare/v1.2.3...HEAD'),
   ).toBe(true);
   expect(out.includes('https://example.com/old')).toBe(false);
 });

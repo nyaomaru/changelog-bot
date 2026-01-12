@@ -10,7 +10,7 @@ import { safeJsonParse } from '@/utils/json.js';
 function buildHttpError(
   response: Response,
   text: string,
-  errorPrefix: string
+  errorPrefix: string,
 ): HttpError {
   const parsed = safeJsonParse<unknown>(text);
   return Object.assign(
@@ -18,7 +18,7 @@ function buildHttpError(
     {
       status: response.status,
       body: parsed ?? text,
-    }
+    },
   );
 }
 
@@ -30,7 +30,7 @@ function buildHttpError(
  */
 async function parseJsonResponse<T>(
   response: Response,
-  errorPrefix: string
+  errorPrefix: string,
 ): Promise<T> {
   const text = await response.text();
   if (!response.ok) {
@@ -57,7 +57,7 @@ export async function postJson<T>(
   url: string,
   payload: unknown,
   headers: Record<string, string>,
-  errorPrefix: string
+  errorPrefix: string,
 ): Promise<T> {
   const response = await fetch(url, {
     method: 'POST',
@@ -80,7 +80,7 @@ export async function postJson<T>(
 export async function getJson<T>(
   url: string,
   headers: Record<string, string>,
-  errorPrefix: string
+  errorPrefix: string,
 ): Promise<T> {
   const response = await fetch(url, { headers });
   return parseJsonResponse<T>(response, errorPrefix);

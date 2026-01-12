@@ -49,7 +49,7 @@ export function buildTitlesForClassification(items: ReleaseItem[]): string[] {
       out.push(
         REFACTOR_PERF_STYLE_PREFIX_FLEX_RE.test(lower)
           ? base
-          : `refactor: ${core}`
+          : `refactor: ${core}`,
       );
       continue;
     }
@@ -59,7 +59,7 @@ export function buildTitlesForClassification(items: ReleaseItem[]): string[] {
       out.push(
         REFACTOR_PERF_STYLE_PREFIX_FLEX_RE.test(lower)
           ? base
-          : `refactor: ${core}`
+          : `refactor: ${core}`,
       );
       continue;
     }

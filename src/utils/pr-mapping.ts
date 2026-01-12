@@ -51,7 +51,7 @@ function mergePrNumbers(...sources: Array<Iterable<number>>): number[] {
 function expandMergePrs(
   prsLog: string,
   repoPath: string,
-  prMapBySha: PrNumbersBySha
+  prMapBySha: PrNumbersBySha,
 ) {
   for (const line of prsLog.split('\n')) {
     const trimmed = line.trim();
@@ -64,7 +64,7 @@ function expandMergePrs(
     for (const commitSha of shasInMerge) {
       prMapBySha[commitSha] = mergePrNumbers(
         numbers,
-        prMapBySha[commitSha] ?? []
+        prMapBySha[commitSha] ?? [],
       );
     }
   }
@@ -115,7 +115,7 @@ export function buildPrMapBySha(options: {
 export function buildTitleToPr(
   commitList: CommitLite[],
   prsLog: string,
-  prMapBySha: PrNumbersBySha
+  prMapBySha: PrNumbersBySha,
 ): Record<string, number> {
   const titleToPr: Record<string, number> = {};
 

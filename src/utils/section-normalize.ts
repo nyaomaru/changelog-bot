@@ -43,7 +43,7 @@ export function normalizeSectionCategories(md: string): string {
   if (!md) return md;
   const lines = md.split('\n');
   const normalized = lines.map((line, index) =>
-    index === 0 ? normalizeReleaseHeader(line) : normalizeCategoryHeader(line)
+    index === 0 ? normalizeReleaseHeader(line) : normalizeCategoryHeader(line),
   );
   return normalized.join('\n').replace(/\n{3,}/g, '\n\n');
 }

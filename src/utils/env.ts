@@ -6,7 +6,7 @@ import type { Env } from '@/schema/env.js';
  */
 export function getEnv<K extends keyof Env>(
   key: K,
-  parsed?: Env
+  parsed?: Env,
 ): Env[K] | undefined {
   if (parsed) return parsed[key];
   return process.env[key] as unknown as Env[K] | undefined;

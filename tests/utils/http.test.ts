@@ -31,7 +31,7 @@ describe('http utils', () => {
       'https://api.example.com',
       { a: 1 },
       {},
-      'POST'
+      'POST',
     );
 
     expect(data.ok).toBe(1);
@@ -46,7 +46,7 @@ describe('http utils', () => {
     });
 
     await expect(
-      postJson('https://api.example.com', { a: 1 }, {}, 'X')
+      postJson('https://api.example.com', { a: 1 }, {}, 'X'),
     ).rejects.toMatchObject({ status: 400 });
   });
 
@@ -59,7 +59,7 @@ describe('http utils', () => {
     const data = await getJson<{ hello: string }>(
       'https://api.example.com',
       {},
-      'GET'
+      'GET',
     );
 
     expect(data.hello).toBe('world');
@@ -73,7 +73,7 @@ describe('http utils', () => {
     });
 
     await expect(
-      getJson('https://api.example.com', {}, 'GET')
+      getJson('https://api.example.com', {}, 'GET'),
     ).rejects.toMatchObject({ status: 500 });
   });
 });

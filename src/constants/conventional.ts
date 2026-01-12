@@ -26,7 +26,7 @@ export const COMMIT_TYPES = [
 //  - feat(scope)!: msg
 export const CONVENTIONAL_PREFIX_RE = new RegExp(
   `^(${COMMIT_TYPES.join('|')})(?:!:|(?:\\([^)]*\\))?!?:)\\s*`,
-  'i'
+  'i',
 );
 
 // Inline PR number forms

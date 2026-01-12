@@ -88,7 +88,7 @@ Example — logic combinator (public JSDoc):
  */
 export function and<A, B extends A>(
   precondition: Guard<A>,
-  condition: Refine<A, B>
+  condition: Refine<A, B>,
 ): (x: unknown) => x is B {
   /* ... */
 }

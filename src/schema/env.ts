@@ -25,7 +25,7 @@ export type Env = z.infer<typeof EnvSchema>;
  */
 export function ensureGithubTokenRequired(
   dryRun: boolean,
-  token?: string
+  token?: string,
 ): void {
   if (dryRun) return;
   if (!token) throw new Error('GITHUB_TOKEN is required to create PR.');

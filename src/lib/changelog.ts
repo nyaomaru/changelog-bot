@@ -29,7 +29,7 @@ export function readChangelog(path: string): string {
 export function insertSection(
   changelog: string,
   anchor: string,
-  newSection: string
+  newSection: string,
 ): string {
   const isHeading = /^##\s/.test(anchor);
   const safeAnchor = isHeading ? anchor : UNRELEASED_ANCHOR;
@@ -43,7 +43,7 @@ export function insertSection(
   // Using a lookahead ensures we stop before a line break or end-of-input.
   const anchorRegExp = new RegExp(
     `^${escapeRegExp(safeAnchor)}[^\\S\\r\\n]*(?=\\r?\\n|$)`,
-    'm'
+    'm',
   );
   const anchorMatch = changelog.match(anchorRegExp);
   if (anchorMatch && anchorMatch.index !== undefined) {
@@ -93,7 +93,7 @@ export function insertSection(
 export function updateCompareLinks(
   content: string,
   compareLine?: string,
-  unreleasedLine?: string
+  unreleasedLine?: string,
 ): string {
   let updatedContent = content;
 
@@ -114,7 +114,7 @@ export function updateCompareLinks(
     if (unreleasedLinkRegExp.test(updatedContent)) {
       updatedContent = updatedContent.replace(
         unreleasedLinkRegExp,
-        unreleasedLine
+        unreleasedLine,
       );
     } else if (!containsLine(unreleasedLine)) {
       updatedContent = `${updatedContent.trim()}\n\n${unreleasedLine}\n`;
@@ -165,15 +165,15 @@ export function hasSection(content: string, version: string): boolean {
 export function replaceSection(
   content: string,
   version: string,
-  newSection: string
+  newSection: string,
 ): string {
   // WHY: Consume the heading line to avoid zero-width matches that could
   // repeatedly match the same position. Non-greedy until next heading or EOF.
   const regExp = new RegExp(
     `^##\\s*\\[v${escapeRegExp(
-      version
+      version,
     )}\\][^\\n]*\\n[\\s\\S]*?(?=^##\\s*\\[|\\s*$)`,
-    'm'
+    'm',
   );
   if (!regExp.test(content)) return content;
   return content.replace(regExp, newSection.trim());
@@ -191,9 +191,9 @@ export function removeAllSections(content: string, version: string): string {
   // or EOF; also collapses runs of blank lines afterwards for cleanliness.
   const regExp = new RegExp(
     `^##\\s*\\[v${escapeRegExp(
-      version
+      version,
     )}\\][^\\n]*\\n[\\s\\S]*?(?=^##\\s*\\[|\\s*$)`,
-    'gm'
+    'gm',
   );
   return content
     .replace(regExp, '')
@@ -251,7 +251,7 @@ export function computeChangelog(
     insertAfterAnchor?: string;
     compareLine?: string;
     unreleasedLine?: string;
-  }
+  },
 ): string {
   const {
     version,
@@ -298,19 +298,15 @@ export function diffChangelog(oldText: string, newText: string): string {
     return header.join('\n');
   }
   if (oldLen === 0) {
-    return header
-      .concat(newLines.map((line) => '+' + line))
-      .join('\n');
+    return header.concat(newLines.map((line) => '+' + line)).join('\n');
   }
   if (newLen === 0) {
-    return header
-      .concat(oldLines.map((line) => '-' + line))
-      .join('\n');
+    return header.concat(oldLines.map((line) => '-' + line)).join('\n');
   }
 
   // Build the Longest Common Subsequence (LCS) matrix.
   const lcs: number[][] = Array.from({ length: oldLen + 1 }, () =>
-    Array(newLen + 1).fill(0)
+    Array(newLen + 1).fill(0),
   );
   for (let oldIdx = oldLen - 1; oldIdx >= 0; oldIdx--) {
     for (let newIdx = newLen - 1; newIdx >= 0; newIdx--) {
@@ -319,7 +315,7 @@ export function diffChangelog(oldText: string, newText: string): string {
       } else {
         lcs[oldIdx][newIdx] = Math.max(
           lcs[oldIdx + 1][newIdx],
-          lcs[oldIdx][newIdx + 1]
+          lcs[oldIdx][newIdx + 1],
         );
       }
     }

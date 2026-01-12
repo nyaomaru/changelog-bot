@@ -1,6 +1,9 @@
 // @ts-nocheck
 import { describe, test, expect } from '@jest/globals';
-import { stripConventionalPrefix, normalizeTitle } from '@/utils/title-normalize.js';
+import {
+  stripConventionalPrefix,
+  normalizeTitle,
+} from '@/utils/title-normalize.js';
 
 describe('title-normalize', () => {
   describe('stripConventionalPrefix', () => {
@@ -10,8 +13,12 @@ describe('title-normalize', () => {
     });
 
     test('handles breaking ! before colon', () => {
-      expect(stripConventionalPrefix('feat!: breaking change')).toBe('breaking change');
-      expect(stripConventionalPrefix('fix!: critical fix')).toBe('critical fix');
+      expect(stripConventionalPrefix('feat!: breaking change')).toBe(
+        'breaking change',
+      );
+      expect(stripConventionalPrefix('fix!: critical fix')).toBe(
+        'critical fix',
+      );
     });
 
     test('handles scope and ! after scope', () => {
@@ -33,4 +40,3 @@ describe('title-normalize', () => {
     });
   });
 });
-

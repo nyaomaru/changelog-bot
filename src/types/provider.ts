@@ -30,4 +30,3 @@ export interface Provider extends ProviderInfo {
   /** Generate structured output from normalized input. */
   generate(input: LLMInput): Promise<LLMOutput>;
 }
-

@@ -67,7 +67,7 @@ export class OpenAIProvider implements Provider {
       OPENAI_RESPONSES_API,
       base,
       { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      'OpenAI error'
+      'OpenAI error',
     );
     const outputText =
       resp.output_text || resp.output?.[0]?.content?.[0]?.text || '';

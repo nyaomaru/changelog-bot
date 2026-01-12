@@ -17,11 +17,11 @@ describe('output-json-schema', () => {
         'pr_title',
         'pr_body',
         'labels',
-      ])
+      ]),
     );
     // Required should include non-optional base fields
     expect(new Set(outputSchema.required)).toEqual(
-      new Set(['new_section_markdown', 'pr_title', 'pr_body'])
+      new Set(['new_section_markdown', 'pr_title', 'pr_body']),
     );
     expect(props.new_section_markdown).toEqual({ type: 'string' });
     expect(props.pr_title).toEqual({ type: 'string' });

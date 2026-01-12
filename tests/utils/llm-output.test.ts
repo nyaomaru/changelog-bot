@@ -43,13 +43,13 @@ describe('llm-output', () => {
     });
 
     expect(result.fallbackReasons).toContain(
-      'Missing API key for provider: openai'
+      'Missing API key for provider: openai',
     );
-    expect(result.llm.pr_body).toContain(
-      'Auto-generated CHANGELOG (fallback)'
-    );
+    expect(result.llm.pr_body).toContain('Auto-generated CHANGELOG (fallback)');
     expect(result.llm.pr_body).toContain('Generated without LLM');
-    expect(result.llm.new_section_markdown).toContain('## [v1.0.0] - 2024-01-01');
+    expect(result.llm.new_section_markdown).toContain(
+      '## [v1.0.0] - 2024-01-01',
+    );
     expect(result.llm.new_section_markdown).toContain('### Added');
     expect(result.llm.new_section_markdown).toContain('- add feature');
   });
@@ -74,10 +74,12 @@ describe('llm-output', () => {
     });
 
     expect(result.fallbackReasons).toContain(
-      'Used GitHub Release Notes as the source (no model call)'
+      'Used GitHub Release Notes as the source (no model call)',
     );
     expect(result.llm.pr_body).toContain('Generated without LLM');
-    expect(result.llm.new_section_markdown).toContain('## [v1.0.0] - 2024-01-01');
+    expect(result.llm.new_section_markdown).toContain(
+      '## [v1.0.0] - 2024-01-01',
+    );
     expect(result.llm.new_section_markdown).toContain('### Added');
     expect(result.llm.new_section_markdown).toContain('- Add feature');
   });

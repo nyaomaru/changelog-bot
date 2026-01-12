@@ -5,7 +5,10 @@ import { buildTitlesForClassification } from '@/utils/classify-pre.js';
 describe('classify-pre with scoring', () => {
   test('guides to refactor for improvement titles', () => {
     const items = [
-      { title: 'add pre-processing to improve classification', rawTitle: undefined },
+      {
+        title: 'add pre-processing to improve classification',
+        rawTitle: undefined,
+      },
     ];
     const out = buildTitlesForClassification(items);
     expect(out[0]).toMatch(/^refactor:/);

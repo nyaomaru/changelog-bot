@@ -32,4 +32,3 @@ describe('getEnv', () => {
     expect(getEnv('GITHUB_APP_ID', parsed)).toBeUndefined();
   });
 });
-

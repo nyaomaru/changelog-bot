@@ -67,10 +67,13 @@ interface FallbackSectionParams {
  * @returns Map of section name to empty string array.
  */
 function buildEmptyBuckets(): Record<BucketName, string[]> {
-  return SECTION_ORDER.reduce<Record<BucketName, string[]>>((acc, section) => {
-    acc[section] = [];
-    return acc;
-  }, {} as Record<BucketName, string[]>);
+  return SECTION_ORDER.reduce<Record<BucketName, string[]>>(
+    (acc, section) => {
+      acc[section] = [];
+      return acc;
+    },
+    {} as Record<BucketName, string[]>,
+  );
 }
 
 /**
@@ -121,7 +124,7 @@ function normalizeSubject(subject: string): string {
 function extractPrNumbers(
   sha: string,
   subject: string,
-  prMapBySha?: PrNumbersBySha
+  prMapBySha?: PrNumbersBySha,
 ): number[] | undefined {
   if (prMapBySha?.[sha]?.length) {
     return prMapBySha[sha];

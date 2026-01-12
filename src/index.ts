@@ -65,7 +65,7 @@ export async function runCli(): Promise<void> {
   let existing = readChangelog(changelogPath);
   existing = existing.replace(
     new RegExp(`\n[v${escapeRegExp(version)}]: .*\n?`, 'g'),
-    '\n'
+    '\n',
   );
 
   const commitList = commitsInRange(prevRef, releaseRef, repoPath);
@@ -127,7 +127,7 @@ export async function runCli(): Promise<void> {
     llm.new_section_markdown = postprocessSection(
       llm.new_section_markdown,
       titleToPr,
-      { owner, repo }
+      { owner, repo },
     );
   }
 
@@ -154,7 +154,7 @@ export async function runCli(): Promise<void> {
     !FULL_CHANGELOG_RE.test(llm.new_section_markdown)
   ) {
     const fullUrl = `https://github.com/${owner}/${repo}/compare/${encodeURIComponent(
-      prevRef
+      prevRef,
     )}...${encodeURIComponent(releaseRef)}`;
     llm.new_section_markdown = `${llm.new_section_markdown}\n**Full Changelog**: ${fullUrl}\n`;
   }

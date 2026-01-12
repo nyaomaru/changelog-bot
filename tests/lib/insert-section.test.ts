@@ -9,7 +9,7 @@ test('inserts after Unreleased with # Changelog header', () => {
   const result = insertSection(changelog, '# Changelog', newSection);
 
   expect(result).toBe(
-    '# Changelog\n\n## [Unreleased]\n\n## [v0.1.0]\n- foo\n\n'
+    '# Changelog\n\n## [Unreleased]\n\n## [v0.1.0]\n- foo\n\n',
   );
 });
 
@@ -29,6 +29,6 @@ test('inserts before existing version when header present', () => {
   const result = insertSection(changelog, '# Changelog', newSection);
 
   expect(result).toBe(
-    '# Changelog\n\n## [Unreleased]\n\n## [v0.2.0]\n- foo\n\n## [v0.1.0]\n- bar\n'
+    '# Changelog\n\n## [Unreleased]\n\n## [v0.2.0]\n- foo\n\n## [v0.1.0]\n- bar\n',
   );
 });

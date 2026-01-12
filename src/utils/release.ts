@@ -78,7 +78,7 @@ function extractAuthor(text: string): { author?: string; text: string } {
  */
 function extractPr(
   text: string,
-  repo?: RepoInfo
+  repo?: RepoInfo,
 ): {
   pr?: number;
   url?: string;
@@ -153,7 +153,7 @@ function parseWhatsChangedLines(lines: string[]): string[] {
  */
 function parseReleaseLine(
   line: string,
-  repo?: RepoInfo
+  repo?: RepoInfo,
 ): ReleaseItem | undefined {
   if (!line) return undefined;
   const text = stripBulletPrefix(line);
@@ -173,7 +173,7 @@ function parseReleaseLine(
  */
 function toReleaseSection(section: RawSection): ReleaseSection | undefined {
   const filteredLines = section.lines.filter(
-    (line) => !FULL_CHANGELOG_RE.test(line)
+    (line) => !FULL_CHANGELOG_RE.test(line),
   );
   const body = filteredLines.join('\n').trim();
   if (!body) return undefined;
@@ -188,7 +188,7 @@ function toReleaseSection(section: RawSection): ReleaseSection | undefined {
  */
 function extractFullChangelog(
   body: string,
-  repo?: RepoInfo
+  repo?: RepoInfo,
 ): string | undefined {
   const fullMatch = body.match(FULL_CHANGELOG_RE);
   if (!fullMatch) return undefined;
@@ -209,7 +209,7 @@ function extractFullChangelog(
  */
 export function parseReleaseNotes(
   body: string,
-  repo?: RepoInfo
+  repo?: RepoInfo,
 ): ParsedRelease {
   const items: ReleaseItem[] = [];
   const additionalSections: ReleaseSection[] = [];
@@ -217,7 +217,7 @@ export function parseReleaseNotes(
 
   const h2Sections = collectH2Sections(body);
   const whatsChangedSection = h2Sections.find((section) =>
-    /^What's Changed/i.test(section.heading)
+    /^What's Changed/i.test(section.heading),
   );
   const whatsChangedLines = whatsChangedSection
     ? parseWhatsChangedLines(whatsChangedSection.lines)

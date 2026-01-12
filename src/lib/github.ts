@@ -41,7 +41,7 @@ export async function fetchReleaseBody(
   owner: string,
   repo: string,
   tag: string,
-  token?: string
+  token?: string,
 ): Promise<string> {
   // GET /repos/{owner}/{repo}/releases/tags/{tag}
   const endpoint = `${API_BASE}/repos/${owner}/${repo}/releases/tags/${tag}`;
@@ -67,7 +67,7 @@ export async function fetchPRInfo(
   owner: string,
   repo: string,
   number: number,
-  token?: string
+  token?: string,
 ): Promise<{ author?: string; url?: string } | null> {
   const endpoint = `${API_BASE}/repos/${owner}/${repo}/pulls/${number}`;
   try {
@@ -96,7 +96,7 @@ export async function prsForCommit(
   owner: string,
   repo: string,
   sha: string,
-  token: string
+  token: string,
 ): Promise<PullRef[]> {
   // GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls
   const endpoint = `${API_BASE}/repos/${owner}/${repo}/commits/${sha}/pulls`;
@@ -123,7 +123,7 @@ export async function mapCommitsToPrs(
   owner: string,
   repo: string,
   shas: string[],
-  token: string
+  token: string,
 ): Promise<Record<string, PullRef[]>> {
   const commitToPullRefs: Record<string, PullRef[]> = {};
   for (const sha of shas.slice(0, PRS_LOOKUP_COMMIT_LIMIT)) {

@@ -3,7 +3,12 @@
  * WHY: Provide actionable, consistent failures and predictable process exits.
  */
 
-import { EXIT_DATA, EXIT_LLM, EXIT_USAGE, EXIT_VALIDATION } from '@/constants/errors.js';
+import {
+  EXIT_DATA,
+  EXIT_LLM,
+  EXIT_USAGE,
+  EXIT_VALIDATION,
+} from '@/constants/errors.js';
 
 /** Base application error with optional exit code hint. */
 export class AppError extends Error {

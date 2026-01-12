@@ -3,4 +3,3 @@
  * Captures the first non-space sequence after the colon.
  */
 export const FULL_CHANGELOG_RE = /Full Changelog[^:]*:\s*(\S+)/i;
-

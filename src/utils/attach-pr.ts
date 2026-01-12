@@ -38,7 +38,7 @@ function buildNormalizedLookup(titleToPr: TitleToPr): Map<string, number> {
       // Prefer the higher PR number (usually newer) and log for visibility.
       if (prNumber !== existing) {
         console.warn(
-          `Title collision: "${originalTitle}" -> "${key}" (PR #${prNumber} vs #${existing})`
+          `Title collision: "${originalTitle}" -> "${key}" (PR #${prNumber} vs #${existing})`,
         );
       }
       normalized.set(key, Math.max(existing, prNumber));
@@ -69,7 +69,7 @@ function splitBulletLine(line: string): BulletParts | undefined {
  */
 function findMatchingPrNumber(
   normalizedBulletText: string,
-  normalizedTitleToPr: Map<string, number>
+  normalizedTitleToPr: Map<string, number>,
 ): number | undefined {
   const direct = normalizedTitleToPr.get(normalizedBulletText);
   if (direct) return direct;
@@ -95,7 +95,7 @@ function findMatchingPrNumber(
 export function attachPrNumbers(
   md: string,
   titleToPr: TitleToPr,
-  repo?: { owner: string; repo: string }
+  repo?: { owner: string; repo: string },
 ): string {
   const normalizedTitleToPr = buildNormalizedLookup(titleToPr);
 
@@ -110,7 +110,7 @@ export function attachPrNumbers(
     const normalizedBulletText = normalizeTitle(bulletParts.text);
     const matchedPrNumber = findMatchingPrNumber(
       normalizedBulletText,
-      normalizedTitleToPr
+      normalizedTitleToPr,
     );
 
     if (!matchedPrNumber) return line;
