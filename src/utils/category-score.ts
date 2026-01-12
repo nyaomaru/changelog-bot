@@ -251,7 +251,10 @@ export const SCORE_THRESHOLDS = {
 // Use centralized BucketName type for section identifiers.
 type SectionName = BucketName;
 
-type KeywordIndex = Map<string, Array<{ section: SectionName; weight: number }>>;
+type KeywordIndex = Map<
+  string,
+  Array<{ section: SectionName; weight: number }>
+>;
 
 // WHY: Build keyword indices once at module init time to avoid per-call allocation.
 /**
@@ -263,7 +266,7 @@ function buildStrongKeywordIndex(): KeywordIndex {
   const add = (
     section: SectionName,
     entry: string | { keyword: string; weight: number },
-    defaultWeight = WEIGHT.strong.default
+    defaultWeight = WEIGHT.strong.default,
   ) => {
     const { keyword, weight } =
       typeof entry === 'string'
@@ -359,7 +362,7 @@ export function scoreCategories(rawTitle: string): CategoryScores {
       triGrams.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
   }
   const normalizedPhrases = new Set<string>(
-    useNgrams ? [...words, ...biGrams, ...triGrams] : words
+    useNgrams ? [...words, ...biGrams, ...triGrams] : words,
   );
 
   // Prefix family
@@ -376,7 +379,7 @@ export function scoreCategories(rawTitle: string): CategoryScores {
       CATEGORY_WEIGHTS.prefix.refactor,
       PERF_PREFIX_FLEX_RE.test(lowercasedTitle)
         ? CATEGORY_WEIGHTS.prefix.perf
-        : CATEGORY_WEIGHTS.prefix.refactor
+        : CATEGORY_WEIGHTS.prefix.refactor,
     );
   }
   if (DOCS_PREFIX_FLEX_RE.test(lowercasedTitle))
@@ -399,7 +402,7 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     for (const { section, weight } of keywordHits) {
       strongFamilyDeltas[section] = Math.max(
         strongFamilyDeltas[section] || 0,
-        weight
+        weight,
       );
     }
   }
@@ -414,7 +417,7 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     for (const { section, weight } of keywordHits) {
       weakFamilyDeltas[section] = Math.max(
         weakFamilyDeltas[section] || 0,
-        weight
+        weight,
       );
     }
   }
@@ -423,7 +426,7 @@ export function scoreCategories(rawTitle: string): CategoryScores {
 
   // Negative signals family (attenuation applied to strongest of Fixed/Changed/Added)
   const hasNegative = CATEGORY_WEIGHTS.negative.some(({ keyword }) =>
-    normalizedPhrases.has(keyword)
+    normalizedPhrases.has(keyword),
   );
   if (hasNegative) {
     const candidateSections: SectionName[] = [
@@ -442,7 +445,7 @@ export function scoreCategories(rawTitle: string): CategoryScores {
     if (bestSection) {
       scores[bestSection] = Math.max(
         scores[bestSection] - NEGATIVE_ATTENUATION_WEIGHT,
-        0
+        0,
       );
     }
   }

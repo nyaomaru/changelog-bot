@@ -6,10 +6,7 @@ import {
   DEFAULT_BASE_BRANCH,
   DEFAULT_CHANGELOG_FILE,
 } from '@/constants/git.js';
-import {
-  PROVIDER_ANTHROPIC,
-  PROVIDER_OPENAI,
-} from '@/constants/provider.js';
+import { PROVIDER_ANTHROPIC, PROVIDER_OPENAI } from '@/constants/provider.js';
 
 describe('cli-args', () => {
   test('parses defaults with minimal argv', async () => {

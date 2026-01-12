@@ -92,7 +92,7 @@ type RequestConfig = {
  */
 function buildAnthropicRequest(
   apiKey: string,
-  prompt: ClassificationPrompt
+  prompt: ClassificationPrompt,
 ): RequestConfig {
   // Define a structured output schema via tools to force JSON.
   const properties: Record<string, unknown> = {};
@@ -136,7 +136,7 @@ function buildAnthropicRequest(
  */
 function buildOpenAiRequest(
   apiKey: string,
-  prompt: ClassificationPrompt
+  prompt: ClassificationPrompt,
 ): RequestConfig {
   const payload = {
     model: DEFAULT_OPENAI_MODEL,
@@ -167,7 +167,7 @@ function buildOpenAiRequest(
 function buildClassifyRequest(
   provider: ProviderName,
   apiKey: string,
-  prompt: ClassificationPrompt
+  prompt: ClassificationPrompt,
 ): RequestConfig {
   return provider === PROVIDER_ANTHROPIC
     ? buildAnthropicRequest(apiKey, prompt)
@@ -209,7 +209,7 @@ function parseCategoryMap(rawJson: string): CategoryMap | undefined {
  */
 export async function classifyTitles(
   titles: string[],
-  provider: ProviderName
+  provider: ProviderName,
 ): Promise<CategoryMap> {
   if (!titles.length) return {};
   const prompt: ClassificationPrompt = { titles, categories: SECTION_ORDER };
@@ -228,7 +228,7 @@ export async function classifyTitles(
       req.url,
       req.payload,
       req.headers,
-      req.errorPrefix
+      req.errorPrefix,
     );
     const text = req.extract(json) || '{}';
     const parsed = parseCategoryMap(text);

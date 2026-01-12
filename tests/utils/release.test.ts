@@ -27,7 +27,7 @@ describe('release utils', () => {
     expect(first.url).toBe('https://github.com/acme/repo/pull/123');
     expect(second.pr).toBe(456);
     expect(parsed.fullChangelog).toBe(
-      'https://github.com/acme/repo/compare/v0.1.0...v0.1.1'
+      'https://github.com/acme/repo/compare/v0.1.0...v0.1.1',
     );
     expect(parsed.sections?.length).toBe(1);
     expect(parsed.sections?.[0]).toEqual({
@@ -63,14 +63,14 @@ describe('release utils', () => {
     expect(section).toContain('## [v0.1.1] - 2024-01-01');
     expect(section).toContain('### Added');
     expect(section).toContain(
-      '- Add thing by @alice in [#123](https://github.com/acme/repo/pull/123)'
+      '- Add thing by @alice in [#123](https://github.com/acme/repo/pull/123)',
     );
     expect(section).toContain(
-      '**Full Changelog**: https://github.com/acme/repo/compare/v0.1.0...v0.1.1'
+      '**Full Changelog**: https://github.com/acme/repo/compare/v0.1.0...v0.1.1',
     );
     expect(section).toContain('### Release Notes');
     expect(section).toContain(
-      'Remember to update configuration files manually.'
+      'Remember to update configuration files manually.',
     );
   });
 });

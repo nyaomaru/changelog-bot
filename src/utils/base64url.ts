@@ -10,4 +10,3 @@ export function base64url(input: string | Buffer): string {
     .replace(/\+/g, '-')
     .replace(/\//g, '_');
 }
-

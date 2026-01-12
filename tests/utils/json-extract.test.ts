@@ -30,7 +30,7 @@ describe('extractJsonObject', () => {
 
   it('throws a descriptive error when no JSON object is present', () => {
     expect(() => extractJsonObject('No JSON available here.')).toThrow(
-      'Failed to parse JSON from model output'
+      'Failed to parse JSON from model output',
     );
   });
 });

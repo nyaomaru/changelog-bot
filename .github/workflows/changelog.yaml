@@ -9,11 +9,11 @@ on:
       base_branch:
         required: false
         type: string
-        default: "main"
+        default: 'main'
       provider:
         required: false
         type: string
-        default: "openai"
+        default: 'openai'
       release_tag:
         required: false
         type: string
@@ -26,7 +26,7 @@ on:
       dry_run:
         required: false
         type: string
-        default: "false"
+        default: 'false'
     secrets:
       REPO_TOKEN:
         required: true

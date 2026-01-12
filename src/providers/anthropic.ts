@@ -60,7 +60,7 @@ export class AnthropicProvider implements Provider {
         'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
         'anthropic-version': ANTHROPIC_VERSION,
       },
-      'Anthropic error'
+      'Anthropic error',
     );
     const outputText = json.content?.[0]?.text ?? '';
     return extractJsonObject<LLMOutput>(outputText);

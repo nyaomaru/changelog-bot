@@ -12,4 +12,3 @@ export function flexPrefixRe(types: string | string[]): RegExp {
   // Pattern: ^(type)(!:|(\(scope\))?:|(\(scope\))!:) with non-capturing alternation for scope and breaking marker
   return new RegExp(`^(${body})(?:!:|(?:\\([^)]*\\))?!?:)`, 'i');
 }
-

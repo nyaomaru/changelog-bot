@@ -29,7 +29,7 @@ import type { BucketName } from '@/types/changelog.js';
 function moveTitlesToCategory(
   adjusted: CategoryMap,
   titles: string[],
-  targetCategory: string
+  targetCategory: string,
 ): void {
   if (!Array.isArray(adjusted[targetCategory])) adjusted[targetCategory] = [];
   const target = adjusted[targetCategory];
@@ -153,7 +153,7 @@ export function isChangeLikeTitle(rawTitle: string): boolean {
  */
 export function tuneCategoriesByTitle(
   items: ReleaseItem[],
-  categories: CategoryMap
+  categories: CategoryMap,
 ): CategoryMap {
   if (!items.length) return categories;
 
@@ -176,7 +176,7 @@ export function tuneCategoriesByTitle(
     Object.entries(categories).map(([section, list]) => [
       section,
       Array.isArray(list) ? list.slice() : [],
-    ])
+    ]),
   );
   if (!adjusted[SECTION_FIXED]) adjusted[SECTION_FIXED] = [];
   if (!adjusted[SECTION_CHANGED]) adjusted[SECTION_CHANGED] = [];

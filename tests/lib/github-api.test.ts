@@ -11,7 +11,7 @@ type JestEnvironment = typeof jestGlobal;
 type GetJsonMockFn = (
   url: string,
   headers: Record<string, string>,
-  errorPrefix: string
+  errorPrefix: string,
 ) => Promise<unknown>;
 
 type UnstableMockModule = (

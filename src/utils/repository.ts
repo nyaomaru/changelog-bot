@@ -8,7 +8,7 @@ export function getRepoFullName(): string {
   const repoFull = process.env.REPO_FULL_NAME ?? process.env.GITHUB_REPOSITORY;
   if (!repoFull || !repoFull.includes('/')) {
     console.error(
-      'REPO_FULL_NAME or GITHUB_REPOSITORY is required (owner/repo).'
+      'REPO_FULL_NAME or GITHUB_REPOSITORY is required (owner/repo).',
     );
     process.exit(1);
   }

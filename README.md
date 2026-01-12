@@ -243,7 +243,7 @@ Environment:
 
 Use a GitHub App instead of a PAT so PRs come from your bot account and permissions are least‑privilege.
 
-1) Using the published Action with a GitHub App
+1. Using the published Action with a GitHub App
 
 ```yaml
 name: Update Changelog (App Auth)
@@ -256,8 +256,8 @@ jobs:
   changelog:
     runs-on: ubuntu-latest
     permissions:
-      contents: write         # to push branch
-      pull-requests: write    # to open PR
+      contents: write # to push branch
+      pull-requests: write # to open PR
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -282,7 +282,7 @@ jobs:
           # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-2) Running the CLI directly with a GitHub App
+2. Running the CLI directly with a GitHub App
 
 ```yaml
 name: Update Changelog (App Auth)
@@ -321,6 +321,7 @@ jobs:
 ```
 
 Notes
+
 - Paste the App private key into a repository/organization secret as a multiline PEM; secrets preserve newlines.
 - If you also provide `GITHUB_TOKEN`, PAT takes precedence and the run will use the PAT path.
 

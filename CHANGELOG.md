@@ -181,7 +181,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New Contributors
 
-* @changelogbotapp[bot] made their first contribution in https://github.com/nyaomaru/changelog-bot/pull/37
+- @changelogbotapp[bot] made their first contribution in https://github.com/nyaomaru/changelog-bot/pull/37
 
 **Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.0.8
 

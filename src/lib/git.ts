@@ -19,7 +19,7 @@ const SAFE_SHA_PATTERN = /^[0-9a-f]{7,40}$/i;
 function assertSafeGitRef(value: string, label: string): void {
   if (!SAFE_REF_PATTERN.test(value) && !SAFE_SHA_PATTERN.test(value)) {
     throw new Error(
-      `Invalid ${label}: "${value}" contains unsupported characters.`
+      `Invalid ${label}: "${value}" contains unsupported characters.`,
     );
   }
 }
@@ -65,7 +65,7 @@ export function tryDetectLatestTag(cwd?: string): string | null {
 /** Detect the previous tag relative to the given tag. */
 export function tryDetectPrevTag(
   currentTag: string,
-  cwd?: string
+  cwd?: string,
 ): string | null {
   assertSafeGitRef(currentTag, 'current tag');
   return tryRun(['describe', '--tags', '--abbrev=0', `${currentTag}^`], cwd);
@@ -83,7 +83,7 @@ export function gitMergedPRs(from: string, to: string, cwd?: string): string {
   assertSafeGitRef(to, 'to ref');
   return run(
     ['log', '--merges', '--pretty=format:%H %b', `${from}..${to}`],
-    cwd
+    cwd,
   );
 }
 

@@ -15,7 +15,7 @@ test('emits only context lines when texts are identical', () => {
   // No +/- lines when identical (ignore header lines)
   const bodyLines = lines.slice(2);
   expect(bodyLines.some((l) => l.startsWith('+') || l.startsWith('-'))).toBe(
-    false
+    false,
   );
   // Context lines match input
   expect(diff.includes(' # Changelog')).toBe(true);

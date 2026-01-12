@@ -24,7 +24,7 @@ export const isNullable = define<null | undefined>((value) => value == null);
  * @returns True when the value is an object and not null.
  */
 export const isRecord = define<Record<string | number | symbol, unknown>>(
-  (value) => isObject(value) && !isNull(value)
+  (value) => isObject(value) && !isNull(value),
 );
 
 /**
@@ -56,5 +56,5 @@ export function isBulletLine(line: string): boolean {
 export const isBucketName = define<BucketName>(
   (section) =>
     typeof section === 'string' &&
-    (SECTION_ORDER as readonly string[]).includes(section)
+    (SECTION_ORDER as readonly string[]).includes(section),
 );

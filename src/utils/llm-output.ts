@@ -58,12 +58,12 @@ export type BuildLlmOutputResult = {
  * @returns Output payload plus metadata about LLM usage.
  */
 export async function buildChangelogLlmOutput(
-  params: BuildLlmOutputParams
+  params: BuildLlmOutputParams,
 ): Promise<BuildLlmOutputResult> {
   const fallbackReasons: string[] = [];
   const fromRelease = await buildOutputFromReleaseNotes(
     params,
-    fallbackReasons
+    fallbackReasons,
   );
   if (fromRelease) return fromRelease;
 
@@ -77,7 +77,7 @@ function buildPrUrl(owner: string, repo: string, prNumber: number): string {
 function buildAutoPrBody(
   prevRef: string,
   releaseRef: string,
-  isFallback: boolean
+  isFallback: boolean,
 ): string {
   const prefix = isFallback
     ? 'Auto-generated CHANGELOG (fallback)'
@@ -94,7 +94,7 @@ function appendFallbackNote(prBody: string, fallbackReasons: string[]): string {
 
 function resolvePrFromTitles(
   titleToPr: TitleToPrMap,
-  titles: Array<string | undefined>
+  titles: Array<string | undefined>,
 ): number | undefined {
   const candidateKeys = titles
     .filter(Boolean)
@@ -150,7 +150,7 @@ async function enrichReleaseItems(params: {
 
 function buildLogsForLLM(
   commitList: CommitLite[],
-  prMapBySha: PrNumbersBySha
+  prMapBySha: PrNumbersBySha,
 ): string {
   return commitList
     .map((commit) => {
@@ -169,26 +169,27 @@ function applyLlmDefaults(
     version: string;
     prevRef: string;
     releaseRef: string;
-  }
+  },
 ): LLMOutput {
   const output: LLMOutput = { ...llm };
   if (output.new_section_markdown) {
     output.new_section_markdown = normalizeSectionCategories(
-      output.new_section_markdown
+      output.new_section_markdown,
     );
   }
   if (!output.pr_title) output.pr_title = `${PR_TITLE_PREFIX}${params.version}`;
   if (!output.pr_body) {
     output.pr_body = buildAutoPrBody(params.prevRef, params.releaseRef, false);
   }
-  if (!output.insert_after_anchor) output.insert_after_anchor = UNRELEASED_ANCHOR;
+  if (!output.insert_after_anchor)
+    output.insert_after_anchor = UNRELEASED_ANCHOR;
   if (!output.labels) output.labels = [...DEFAULT_PR_LABELS];
   return output;
 }
 
 async function buildOutputFromReleaseNotes(
   params: BuildLlmOutputParams,
-  fallbackReasons: string[]
+  fallbackReasons: string[],
 ): Promise<BuildLlmOutputResult | null> {
   const {
     owner,
@@ -207,7 +208,9 @@ async function buildOutputFromReleaseNotes(
   const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
   if (!parsedRelease.items.length) return null;
 
-  fallbackReasons.push('Used GitHub Release Notes as the source (no model call)');
+  fallbackReasons.push(
+    'Used GitHub Release Notes as the source (no model call)',
+  );
   let aiUsed = false;
 
   await enrichReleaseItems({
@@ -251,7 +254,7 @@ async function buildOutputFromReleaseNotes(
 
 async function buildOutputFromModelOrFallback(
   params: BuildLlmOutputParams,
-  fallbackReasons: string[]
+  fallbackReasons: string[],
 ): Promise<BuildLlmOutputResult> {
   const {
     owner,
@@ -307,7 +310,7 @@ async function buildOutputFromModelOrFallback(
         logs: commitList
           .map(
             (commit) =>
-              `${commit.sha.slice(0, SHA_SHORT_LENGTH)} ${commit.subject}`
+              `${commit.sha.slice(0, SHA_SHORT_LENGTH)} ${commit.subject}`,
           )
           .join('\n'),
         prs,

@@ -120,4 +120,3 @@ test('compare link append and unreleased update', () => {
   const compareMatches2 = again.match(/^\[v1\.1\.0\]: .+$/gm) || [];
   expect(compareMatches2.length).toBe(1);
 });
-

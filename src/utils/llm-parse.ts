@@ -13,7 +13,7 @@ import { LLM_TRUNCATE_LIMIT } from '@/constants/prompt.js';
  */
 export async function parseOrRetryLLMOutput(
   provider: Provider,
-  input: LLMInput
+  input: LLMInput,
 ): Promise<LLMOutput> {
   const attempts: LLMInput[] = [
     input,
@@ -43,11 +43,8 @@ export async function parseOrRetryLLMOutput(
   if (lastWasProviderError) {
     // Wrap provider errors for clearer upstream handling after retries.
     throw new LlmError(
-      lastErr instanceof Error ? lastErr.message : 'Unknown LLM provider error'
+      lastErr instanceof Error ? lastErr.message : 'Unknown LLM provider error',
     );
   }
-  throw new ValidationError(
-    'LLM output did not match schema after retry'
-  );
+  throw new ValidationError('LLM output did not match schema after retry');
 }
-

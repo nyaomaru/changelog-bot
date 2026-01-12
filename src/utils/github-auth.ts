@@ -63,7 +63,7 @@ function createAppJwt(appId: string, privateKey: string): string {
     throw new Error(
       `Failed to sign GitHub App JWT with provided private key: ${msg}. ` +
         'Check that GITHUB_APP_PRIVATE_KEY contains a valid PEM (BEGIN PRIVATE KEY / BEGIN RSA PRIVATE KEY), ' +
-        'newlines are preserved (use literal PEM or \\n escapes), and the key is unencrypted.'
+        'newlines are preserved (use literal PEM or \\n escapes), and the key is unencrypted.',
     );
   }
   return `${data}.${base64url(signature)}`;
@@ -90,7 +90,7 @@ function ghHeaders(auth?: string): Record<string, string> {
  */
 export async function resolveGitHubAuth(
   owner: string,
-  repo: string
+  repo: string,
 ): Promise<GitHubAuth | undefined> {
   const parsed = EnvSchema.safeParse(process.env);
   const parsedEnv: Env | undefined = parsed.success ? parsed.data : undefined;
@@ -114,7 +114,9 @@ export async function resolveGitHubAuth(
     const inst = await getJson<unknown>(instUrl, ghHeaders(jwt), 'GitHub API');
     const parsed = GitHubInstallationSchema.safeParse(inst);
     if (!parsed.success) {
-      throw new Error(`Failed to detect GitHub App installation for ${owner}/${repo}. Ensure the GitHub App is installed on this repository and has the required permissions.`);
+      throw new Error(
+        `Failed to detect GitHub App installation for ${owner}/${repo}. Ensure the GitHub App is installed on this repository and has the required permissions.`,
+      );
     }
     installationId = String(parsed.data.id);
   }
@@ -125,11 +127,13 @@ export async function resolveGitHubAuth(
     tokenUrl,
     {},
     ghHeaders(jwt),
-    'GitHub API'
+    'GitHub API',
   );
   const parsedToken = GitHubAccessTokenSchema.safeParse(tokenRes);
   if (!parsedToken.success) {
-    throw new Error(`Failed to create installation access token for installation ${installationId}. Verify the GitHub App has the required permissions and the installation is active.`);
+    throw new Error(
+      `Failed to create installation access token for installation ${installationId}. Verify the GitHub App has the required permissions and the installation is active.`,
+    );
   }
 
   return {

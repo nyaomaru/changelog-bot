@@ -17,7 +17,7 @@ type BuildLLMInput = Omit<LLMInput, 'changelogPreview'> & {
 export function buildLLMInput(input: BuildLLMInput): LLMInput {
   const changelogPreview = (input.changelog ?? '').slice(
     0,
-    CHANGELOG_PREVIEW_LIMIT
+    CHANGELOG_PREVIEW_LIMIT,
   );
   return {
     repo: input.repo,

@@ -41,4 +41,3 @@ describe('category-score', () => {
     expect(bestCategory(s)).toBe('Fixed');
   });
 });
-

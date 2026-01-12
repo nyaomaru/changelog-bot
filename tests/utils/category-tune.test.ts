@@ -14,7 +14,12 @@ describe('tuneCategoriesByTitle', () => {
   });
 
   test('moves refactor-like titles to Changed', () => {
-    const items: ReleaseItem[] = [{ title: 'refactor: internal pipeline', rawTitle: 'refactor: internal pipeline' }];
+    const items: ReleaseItem[] = [
+      {
+        title: 'refactor: internal pipeline',
+        rawTitle: 'refactor: internal pipeline',
+      },
+    ];
     const categories: CategoryMap = { Chore: ['refactor: internal pipeline'] };
     const out = tuneCategoriesByTitle(items, categories);
     expect(out.Changed).toContain('refactor: internal pipeline');
@@ -22,9 +27,14 @@ describe('tuneCategoriesByTitle', () => {
 
   test('moves feat: titles to Added', () => {
     const items: ReleaseItem[] = [
-      { title: 'Support GitHub App auth', rawTitle: 'feat: Support GitHub App auth' },
+      {
+        title: 'Support GitHub App auth',
+        rawTitle: 'feat: Support GitHub App auth',
+      },
     ];
-    const categories: CategoryMap = { Chore: ['feat: Support GitHub App auth'] };
+    const categories: CategoryMap = {
+      Chore: ['feat: Support GitHub App auth'],
+    };
     const out = tuneCategoriesByTitle(items, categories);
     expect(out.Added).toContain('feat: Support GitHub App auth');
     // Ensure it is removed from Chore

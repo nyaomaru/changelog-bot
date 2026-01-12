@@ -3,7 +3,7 @@
 // Mock crypto signing so we don't need a real PEM
 // WHY: ESM-style Jest puts helpers under '@jest/globals'; typings for this subpath can be
 // finicky with NodeNext + ts-jest. Import with a targeted suppression to keep the test focused.
- 
+
 // @ts-ignore -- runtime module exists; types are covered by "types: ['jest']" in tsconfig.tests.json
 import { jest } from '@jest/globals';
 // @ts-ignore: ESM mocking API is available at runtime; typings for unstable_mockModule are missing in @types/jest.
@@ -55,8 +55,7 @@ describe('github-auth utils', () => {
     process.env.CHANGELOG_BOT_APP_PRIVATE_KEY =
       '-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n';
 
-    const calls: Array<{ url: string; options: FetchOptions }>
-      = [];
+    const calls: Array<{ url: string; options: FetchOptions }> = [];
     // Mock fetch for: GET /repos/{owner}/{repo}/installation then POST /app/installations/{id}/access_tokens
     global.fetch = jest
       .fn()

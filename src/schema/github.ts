@@ -21,7 +21,7 @@ export const GitHubCommitPullsItemSchema = z.object({
 });
 
 export const GitHubCommitPullsArraySchema = z.array(
-  GitHubCommitPullsItemSchema
+  GitHubCommitPullsItemSchema,
 );
 
 export type GitHubReleaseByTagParsed = z.infer<typeof GitHubReleaseByTagSchema>;

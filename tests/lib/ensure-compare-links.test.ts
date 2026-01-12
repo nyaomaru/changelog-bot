@@ -14,7 +14,7 @@ test('creates compare link for HEAD release', () => {
   });
 
   expect(compareLine).toBe(
-    '[v0.2.0]: https://github.com/foo/bar/compare/v0.1.0...HEAD'
+    '[v0.2.0]: https://github.com/foo/bar/compare/v0.1.0...HEAD',
   );
   expect(unreleasedLine).toBeUndefined();
 });

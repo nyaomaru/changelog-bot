@@ -78,7 +78,9 @@ function main() {
     console.error(`- ${issue.filePath} [${issue.patternName}] @${issue.index}`);
     console.error(`  ${issue.snippet}`);
   }
-  console.error('\nError: Found unresolved alias imports (e.g., "@/"). Run `pnpm build` to rewrite paths with tsc-alias.');
+  console.error(
+    '\nError: Found unresolved alias imports (e.g., "@/"). Run `pnpm build` to rewrite paths with tsc-alias.',
+  );
   process.exit(1);
 }
 

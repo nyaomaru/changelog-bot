@@ -53,4 +53,3 @@ describe('typed errors and exit codes', () => {
     expect(mapErrorToExitCode('not an error')).toBe(1);
   });
 });
-

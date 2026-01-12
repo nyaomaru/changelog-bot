@@ -12,7 +12,7 @@ function applySection(
   existing: string,
   version: string,
   anchor: string,
-  section: string
+  section: string,
 ): string {
   if (hasDuplicateVersion(existing, version)) {
     existing = removeAllSections(existing, version);
@@ -31,13 +31,13 @@ test('re-running keeps a single section per version', () => {
     `${anchor}\n\n`,
     version,
     anchor,
-    `## [v${version}] - 2024-01-01\n- foo`
+    `## [v${version}] - 2024-01-01\n- foo`,
   );
   const second = applySection(
     first,
     version,
     anchor,
-    `## [v${version}] - 2024-01-01\n- bar`
+    `## [v${version}] - 2024-01-01\n- bar`,
   );
   const regExp = new RegExp(`^##\\s*\\[v${version}\\]`, 'gm');
   const count = (second.match(regExp) || []).length;

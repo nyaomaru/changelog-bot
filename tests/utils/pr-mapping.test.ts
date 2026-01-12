@@ -10,9 +10,8 @@ await jest.unstable_mockModule('@/lib/git.js', () => ({
   commitsFromMerge: jest.fn(() => ['c2', 'c3']),
 }));
 
-const { buildPrMapBySha, buildTitleToPr } = await import(
-  '@/utils/pr-mapping.js'
-);
+const { buildPrMapBySha, buildTitleToPr } =
+  await import('@/utils/pr-mapping.js');
 
 describe('pr-mapping utils', () => {
   beforeEach(() => {
