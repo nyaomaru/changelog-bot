@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.8] - 2026-01-12
+
+### Fixed
+
+- npm publish error by @nyaomaru in [#72](https://github.com/nyaomaru/changelog-bot/pull/72)
+
+### Docs
+
+- 0.1.7 by [bot] by @github-actions in [#71](https://github.com/nyaomaru/changelog-bot/pull/71)
+
+### Chore
+
+- add prettier by @nyaomaru in [#73](https://github.com/nyaomaru/changelog-bot/pull/73)
+- add lefthook by @nyaomaru in [#74](https://github.com/nyaomaru/changelog-bot/pull/74)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.8
+
+[v0.1.8]: https://github.com/nyaomaru/changelog-bot/compare/v0.1.7...v0.1.8
+
 ## [v0.1.7] - 2026-01-03
 
 ### Fixed
