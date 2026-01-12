@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "check:dist": "node scripts/check-dist-alias.mjs",
     "prepack": "pnpm build",
+    "prepare": "lefthook install",
     "prepublishOnly": "pnpm build && pnpm run check:dist"
   },
   "files": [
@@ -60,6 +61,7 @@
     "globals": "^16.4.0",
     "jest": "^29.7.0",
     "jiti": "^2.6.1",
+    "lefthook": "^2.0.13",
     "prettier": "3.7.4",
     "ts-jest": "29",
     "ts-node": "^10.9.2",
