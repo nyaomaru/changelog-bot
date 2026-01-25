@@ -10,9 +10,9 @@ import {
   normalizeTitle,
 } from '@/utils/title-normalize.js';
 import { FULL_CHANGELOG_RE } from '@/constants/release.js';
+import { BULLET_PREFIX_RE } from '@/constants/markdown.js';
 
 const H2_HEADING_RE = /^##\s+(.*)$/;
-const BULLET_PREFIX_RE = /^[*-]\s+/;
 const PR_URL_RE = /https?:\/\/\S+\/pull\/(\d+)/; // captures PR number
 const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
 const AUTHOR_RE = /@([A-Za-z0-9_-]+)/;

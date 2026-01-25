@@ -53,4 +53,25 @@ describe('tuneCategoriesByTitle', () => {
     expect(out.Added).toContain('feat(core)!: new something');
     expect(out.Fixed).toContain('fix(api)!: patch issue');
   });
+
+  test('keeps dependency-only updates in Chore', () => {
+    const items: ReleaseItem[] = [
+      {
+        title: 'Update dependency prettier to v3.8.0',
+        rawTitle: 'chore(deps): Update dependency prettier to v3.8.0',
+      },
+    ];
+    const categories: CategoryMap = {
+      Changed: ['chore(deps): Update dependency prettier to v3.8.0'],
+    };
+    const out = tuneCategoriesByTitle(items, categories);
+    expect(out.Chore).toContain(
+      'chore(deps): Update dependency prettier to v3.8.0',
+    );
+    expect(
+      out.Changed?.includes(
+        'chore(deps): Update dependency prettier to v3.8.0',
+      ),
+    ).toBeFalsy();
+  });
 });

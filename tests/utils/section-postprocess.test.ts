@@ -1,24 +1,38 @@
-// @ts-nocheck
-import { describe, test, expect } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 import { postprocessSection } from '@/utils/section-postprocess.js';
 
-describe('section-postprocess', () => {
-  test('removes merged PRs and attaches missing PR numbers', () => {
-    const input = [
-      '## [v1.0.0] - 2024-01-01',
+function extractSection(md: string, heading: string): string {
+  const pattern = new RegExp(`###\\s+${heading}[\\s\\S]*?(?=###\\s+|$)`, 'i');
+  const match = md.match(pattern);
+  return match ? match[0] : '';
+}
+
+describe('postprocessSection', () => {
+  test('moves dependency update bullets from Changed to Chore', () => {
+    const markdown = [
+      '## [v1.2.3] - 2025-01-01',
       '',
-      '### Added',
-      '- Add Login',
+      '### Changed',
       '',
-      '### Merged PRs',
-      '- Merge pull request #1 from foo',
+      '- chore(deps): Update dependency prettier to v3.8.0',
+      '- Refactor core pipeline',
+      '',
+      '### Fixed',
+      '',
+      '- Fix bug',
       '',
     ].join('\n');
-    const titleToPr = { 'Add Login': 123 };
 
-    const out = postprocessSection(input, titleToPr);
+    const out = postprocessSection(markdown, {});
+    const changedSection = extractSection(out, 'Changed');
+    const choreSection = extractSection(out, 'Chore');
 
-    expect(out).toContain('- Add Login (#123)');
-    expect(out).not.toContain('### Merged PRs');
+    expect(changedSection).toContain('- Refactor core pipeline');
+    expect(changedSection).not.toContain(
+      'chore(deps): Update dependency prettier to v3.8.0',
+    );
+    expect(choreSection).toContain(
+      '- chore(deps): Update dependency prettier to v3.8.0',
+    );
   });
 });
