@@ -21,6 +21,12 @@ type FetchOptions = {
   headers?: Record<string, string>;
 } & Record<string, unknown>;
 
+type FetchMock = jest.MockedFunction<typeof fetch>;
+
+function createFetchMock(): FetchMock {
+  return jest.fn() as FetchMock;
+}
+
 describe('github-auth utils', () => {
   const originalEnv = { ...process.env };
   const originalFetch = global.fetch;
@@ -57,12 +63,15 @@ describe('github-auth utils', () => {
 
     const calls: Array<{ url: string; options: FetchOptions }> = [];
     // Mock fetch for: GET /repos/{owner}/{repo}/installation then POST /app/installations/{id}/access_tokens
-    global.fetch = jest
-      .fn()
-      .mockImplementation(async (url: string, options: FetchOptions) => {
-        calls.push({ url, options });
+    const fetchMock = createFetchMock().mockImplementation(
+      async (url, options) => {
+        const fetchOptions = (options ?? {}) as FetchOptions;
+        calls.push({ url: String(url), options: fetchOptions });
         if (String(url).includes('/repos/acme/repo/installation')) {
-          return { ok: true, text: async () => JSON.stringify({ id: 999 }) };
+          return {
+            ok: true,
+            text: async () => JSON.stringify({ id: 999 }),
+          } as Response;
         }
         if (String(url).includes('/app/installations/999/access_tokens')) {
           return {
@@ -72,10 +81,16 @@ describe('github-auth utils', () => {
                 token: 'ghs_install_token',
                 expires_at: '2030-01-01T00:00:00Z',
               }),
-          };
+          } as Response;
         }
-        return { ok: false, status: 404, text: async () => 'not found' };
-      });
+        return {
+          ok: false,
+          status: 404,
+          text: async () => 'not found',
+        } as Response;
+      },
+    ) as FetchMock;
+    global.fetch = fetchMock;
 
     const auth = await resolveGitHubAuth('acme', 'repo');
     expect(auth?.source).toBe('app');
@@ -98,7 +113,7 @@ describe('github-auth utils', () => {
     process.env.CHANGELOG_BOT_APP_INSTALLATION_ID = '777';
 
     let requestCount = 0;
-    global.fetch = jest.fn().mockImplementation(async (url: string) => {
+    const fetchMock = createFetchMock().mockImplementation(async (url) => {
       requestCount += 1;
       if (String(url).includes('/app/installations/777/access_tokens')) {
         return {
@@ -108,10 +123,15 @@ describe('github-auth utils', () => {
               token: 'ghs_token_777',
               expires_at: '2029-12-31T00:00:00Z',
             }),
-        };
+        } as Response;
       }
-      return { ok: false, status: 404, text: async () => 'not found' };
-    });
+      return {
+        ok: false,
+        status: 404,
+        text: async () => 'not found',
+      } as Response;
+    }) as FetchMock;
+    global.fetch = fetchMock;
 
     const auth = await resolveGitHubAuth('acme', 'repo');
     expect(auth?.source).toBe('app');

@@ -18,6 +18,7 @@ import {
   scoreCategories,
   SCORE_THRESHOLDS,
 } from '@/utils/category-score.js';
+import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
 import { isBucketName } from '@/utils/is.js';
 import type { BucketName } from '@/types/changelog.js';
 
@@ -182,9 +183,23 @@ export function tuneCategoriesByTitle(
   if (!adjusted[SECTION_CHANGED]) adjusted[SECTION_CHANGED] = [];
   if (!adjusted[SECTION_ADDED]) adjusted[SECTION_ADDED] = [];
 
+  const allKnownTitles = Array.from(knownTitles);
+
+  // Rule: Dependency-only updates should remain in Chore to avoid noise in Changed.
+  const dependencyUpdates: string[] = [];
+  for (const title of allKnownTitles) {
+    if (isDependencyUpdateTitle(title)) dependencyUpdates.push(title);
+  }
+  if (dependencyUpdates.length)
+    moveTitlesToCategory(adjusted, dependencyUpdates, SECTION_CHORE);
+  const dependencyUpdateSet = new Set(dependencyUpdates);
+  const nonDependencyTitles = allKnownTitles.filter(
+    (title) => !dependencyUpdateSet.has(title),
+  );
+
   // Collect titles that should be moved.
   const toMove: string[] = [];
-  for (const title of knownTitles) {
+  for (const title of nonDependencyTitles) {
     if (isImplicitFixTitle(title)) toMove.push(title);
   }
 
@@ -196,7 +211,7 @@ export function tuneCategoriesByTitle(
   // Examples: fix: msg, fix!: msg, fix(scope): msg, fix(scope)!: msg
   const FIX_PREFIX_RE = /^fix(?:!:|(?:\([^)]*\))?!?:)/i;
   const conventionalFixes: string[] = [];
-  for (const title of knownTitles) {
+  for (const title of nonDependencyTitles) {
     if (FIX_PREFIX_RE.test(title)) conventionalFixes.push(title);
   }
   if (conventionalFixes.length)
@@ -217,7 +232,7 @@ export function tuneCategoriesByTitle(
   };
 
   const toChanged: string[] = [];
-  for (const title of knownTitles) {
+  for (const title of nonDependencyTitles) {
     if (!isRefactorLike(title) && !isChangeLike(title)) continue;
     const current = findCategory(title);
     if (current === SECTION_FIXED) continue; // don't override explicit/implicit fixes
@@ -234,7 +249,7 @@ export function tuneCategoriesByTitle(
   // Examples: feat: msg, feat!: msg, feat(scope): msg, feat(scope)!: msg
   const FEAT_PREFIX_RE = /^feat(?:!:|(?:\([^)]*\))?!?:)/i;
   const toAdded: string[] = [];
-  for (const title of knownTitles) {
+  for (const title of nonDependencyTitles) {
     if (FEAT_PREFIX_RE.test(title)) toAdded.push(title);
   }
   if (toAdded.length) moveTitlesToCategory(adjusted, toAdded, SECTION_ADDED);
@@ -245,7 +260,7 @@ export function tuneCategoriesByTitle(
     SECTION_DOCS,
     SECTION_TEST,
   ]);
-  for (const title of knownTitles) {
+  for (const title of nonDependencyTitles) {
     const current = findCategory(title);
     if (!current || !WEAK_BUCKETS.has(current)) continue;
     const scores = scoreCategories(title);
