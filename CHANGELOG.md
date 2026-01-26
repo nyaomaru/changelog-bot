@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.9] - 2026-01-25
+
+### Fixed
+
+- detect dependency by @nyaomaru in [#79](https://github.com/nyaomaru/changelog-bot/pull/79)
+
+### Docs
+
+- 0.1.8 by [bot] by @github-actions in [#76](https://github.com/nyaomaru/changelog-bot/pull/76)
+
+### Chore
+
+- fix codex setting by @nyaomaru in [#78](https://github.com/nyaomaru/changelog-bot/pull/78)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.9
+
+[v0.1.9]: https://github.com/nyaomaru/changelog-bot/compare/v0.1.8...v0.1.9
+
 ## [v0.1.8] - 2026-01-12
 
 ### Fixed
