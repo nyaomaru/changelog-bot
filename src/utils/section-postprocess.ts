@@ -172,6 +172,21 @@ function moveBreakingChangesToTop(markdown: string): string {
   const breakingSections = sections.filter(isBreakingWithContent);
   if (!breakingSections.length) return markdown;
 
+  const mergeBreakingLines = (blocks: SectionBlock[]): string[] => {
+    const merged: string[] = [];
+    for (const block of blocks) {
+      if (merged.length) {
+        const last = merged[merged.length - 1];
+        const nextFirst = block.lines[0];
+        if (last?.trim() && nextFirst?.trim()) {
+          merged.push('');
+        }
+      }
+      merged.push(...block.lines);
+    }
+    return merged;
+  };
+
   let breakingAfterNonBreaking = false;
   let foundNonBreaking = false;
   for (const section of sections) {
@@ -185,15 +200,25 @@ function moveBreakingChangesToTop(markdown: string): string {
     }
   }
 
-  if (!breakingAfterNonBreaking && isBreakingWithContent(sections[0]))
+  const hasMultipleBreaking = breakingSections.length > 1;
+  if (
+    !breakingAfterNonBreaking &&
+    !hasMultipleBreaking &&
+    isBreakingWithContent(sections[0])
+  )
     return markdown;
 
+  const mergedBreakingSection: SectionBlock = {
+    headingLine: breakingSections[0].headingLine,
+    name: SECTION_BREAKING_CHANGES,
+    lines: mergeBreakingLines(breakingSections),
+  };
   const otherSections = sections.filter(
     (section) => !isBreakingWithContent(section),
   );
   const output: string[] = [];
   output.push(...preamble);
-  for (const section of [...breakingSections, ...otherSections]) {
+  for (const section of [mergedBreakingSection, ...otherSections]) {
     output.push(section.headingLine);
     output.push(...section.lines);
   }
