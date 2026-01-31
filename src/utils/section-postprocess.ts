@@ -2,6 +2,7 @@ import { removeMergedPRs } from '@/utils/remove-merged-prs.js';
 import { attachPrNumbers } from '@/utils/attach-pr.js';
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
 import {
+  SECTION_BREAKING_CHANGES,
   SECTION_CHANGED,
   SECTION_CHORE,
   SECTION_ORDER,
@@ -159,6 +160,72 @@ function moveDependencyUpdatesToChore(markdown: string): string {
   return output.join('\n').replace(/\n{3,}/g, '\n\n');
 }
 
+function moveBreakingChangesToTop(markdown: string): string {
+  if (!markdown) return markdown;
+  const { preamble, sections } = splitSections(markdown);
+  if (!sections.length) return markdown;
+
+  const isBreakingWithContent = (section: SectionBlock) =>
+    section.name.toLowerCase() === SECTION_BREAKING_CHANGES.toLowerCase() &&
+    hasMeaningfulContent(section.lines);
+
+  const breakingSections = sections.filter(isBreakingWithContent);
+  if (!breakingSections.length) return markdown;
+
+  const mergeBreakingLines = (blocks: SectionBlock[]): string[] => {
+    const merged: string[] = [];
+    for (const block of blocks) {
+      if (merged.length) {
+        const last = merged[merged.length - 1];
+        const nextFirst = block.lines[0];
+        if (last?.trim() && nextFirst?.trim()) {
+          merged.push('');
+        }
+      }
+      merged.push(...block.lines);
+    }
+    return merged;
+  };
+
+  let breakingAfterNonBreaking = false;
+  let foundNonBreaking = false;
+  for (const section of sections) {
+    if (isBreakingWithContent(section)) {
+      if (foundNonBreaking) {
+        breakingAfterNonBreaking = true;
+        break;
+      }
+    } else {
+      foundNonBreaking = true;
+    }
+  }
+
+  const hasMultipleBreaking = breakingSections.length > 1;
+  if (
+    !breakingAfterNonBreaking &&
+    !hasMultipleBreaking &&
+    isBreakingWithContent(sections[0])
+  )
+    return markdown;
+
+  const mergedBreakingSection: SectionBlock = {
+    headingLine: breakingSections[0].headingLine,
+    name: SECTION_BREAKING_CHANGES,
+    lines: mergeBreakingLines(breakingSections),
+  };
+  const otherSections = sections.filter(
+    (section) => !isBreakingWithContent(section),
+  );
+  const output: string[] = [];
+  output.push(...preamble);
+  for (const section of [mergedBreakingSection, ...otherSections]) {
+    output.push(section.headingLine);
+    output.push(...section.lines);
+  }
+
+  return output.join('\n').replace(/\n{3,}/g, '\n\n');
+}
+
 /**
  * Apply standard post-processing to a generated changelog section.
  * - Removes redundant merged PR bullet lines that duplicate individual entries.
@@ -176,5 +243,6 @@ export function postprocessSection(
   let processedMarkdown = removeMergedPRs(markdown);
   processedMarkdown = attachPrNumbers(processedMarkdown, titleToPr, repo);
   processedMarkdown = moveDependencyUpdatesToChore(processedMarkdown);
+  processedMarkdown = moveBreakingChangesToTop(processedMarkdown);
   return processedMarkdown;
 }
