@@ -2,6 +2,7 @@ import { removeMergedPRs } from '@/utils/remove-merged-prs.js';
 import { attachPrNumbers } from '@/utils/attach-pr.js';
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
 import {
+  SECTION_BREAKING_CHANGES,
   SECTION_CHANGED,
   SECTION_CHORE,
   SECTION_ORDER,
@@ -159,6 +160,47 @@ function moveDependencyUpdatesToChore(markdown: string): string {
   return output.join('\n').replace(/\n{3,}/g, '\n\n');
 }
 
+function moveBreakingChangesToTop(markdown: string): string {
+  if (!markdown) return markdown;
+  const { preamble, sections } = splitSections(markdown);
+  if (!sections.length) return markdown;
+
+  const isBreakingWithContent = (section: SectionBlock) =>
+    section.name.toLowerCase() === SECTION_BREAKING_CHANGES.toLowerCase() &&
+    hasMeaningfulContent(section.lines);
+
+  const breakingSections = sections.filter(isBreakingWithContent);
+  if (!breakingSections.length) return markdown;
+
+  let breakingAfterNonBreaking = false;
+  let foundNonBreaking = false;
+  for (const section of sections) {
+    if (isBreakingWithContent(section)) {
+      if (foundNonBreaking) {
+        breakingAfterNonBreaking = true;
+        break;
+      }
+    } else {
+      foundNonBreaking = true;
+    }
+  }
+
+  if (!breakingAfterNonBreaking && isBreakingWithContent(sections[0]))
+    return markdown;
+
+  const otherSections = sections.filter(
+    (section) => !isBreakingWithContent(section),
+  );
+  const output: string[] = [];
+  output.push(...preamble);
+  for (const section of [...breakingSections, ...otherSections]) {
+    output.push(section.headingLine);
+    output.push(...section.lines);
+  }
+
+  return output.join('\n').replace(/\n{3,}/g, '\n\n');
+}
+
 /**
  * Apply standard post-processing to a generated changelog section.
  * - Removes redundant merged PR bullet lines that duplicate individual entries.
@@ -176,5 +218,6 @@ export function postprocessSection(
   let processedMarkdown = removeMergedPRs(markdown);
   processedMarkdown = attachPrNumbers(processedMarkdown, titleToPr, repo);
   processedMarkdown = moveDependencyUpdatesToChore(processedMarkdown);
+  processedMarkdown = moveBreakingChangesToTop(processedMarkdown);
   return processedMarkdown;
 }
