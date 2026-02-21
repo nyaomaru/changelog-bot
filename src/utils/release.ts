@@ -17,6 +17,8 @@ const PR_URL_RE = /https?:\/\/\S+\/pull\/(\d+)/; // captures PR number
 const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
 const AUTHOR_RE = /@([A-Za-z0-9_-]+)/;
 const TRAILING_BY_IN_RE = /\s*(by|in)\s*$/i; // strip noisy trailing tokens
+const TYPOGRAPHIC_APOSTROPHE_RE = /[’`´]/g;
+const COLLAPSE_WHITESPACE_RE = /\s+/g;
 
 /** GitHub repository owner/name pair used for compare link construction. */
 type RepoInfo = {
@@ -131,6 +133,42 @@ function collectH2Sections(body: string): RawSection[] {
 }
 
 /**
+ * Normalize heading text to compare release-note section names robustly.
+ * WHY: Users often edit release notes with typographic apostrophes or inconsistent spacing.
+ * @param heading Raw heading content.
+ * @returns Normalized heading for case-insensitive matching.
+ */
+function normalizeHeading(heading: string): string {
+  return heading
+    .trim()
+    .toLowerCase()
+    .replace(TYPOGRAPHIC_APOSTROPHE_RE, "'")
+    .replace(COLLAPSE_WHITESPACE_RE, ' ');
+}
+
+/**
+ * Check whether an H2 heading refers to the canonical "What's Changed" section.
+ * @param heading Heading text without markdown markers.
+ * @returns True when the heading is a "What's Changed" variant.
+ */
+function isWhatsChangedHeading(heading: string): boolean {
+  const normalizedHeading = normalizeHeading(heading);
+  return (
+    normalizedHeading.startsWith("what's changed") ||
+    normalizedHeading.startsWith('whats changed')
+  );
+}
+
+/**
+ * Check whether an H2 heading is the "Full Changelog" block.
+ * @param heading Heading text without markdown markers.
+ * @returns True when the heading denotes the full changelog section.
+ */
+function isFullChangelogHeading(heading: string): boolean {
+  return normalizeHeading(heading).startsWith('full changelog');
+}
+
+/**
  * Collect the bullet lines under the provided "What's Changed" section lines.
  * @param lines Section content lines following the heading.
  * @returns Array of relevant bullet lines.
@@ -139,7 +177,7 @@ function parseWhatsChangedLines(lines: string[]): string[] {
   const collected: string[] = [];
   for (const rawLine of lines) {
     const line = rawLine.trim();
-    if (!line || /Full Changelog/i.test(line)) continue;
+    if (!line || FULL_CHANGELOG_RE.test(line)) continue;
     collected.push(line);
   }
   return collected;
@@ -216,23 +254,26 @@ export function parseReleaseNotes(
   if (!body) return { items };
 
   const h2Sections = collectH2Sections(body);
-  const whatsChangedSection = h2Sections.find((section) =>
-    /^What's Changed/i.test(section.heading),
-  );
-  const whatsChangedLines = whatsChangedSection
-    ? parseWhatsChangedLines(whatsChangedSection.lines)
-    : [];
+  const whatsChangedLines = h2Sections
+    .filter((section) => isWhatsChangedHeading(section.heading))
+    .flatMap((section) => parseWhatsChangedLines(section.lines));
 
   for (const line of whatsChangedLines) {
     const item = parseReleaseLine(line, repo);
     if (item) items.push(item);
   }
 
+  const seenSections = new Set<string>();
   for (const section of h2Sections) {
-    if (/^What's Changed/i.test(section.heading)) continue;
-    if (/^Full Changelog/i.test(section.heading)) continue;
+    if (isWhatsChangedHeading(section.heading)) continue;
+    if (isFullChangelogHeading(section.heading)) continue;
     const structured = toReleaseSection(section);
-    if (structured) additionalSections.push(structured);
+    if (!structured) continue;
+
+    const sectionKey = `${normalizeHeading(structured.heading)}\n${structured.body.trim()}`;
+    if (seenSections.has(sectionKey)) continue;
+    seenSections.add(sectionKey);
+    additionalSections.push(structured);
   }
 
   const fullChangelog = extractFullChangelog(body, repo);

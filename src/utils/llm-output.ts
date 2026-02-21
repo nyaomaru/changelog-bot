@@ -206,7 +206,8 @@ async function buildOutputFromReleaseNotes(
   } = params;
 
   const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
-  if (!parsedRelease.items.length) return null;
+  const hasAdditionalSections = Boolean(parsedRelease.sections?.length);
+  if (!parsedRelease.items.length && !hasAdditionalSections) return null;
 
   fallbackReasons.push(
     'Used GitHub Release Notes as the source (no model call)',
@@ -222,11 +223,14 @@ async function buildOutputFromReleaseNotes(
   });
 
   const titlesForLLM = buildTitlesForClassification(parsedRelease.items);
-  let categories = await classifyTitles(titlesForLLM, provider.name);
-  // Mark that an LLM was used when classification ran with a valid provider key.
-  aiUsed = aiUsed || hasProviderKey;
-  // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.
-  categories = tuneCategoriesByTitle(parsedRelease.items, categories);
+  let categories: Record<string, string[]> = {};
+  if (titlesForLLM.length) {
+    categories = await classifyTitles(titlesForLLM, provider.name);
+    // Mark AI usage only when classification had input and a provider key is available.
+    aiUsed = aiUsed || hasProviderKey;
+    // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.
+    categories = tuneCategoriesByTitle(parsedRelease.items, categories);
+  }
 
   const section = buildSectionFromRelease({
     version,
