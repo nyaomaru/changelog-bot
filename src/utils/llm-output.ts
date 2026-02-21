@@ -206,7 +206,8 @@ async function buildOutputFromReleaseNotes(
   } = params;
 
   const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
-  if (!parsedRelease.items.length) return null;
+  const hasAdditionalSections = Boolean(parsedRelease.sections?.length);
+  if (!parsedRelease.items.length && !hasAdditionalSections) return null;
 
   fallbackReasons.push(
     'Used GitHub Release Notes as the source (no model call)',

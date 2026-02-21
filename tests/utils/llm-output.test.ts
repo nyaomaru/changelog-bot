@@ -83,4 +83,44 @@ describe('llm-output', () => {
     expect(result.llm.new_section_markdown).toContain('### Added');
     expect(result.llm.new_section_markdown).toContain('- Add feature');
   });
+
+  test('preserves custom release-note sections when no items are parsed', async () => {
+    const whatsNewHeading = 'What\u2019s New \u{1F680}';
+    const result = await buildChangelogLlmOutput({
+      owner: 'octo',
+      repo: 'repo',
+      version: '1.0.0',
+      date: '2024-01-01',
+      releaseRef: 'v1.0.0',
+      prevRef: 'v0.9.0',
+      releaseBody: [
+        `## ${whatsNewHeading}`,
+        'Introduces the `assert` helper and usage examples.',
+        '',
+        '**Full Changelog**: v0.9.0...v1.0.0',
+      ].join('\n'),
+      existingChangelog: '',
+      commitList: [],
+      prs: '',
+      prMapBySha: {},
+      titleToPr: {},
+      provider: mockProvider,
+      hasProviderKey: false,
+      token: undefined,
+    });
+
+    expect(result.fallbackReasons).toContain(
+      'Used GitHub Release Notes as the source (no model call)',
+    );
+    expect(result.llm.new_section_markdown).toContain(
+      '## [v1.0.0] - 2024-01-01',
+    );
+    expect(result.llm.new_section_markdown).toContain(`### ${whatsNewHeading}`);
+    expect(result.llm.new_section_markdown).toContain(
+      'Introduces the `assert` helper and usage examples.',
+    );
+    expect(result.llm.new_section_markdown).toContain(
+      '**Full Changelog**: https://github.com/octo/repo/compare/v0.9.0...v1.0.0',
+    );
+  });
 });

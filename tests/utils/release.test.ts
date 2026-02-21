@@ -36,6 +36,44 @@ describe('release utils', () => {
     });
   });
 
+  test('parseReleaseNotes preserves custom sections and handles typographic headings', () => {
+    const whatsNewHeading = 'What\u2019s New \u{1F680}';
+    const body = [
+      '# v1.2.0',
+      '',
+      `## ${whatsNewHeading}`,
+      'Includes user-facing highlights and examples.',
+      '',
+      '## What\u2019s Changed',
+      '- feat: Add assert helper by @alice in #321',
+      '',
+      `## ${whatsNewHeading}`,
+      'Includes user-facing highlights and examples.',
+      '',
+      '## Migration Notes',
+      'No migration steps required.',
+      '',
+      '**Full Changelog**: v1.1.13...v1.2.0',
+    ].join('\n');
+
+    const parsed = parseReleaseNotes(body, { owner: 'acme', repo: 'repo' });
+    expect(parsed.items).toHaveLength(1);
+    expect(parsed.items[0].title).toBe('Add assert helper');
+    expect(parsed.sections).toEqual([
+      {
+        heading: whatsNewHeading,
+        body: 'Includes user-facing highlights and examples.',
+      },
+      {
+        heading: 'Migration Notes',
+        body: 'No migration steps required.',
+      },
+    ]);
+    expect(parsed.fullChangelog).toBe(
+      'https://github.com/acme/repo/compare/v1.1.13...v1.2.0',
+    );
+  });
+
   test('buildSectionFromRelease formats bullets with author and PR link', () => {
     const items = [
       {
