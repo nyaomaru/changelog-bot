@@ -123,4 +123,33 @@ describe('llm-output', () => {
       '**Full Changelog**: https://github.com/octo/repo/compare/v0.9.0...v1.0.0',
     );
   });
+
+  test('keeps fallback note when provider key exists but release notes have no items', async () => {
+    const result = await buildChangelogLlmOutput({
+      owner: 'octo',
+      repo: 'repo',
+      version: '1.0.0',
+      date: '2024-01-01',
+      releaseRef: 'v1.0.0',
+      prevRef: 'v0.9.0',
+      releaseBody: [
+        '## What\u2019s New',
+        'User-facing highlights only.',
+        '',
+        '**Full Changelog**: v0.9.0...v1.0.0',
+      ].join('\n'),
+      existingChangelog: '',
+      commitList: [],
+      prs: '',
+      prMapBySha: {},
+      titleToPr: {},
+      provider: mockProvider,
+      hasProviderKey: true,
+      token: undefined,
+    });
+
+    expect(result.aiUsed).toBe(false);
+    expect(result.llm.pr_body).toContain('Generated without LLM');
+    expect(result.llm.new_section_markdown).toContain('### What\u2019s New');
+  });
 });
