@@ -58,7 +58,7 @@ runs:
       run: |
         set -euo pipefail
         corepack enable
-        corepack prepare pnpm@10.12 --activate
+        corepack prepare pnpm@10.12.0 --activate
 
     - name: Run changelog-bot
       shell: bash
