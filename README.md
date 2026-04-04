@@ -237,6 +237,7 @@ Outputs: None.
 Security note:
 
 - The published action installs the CLI with `pnpm dlx` and sets pnpm’s `minimumReleaseAge` so versions published less than 2 days earlier are blocked by default.
+- The action passes that setting via pnpm’s CLI config override form, `--config.minimum-release-age=...`, which is the flag shape pnpm accepts at runtime.
 - If you need an emergency rollout, either pin an older exact version or set `minimum-package-age-days: '0'` to disable the guard intentionally.
 - If you run the CLI directly with `npx`, this guard does not apply automatically. Use `pnpm dlx` with `minimumReleaseAge`, or pin an exact version yourself if you want the same protection.
 
