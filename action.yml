@@ -81,8 +81,9 @@ runs:
         CMD=(
           corepack
           pnpm
-          # WHY: pnpm's setting name is `minimumReleaseAge`, but the CLI `--config.*`
-          # override that pnpm accepts here is kebab-cased.
+          # WHY: pnpm documents this setting as `minimumReleaseAge`, but the config key
+          # used in `.npmrc` and with CLI `--config.*` overrides is kebab-cased as
+          # `minimum-release-age`: https://pnpm.io/npmrc#minimumreleaseage
           "--config.minimum-release-age=${MINIMUM_PACKAGE_AGE_MINUTES}"
           dlx
           @nyaomaru/changelog-bot@"${{ inputs.npm-version }}"
