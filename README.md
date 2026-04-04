@@ -157,6 +157,7 @@ jobs:
           release-tag: ${{ github.event.release.tag_name }}
           release-name: ${{ github.event.release.tag_name }}
           # npm-version: latest   # optionally pin a version/range
+          # minimum-package-age-days: '2' # block versions published less than 2 days ago
           # dry-run: 'true'       # to avoid writing + PR
         env:
           # Optional: set one of the following to enable AI generation
@@ -225,12 +226,20 @@ Action inputs (for both 1 and 3):
 - `base-branch` / `base_branch`: base branch for PR (default `main`).
 - `provider`: `openai` or `anthropic` (default `openai`).
 - `npm-version` / `npm_version`: npm dist-tag or range for the CLI package (default `latest`).
+- `minimum-package-age-days` / `minimum_package_age_days`: minimum publish age required for the resolved npm package version before the action installs it (default `2`, set to `0` to disable explicitly).
 - `release-tag` / `release_tag`: tag or ref to generate for.
 - `release-name` / `release_name`: display version (without `v`).
 - `release-body` / `release_body`: extra release notes to merge.
 - `dry-run` / `dry_run`: `'true'` to print without writing/PR.
 
 Outputs: None.
+
+Security note:
+
+- The published action installs the CLI with `pnpm dlx` and sets pnpm’s `minimumReleaseAge` so versions published less than 2 days earlier are blocked by default.
+- The action passes that setting via pnpm’s CLI config override form, `--config.minimum-release-age=...`, which is the flag shape pnpm accepts at runtime.
+- If you need an emergency rollout, either pin an older exact version or set `minimum-package-age-days: '0'` to disable the guard intentionally.
+- If you run the CLI directly with `npx`, this guard does not apply automatically. Use `pnpm dlx` with `minimumReleaseAge`, or pin an exact version yourself if you want the same protection.
 
 Environment:
 
@@ -393,7 +402,7 @@ npx @nyaomaru/changelog-bot --help
 - During `v0`, breaking changes may occur as we stabilize flags and output. We avoid breaks when possible and document changes in the changelog.
 - To pin versions:
   - Action: use a major tag (`uses: nyaomaru/changelog-bot@v0`) or a specific ref (e.g., `@v0.1.2`).
-  - Action + CLI pin: set `npm-version` input (e.g., `npm-version: 0.1.2`).
+  - Action + CLI pin: set `npm-version` input (e.g., `npm-version: 0.1.2`). By default, the action blocks versions published less than 2 days ago unless you override `minimum-package-age-days`.
   - npx: `npx @nyaomaru/changelog-bot@0.1.2 ...`.
 - From `v1` onward, we follow SemVer: no breaking changes without a major version bump.
 

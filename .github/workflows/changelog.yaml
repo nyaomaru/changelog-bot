@@ -23,6 +23,10 @@ on:
       release_body:
         required: false
         type: string
+      minimum_package_age_days:
+        required: false
+        type: string
+        default: '2'
       dry_run:
         required: false
         type: string
@@ -54,6 +58,7 @@ jobs:
           release-tag: ${{ inputs.release_tag }}
           release-name: ${{ inputs.release_name }}
           release-body: ${{ inputs.release_body }}
+          minimum-package-age-days: ${{ inputs.minimum_package_age_days }}
           dry-run: ${{ inputs.dry_run }}
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}

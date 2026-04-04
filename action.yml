@@ -31,6 +31,10 @@ inputs:
     description: 'npm dist-tag or version range for @nyaomaru/changelog-bot'
     required: false
     default: 'latest'
+  minimum-package-age-days:
+    description: 'Minimum age in days required for the npm package version resolved from npm-version'
+    required: false
+    default: '2'
   dry-run:
     description: "If 'true', print updated changelog without writing or PR"
     required: false
@@ -49,6 +53,13 @@ runs:
       with:
         node-version: '22'
 
+    - name: Setup pnpm
+      shell: bash
+      run: |
+        set -euo pipefail
+        corepack enable
+        corepack prepare pnpm@10.12.0 --activate
+
     - name: Run changelog-bot
       shell: bash
       env:
@@ -56,10 +67,26 @@ runs:
         REPO_FULL_NAME: ${{ github.repository }}
         # Capture release_body safely without inline interpolation issues
         INPUT_RELEASE_BODY: ${{ inputs['release-body'] }}
+        INPUT_MINIMUM_PACKAGE_AGE_DAYS: ${{ inputs['minimum-package-age-days'] }}
       run: |
         set -euo pipefail
+
+        if ! [[ "${INPUT_MINIMUM_PACKAGE_AGE_DAYS:-}" =~ ^[0-9]+$ ]]; then
+          echo "::error::Invalid minimum-package-age-days value: '${INPUT_MINIMUM_PACKAGE_AGE_DAYS:-}'. Expected a non-negative integer number of days. Set it to 0 to disable the guard."
+          exit 1
+        fi
+
+        MINIMUM_PACKAGE_AGE_DAYS_BASE10="$(( 10#${INPUT_MINIMUM_PACKAGE_AGE_DAYS} ))"
+        MINIMUM_PACKAGE_AGE_MINUTES="$(( MINIMUM_PACKAGE_AGE_DAYS_BASE10 * 24 * 60 ))"
         CMD=(
-          npx -y @nyaomaru/changelog-bot@"${{ inputs.npm-version }}"
+          corepack
+          pnpm
+          # WHY: pnpm documents this setting as `minimumReleaseAge`, but the config key
+          # used in `.npmrc` and with CLI `--config.*` overrides is kebab-cased as
+          # `minimum-release-age`: https://pnpm.io/npmrc#minimumreleaseage
+          "--config.minimum-release-age=${MINIMUM_PACKAGE_AGE_MINUTES}"
+          dlx
+          @nyaomaru/changelog-bot@"${{ inputs.npm-version }}"
           --changelog-path "${{ inputs['changelog-path'] }}"
           --base-branch "${{ inputs['base-branch'] }}"
           --provider "${{ inputs.provider }}"
