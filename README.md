@@ -402,7 +402,7 @@ npx @nyaomaru/changelog-bot --help
 - During `v0`, breaking changes may occur as we stabilize flags and output. We avoid breaks when possible and document changes in the changelog.
 - To pin versions:
   - Action: use a major tag (`uses: nyaomaru/changelog-bot@v0`) or a specific ref (e.g., `@v0.1.2`).
-  - Action + CLI pin: set `npm-version` input (e.g., `npm-version: 0.1.2`). The action also blocks versions newer than 2 days unless you override `minimum-package-age-days`.
+  - Action + CLI pin: set `npm-version` input (e.g., `npm-version: 0.1.2`). By default, the action blocks versions published less than 2 days ago unless you override `minimum-package-age-days`.
   - npx: `npx @nyaomaru/changelog-bot@0.1.2 ...`.
 - From `v1` onward, we follow SemVer: no breaking changes without a major version bump.
 

@@ -57,6 +57,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        corepack enable
         corepack prepare pnpm@10.12 --activate
 
     - name: Run changelog-bot
@@ -75,8 +76,10 @@ runs:
           exit 1
         fi
 
-        MINIMUM_PACKAGE_AGE_MINUTES="$(( INPUT_MINIMUM_PACKAGE_AGE_DAYS * 24 * 60 ))"
+        MINIMUM_PACKAGE_AGE_DAYS_BASE10="$(( 10#${INPUT_MINIMUM_PACKAGE_AGE_DAYS} ))"
+        MINIMUM_PACKAGE_AGE_MINUTES="$(( MINIMUM_PACKAGE_AGE_DAYS_BASE10 * 24 * 60 ))"
         CMD=(
+          corepack
           pnpm
           # WHY: pnpm's setting name is `minimumReleaseAge`, but the CLI `--config.*`
           # override that pnpm accepts here is kebab-cased.
