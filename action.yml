@@ -31,6 +31,10 @@ inputs:
     description: 'npm dist-tag or version range for @nyaomaru/changelog-bot'
     required: false
     default: 'latest'
+  minimum-package-age-days:
+    description: 'Minimum age in days required for the npm package version resolved from npm-version'
+    required: false
+    default: '2'
   dry-run:
     description: "If 'true', print updated changelog without writing or PR"
     required: false
@@ -49,6 +53,12 @@ runs:
       with:
         node-version: '22'
 
+    - name: Setup pnpm
+      shell: bash
+      run: |
+        set -euo pipefail
+        corepack prepare pnpm@10.12 --activate
+
     - name: Run changelog-bot
       shell: bash
       env:
@@ -58,8 +68,12 @@ runs:
         INPUT_RELEASE_BODY: ${{ inputs['release-body'] }}
       run: |
         set -euo pipefail
+        MINIMUM_PACKAGE_AGE_MINUTES="$(( ${{ inputs['minimum-package-age-days'] }} * 24 * 60 ))"
         CMD=(
-          npx -y @nyaomaru/changelog-bot@"${{ inputs.npm-version }}"
+          pnpm
+          "--config.minimum-release-age=${MINIMUM_PACKAGE_AGE_MINUTES}"
+          dlx
+          @nyaomaru/changelog-bot@"${{ inputs.npm-version }}"
           --changelog-path "${{ inputs['changelog-path'] }}"
           --base-branch "${{ inputs['base-branch'] }}"
           --provider "${{ inputs.provider }}"
