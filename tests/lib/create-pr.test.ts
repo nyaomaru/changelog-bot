@@ -7,11 +7,11 @@ const {
   beforeEach,
 } = await import('@jest/globals');
 
-type ExecSyncFunction = typeof import('node:child_process').execSync;
+type ExecFileSyncFunction = typeof import('node:child_process').execFileSync;
 type JestEnvironment = typeof jestGlobal;
 
 // Mocks
-const execSyncMock = jestGlobal.fn();
+const execFileSyncMock = jestGlobal.fn();
 type UnstableMockModule = (
   ...args: Parameters<typeof jestGlobal.mock>
 ) => ReturnType<typeof jestGlobal.mock>;
@@ -22,7 +22,8 @@ const unstableMockModule = (
 ).unstable_mockModule;
 
 await unstableMockModule('node:child_process', () => ({
-  execSync: (...args: Parameters<ExecSyncFunction>) => execSyncMock(...args),
+  execFileSync: (...args: Parameters<ExecFileSyncFunction>) =>
+    execFileSyncMock(...args),
 }));
 
 const pullsCreate = jestGlobal.fn(async () => ({ data: { number: 42 } }));
@@ -41,7 +42,7 @@ const { createPR } = await import('@/lib/pr.js');
 
 describe('lib/pr.createPR', () => {
   beforeEach(() => {
-    execSyncMock.mockReset();
+    execFileSyncMock.mockReset();
     pullsCreate.mockClear();
     addLabels.mockClear();
   });
@@ -59,7 +60,31 @@ describe('lib/pr.createPR', () => {
       changelogEntry: 'CHANGELOG.md',
     });
 
-    expect(execSyncMock).toHaveBeenCalledTimes(4);
+    expect(execFileSyncMock).toHaveBeenCalledTimes(4);
+    expect(execFileSyncMock).toHaveBeenNthCalledWith(
+      1,
+      'git',
+      ['checkout', '-b', 'chore/changelog-v1.0.0'],
+      { stdio: 'inherit' },
+    );
+    expect(execFileSyncMock).toHaveBeenNthCalledWith(
+      2,
+      'git',
+      ['add', 'CHANGELOG.md'],
+      { stdio: 'inherit' },
+    );
+    expect(execFileSyncMock).toHaveBeenNthCalledWith(
+      3,
+      'git',
+      ['commit', '-m', 'docs(changelog): v1.0.0'],
+      { stdio: 'inherit' },
+    );
+    expect(execFileSyncMock).toHaveBeenNthCalledWith(
+      4,
+      'git',
+      ['push', 'origin', 'chore/changelog-v1.0.0'],
+      { stdio: 'inherit' },
+    );
     expect(pullsCreate).toHaveBeenCalledWith({
       owner: 'o',
       repo: 'r',
@@ -92,5 +117,32 @@ describe('lib/pr.createPR', () => {
     });
 
     expect(addLabels).not.toHaveBeenCalled();
+  });
+
+  test('passes titles and changelog paths without shell escaping', async () => {
+    await createPR({
+      owner: 'o',
+      repo: 'r',
+      baseBranch: 'main',
+      branchName: 'feat/release notes',
+      title: 'docs(changelog): "quoted" title',
+      body: '',
+      labels: [],
+      token: 't',
+      changelogEntry: 'docs/Release Notes.md',
+    });
+
+    expect(execFileSyncMock).toHaveBeenNthCalledWith(
+      2,
+      'git',
+      ['add', 'docs/Release Notes.md'],
+      { stdio: 'inherit' },
+    );
+    expect(execFileSyncMock).toHaveBeenNthCalledWith(
+      3,
+      'git',
+      ['commit', '-m', 'docs(changelog): "quoted" title'],
+      { stdio: 'inherit' },
+    );
   });
 });

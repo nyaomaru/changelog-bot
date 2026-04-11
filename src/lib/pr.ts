@@ -1,12 +1,17 @@
 import { Octokit } from 'octokit';
-import { execSync } from 'node:child_process';
-import { escapeQuotes } from '@/utils/escape.js';
+import { execFileSync } from 'node:child_process';
 import {
   DEFAULT_CHANGELOG_FILE,
   EXEC_OPTS,
   GIT_REMOTE,
 } from '@/constants/git.js';
 import type { CreatePRParams } from '@/types/pr.js';
+
+type GitArgs = readonly [string, ...string[]];
+
+function runGit(args: GitArgs): void {
+  execFileSync('git', args, EXEC_OPTS);
+}
 
 /**
  * Create a pull request that commits the changelog and pushes a new branch.
@@ -30,14 +35,15 @@ export async function createPR(params: CreatePRParams) {
   const octokit = new Octokit({ auth: token });
   const changelogPath = changelogEntry || DEFAULT_CHANGELOG_FILE;
 
-  // WHY: Keep the sequence explicit and linear; escape commit message quotes.
-  const commands = [
-    `git checkout -b ${branchName}`,
-    `git add ${changelogPath}`,
-    `git commit -m "${escapeQuotes(title)}"`,
-    `git push ${GIT_REMOTE} ${branchName}`,
+  // WHY: Use argv arrays instead of shell strings so paths and titles with
+  // whitespace or quotes are passed to Git without manual escaping.
+  const commands: GitArgs[] = [
+    ['checkout', '-b', branchName],
+    ['add', changelogPath],
+    ['commit', '-m', title],
+    ['push', GIT_REMOTE, branchName],
   ];
-  for (const command of commands) execSync(command, EXEC_OPTS);
+  for (const commandArgs of commands) runGit(commandArgs);
 
   const pullRequest = await octokit.rest.pulls.create({
     owner,
