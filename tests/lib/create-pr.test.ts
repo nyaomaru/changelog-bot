@@ -7,7 +7,6 @@ const {
   beforeEach,
 } = await import('@jest/globals');
 
-type ExecFileSyncFunction = typeof import('node:child_process').execFileSync;
 type JestEnvironment = typeof jestGlobal;
 
 // Mocks
@@ -22,8 +21,7 @@ const unstableMockModule = (
 ).unstable_mockModule;
 
 await unstableMockModule('node:child_process', () => ({
-  execFileSync: (...args: Parameters<ExecFileSyncFunction>) =>
-    execFileSyncMock(...args),
+  execFileSync: (...args: unknown[]) => execFileSyncMock(...args),
 }));
 
 const pullsCreate = jestGlobal.fn(async () => ({ data: { number: 42 } }));
@@ -70,7 +68,7 @@ describe('lib/pr.createPR', () => {
     expect(execFileSyncMock).toHaveBeenNthCalledWith(
       2,
       'git',
-      ['add', 'CHANGELOG.md'],
+      ['add', '--', 'CHANGELOG.md'],
       { stdio: 'inherit' },
     );
     expect(execFileSyncMock).toHaveBeenNthCalledWith(
@@ -124,7 +122,7 @@ describe('lib/pr.createPR', () => {
       owner: 'o',
       repo: 'r',
       baseBranch: 'main',
-      branchName: 'feat/release notes',
+      branchName: 'feat/release-notes',
       title: 'docs(changelog): "quoted" title',
       body: '',
       labels: [],
@@ -135,7 +133,7 @@ describe('lib/pr.createPR', () => {
     expect(execFileSyncMock).toHaveBeenNthCalledWith(
       2,
       'git',
-      ['add', 'docs/Release Notes.md'],
+      ['add', '--', 'docs/Release Notes.md'],
       { stdio: 'inherit' },
     );
     expect(execFileSyncMock).toHaveBeenNthCalledWith(
@@ -144,5 +142,45 @@ describe('lib/pr.createPR', () => {
       ['commit', '-m', 'docs(changelog): "quoted" title'],
       { stdio: 'inherit' },
     );
+  });
+
+  test('treats changelog paths beginning with dash as path arguments', async () => {
+    await createPR({
+      owner: 'o',
+      repo: 'r',
+      baseBranch: 'main',
+      branchName: 'feat/x',
+      title: 'title',
+      body: '',
+      labels: [],
+      token: 't',
+      changelogEntry: '--all',
+    });
+
+    expect(execFileSyncMock).toHaveBeenNthCalledWith(
+      2,
+      'git',
+      ['add', '--', '--all'],
+      { stdio: 'inherit' },
+    );
+  });
+
+  test('rejects branch names that start with dash before invoking git', async () => {
+    await expect(
+      createPR({
+        owner: 'o',
+        repo: 'r',
+        baseBranch: 'main',
+        branchName: '--force',
+        title: 'title',
+        body: '',
+        labels: [],
+        token: 't',
+        changelogEntry: 'CHANGELOG.md',
+      }),
+    ).rejects.toThrow('Invalid branch name');
+
+    expect(execFileSyncMock).not.toHaveBeenCalled();
+    expect(pullsCreate).not.toHaveBeenCalled();
   });
 });
