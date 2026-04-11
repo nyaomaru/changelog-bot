@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.12] - 2026-04-11
+
+### Changed
+
+- extract changelog CLI workflow helpers by @nyaomaru in [#91](https://github.com/nyaomaru/changelog-bot/pull/91)
+
+### Docs
+
+- 0.1.11 by [bot] by @github-actions in [#89](https://github.com/nyaomaru/changelog-bot/pull/89)
+
+### Chore
+
+- enforce minimum package age with pnpm dlx by @nyaomaru in [#90](https://github.com/nyaomaru/changelog-bot/pull/90)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.12
+
+[v0.1.12]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.12
+
 ## [v0.1.11] - 2026-02-21
 
 ### Fixed
