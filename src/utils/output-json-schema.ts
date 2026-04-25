@@ -8,9 +8,9 @@ import { LLMOutputSchema } from '@/schema/schema.js';
  */
 function unwrapOptional(schema: z.ZodTypeAny): z.ZodTypeAny {
   if (schema instanceof z.ZodDefault)
-    return unwrapOptional(schema._def.innerType);
+    return unwrapOptional(schema.unwrap() as z.ZodTypeAny);
   if (schema instanceof z.ZodOptional)
-    return unwrapOptional(schema._def.innerType);
+    return unwrapOptional(schema.unwrap() as z.ZodTypeAny);
   return schema;
 }
 
@@ -27,8 +27,8 @@ function isOptionalSchema(schema: z.ZodTypeAny): boolean {
  * @param schema Array schema to convert.
  * @returns JSON Schema fragment describing the array.
  */
-function buildJsonSchemaForArray(schema: z.ZodArray<z.ZodTypeAny>): unknown {
-  const inner = unwrapOptional(schema._def.type);
+function buildJsonSchemaForArray(schema: z.ZodArray): unknown {
+  const inner = unwrapOptional(schema.element as z.ZodTypeAny);
   if (inner instanceof z.ZodString) {
     return { type: 'array', items: { type: 'string' } };
   }

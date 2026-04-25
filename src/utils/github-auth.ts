@@ -64,6 +64,7 @@ function createAppJwt(appId: string, privateKey: string): string {
       `Failed to sign GitHub App JWT with provided private key: ${msg}. ` +
         'Check that GITHUB_APP_PRIVATE_KEY contains a valid PEM (BEGIN PRIVATE KEY / BEGIN RSA PRIVATE KEY), ' +
         'newlines are preserved (use literal PEM or \\n escapes), and the key is unencrypted.',
+      { cause: err },
     );
   }
   return `${data}.${base64url(signature)}`;
