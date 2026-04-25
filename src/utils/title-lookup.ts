@@ -108,16 +108,21 @@ export function findTitleMatch<Value>(
 ): Value | undefined {
   if (!title) return undefined;
 
+  const normalizedTitle = normalizeTitle(title);
+  if (normalizedTitle) {
+    // WHY: Collision resolution is recorded in the normalized table, so exact
+    // normalized hits must win over direct-key matches to keep lookups stable
+    // across punctuation, casing, and conventional-prefix variants.
+    const exactMatch = lookup.normalized.get(normalizedTitle);
+    if (exactMatch !== undefined) return exactMatch;
+  }
+
   for (const key of buildDirectKeys(title)) {
     const directMatch = lookup.direct.get(key);
     if (directMatch !== undefined) return directMatch;
   }
 
-  const normalizedTitle = normalizeTitle(title);
   if (!normalizedTitle) return undefined;
-
-  const exactMatch = lookup.normalized.get(normalizedTitle);
-  if (exactMatch !== undefined) return exactMatch;
 
   const minRelativePrefixLength = options.minRelativePrefixLength ?? 0;
   for (const [lookupTitle, value] of lookup.normalized) {

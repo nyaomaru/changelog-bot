@@ -39,6 +39,7 @@ describe('title-lookup utils', () => {
       },
     );
 
+    expect(findTitleMatch('Add login flow', lookup)).toBe(99);
     expect(findTitleMatch('Add! Login Flow', lookup)).toBe(99);
   });
 });
