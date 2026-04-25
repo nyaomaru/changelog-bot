@@ -6,6 +6,7 @@
     "module": "node20",
     "moduleResolution": "nodenext",
     "target": "ES2022",
+    "isolatedModules": true,
     "types": ["node", "jest"],
     "baseUrl": ".",
     "paths": {
