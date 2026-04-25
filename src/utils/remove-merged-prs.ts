@@ -12,7 +12,7 @@ import {
 export function removeMergedPRs(md: string): string {
   const document = splitMarkdownSections(md);
   document.sections = document.sections.filter(
-    (section) => section.name.toLowerCase() !== 'merged prs',
+    (section) => !section.name.toLowerCase().startsWith('merged prs'),
   );
   return renderMarkdownSections(document);
 }
