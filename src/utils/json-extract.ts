@@ -8,8 +8,12 @@ import { safeJsonParse } from '@/utils/json.js';
  * @throws When no JSON object can be parsed.
  */
 export function extractJsonObject<T = unknown>(rawText: string): T {
+  const directParse = safeJsonParse<T>(rawText);
+  if (directParse !== undefined) {
+    return directParse;
+  }
+
   const strategies: Array<(text: string) => T | undefined> = [
-    tryParseDirect,
     tryParseOutermostSpan,
     tryParseBalancedObject,
   ];
@@ -20,15 +24,6 @@ export function extractJsonObject<T = unknown>(rawText: string): T {
   }
 
   throw new Error('Failed to parse JSON from model output');
-}
-
-/**
- * Attempt to parse the entire string as JSON.
- * @param text Model output to parse.
- * @returns Parsed JSON when the text is valid JSON.
- */
-function tryParseDirect<T>(text: string): T | undefined {
-  return safeJsonParse<T>(text);
 }
 
 /**

@@ -7,91 +7,23 @@ import {
   SECTION_CHORE,
   SECTION_ORDER,
 } from '@/constants/changelog.js';
+import { BULLET_PREFIX_RE } from '@/constants/markdown.js';
 import {
-  BULLET_PREFIX_RE,
-  H3_SUBHEADER_CAPTURE_RE,
-} from '@/constants/markdown.js';
+  appendUniqueBulletLines,
+  hasMeaningfulMarkdownContent,
+  renderMarkdownSections,
+  splitMarkdownSections,
+  type MarkdownSectionBlock,
+} from '@/utils/markdown-sections.js';
 
 const SECTION_ORDER_INDEX = new Map(
   SECTION_ORDER.map((sectionName, index) => [sectionName.toLowerCase(), index]),
 );
 
-type SectionBlock = {
-  headingLine: string;
-  name: string;
-  lines: string[];
-};
-
-function parseSectionName(line: string): string | null {
-  const match = line.match(H3_SUBHEADER_CAPTURE_RE);
-  return match ? match[1].trim() : null;
-}
-
-function splitSections(markdown: string): {
-  preamble: string[];
-  sections: SectionBlock[];
-} {
-  const lines = markdown.split('\n');
-  const preamble: string[] = [];
-  const sections: SectionBlock[] = [];
-  let current: SectionBlock | null = null;
-
-  for (const line of lines) {
-    const heading = parseSectionName(line);
-    if (heading) {
-      if (current) sections.push(current);
-      current = { headingLine: line, name: heading, lines: [] };
-      continue;
-    }
-    if (current) {
-      current.lines.push(line);
-    } else {
-      preamble.push(line);
-    }
-  }
-
-  if (current) sections.push(current);
-  return { preamble, sections };
-}
-
-function hasMeaningfulContent(lines: string[]): boolean {
-  return lines.some((line) => line.trim().length > 0);
-}
-
-function appendBulletLines(section: SectionBlock, bullets: string[]): void {
-  if (!bullets.length) return;
-  const existing = new Set(
-    section.lines
-      .filter((line) => BULLET_PREFIX_RE.test(line))
-      .map((line) => line.trim()),
-  );
-  const uniqueBullets = bullets.filter((line) => !existing.has(line.trim()));
-  if (!uniqueBullets.length) return;
-
-  const hasContent = section.lines.some((line) => line.trim().length > 0);
-  if (!hasContent) {
-    section.lines = ['', ...uniqueBullets, ''];
-    return;
-  }
-
-  if (!section.lines.length || section.lines[0].trim() !== '') {
-    section.lines.unshift('');
-  }
-
-  let insertIndex = section.lines.length;
-  while (insertIndex > 0 && section.lines[insertIndex - 1].trim() === '') {
-    insertIndex -= 1;
-  }
-  section.lines.splice(insertIndex, 0, ...uniqueBullets);
-
-  if (!section.lines.length || section.lines[section.lines.length - 1].trim()) {
-    section.lines.push('');
-  }
-}
-
 function moveDependencyUpdatesToChore(markdown: string): string {
   if (!markdown) return markdown;
-  const { preamble, sections } = splitSections(markdown);
+  const document = splitMarkdownSections(markdown);
+  const { sections } = document;
   if (!sections.length) return markdown;
 
   const changedIndex = sections.findIndex(
@@ -119,7 +51,7 @@ function moveDependencyUpdatesToChore(markdown: string): string {
   if (!movedBullets.length) return markdown;
   changedSection.lines = retainedLines;
 
-  if (!hasMeaningfulContent(changedSection.lines)) {
+  if (!hasMeaningfulMarkdownContent(changedSection.lines)) {
     sections.splice(changedIndex, 1);
   }
 
@@ -148,31 +80,24 @@ function moveDependencyUpdatesToChore(markdown: string): string {
     sections.splice(insertIndex, 0, choreSection);
   }
 
-  appendBulletLines(choreSection, movedBullets);
-
-  const output: string[] = [];
-  output.push(...preamble);
-  for (const section of sections) {
-    output.push(section.headingLine);
-    output.push(...section.lines);
-  }
-
-  return output.join('\n').replace(/\n{3,}/g, '\n\n');
+  appendUniqueBulletLines(choreSection, movedBullets);
+  return renderMarkdownSections(document);
 }
 
 function moveBreakingChangesToTop(markdown: string): string {
   if (!markdown) return markdown;
-  const { preamble, sections } = splitSections(markdown);
+  const document = splitMarkdownSections(markdown);
+  const { sections } = document;
   if (!sections.length) return markdown;
 
-  const isBreakingWithContent = (section: SectionBlock) =>
+  const isBreakingWithContent = (section: MarkdownSectionBlock) =>
     section.name.toLowerCase() === SECTION_BREAKING_CHANGES.toLowerCase() &&
-    hasMeaningfulContent(section.lines);
+    hasMeaningfulMarkdownContent(section.lines);
 
   const breakingSections = sections.filter(isBreakingWithContent);
   if (!breakingSections.length) return markdown;
 
-  const mergeBreakingLines = (blocks: SectionBlock[]): string[] => {
+  const mergeBreakingLines = (blocks: MarkdownSectionBlock[]): string[] => {
     const merged: string[] = [];
     for (const block of blocks) {
       if (merged.length) {
@@ -208,22 +133,16 @@ function moveBreakingChangesToTop(markdown: string): string {
   )
     return markdown;
 
-  const mergedBreakingSection: SectionBlock = {
+  const mergedBreakingSection: MarkdownSectionBlock = {
     headingLine: breakingSections[0].headingLine,
     name: SECTION_BREAKING_CHANGES,
     lines: mergeBreakingLines(breakingSections),
   };
-  const otherSections = sections.filter(
-    (section) => !isBreakingWithContent(section),
-  );
-  const output: string[] = [];
-  output.push(...preamble);
-  for (const section of [mergedBreakingSection, ...otherSections]) {
-    output.push(section.headingLine);
-    output.push(...section.lines);
-  }
-
-  return output.join('\n').replace(/\n{3,}/g, '\n\n');
+  document.sections = [
+    mergedBreakingSection,
+    ...sections.filter((section) => !isBreakingWithContent(section)),
+  ];
+  return renderMarkdownSections(document);
 }
 
 /**

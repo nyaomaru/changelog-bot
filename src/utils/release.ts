@@ -5,12 +5,10 @@ import type {
 } from '@/types/release.js';
 import { ParsedReleaseSchema } from '@/schema/release.js';
 import { SECTION_ORDER } from '@/constants/changelog.js';
-import {
-  stripConventionalPrefix,
-  normalizeTitle,
-} from '@/utils/title-normalize.js';
+import { stripConventionalPrefix } from '@/utils/title-normalize.js';
 import { FULL_CHANGELOG_RE } from '@/constants/release.js';
 import { BULLET_PREFIX_RE } from '@/constants/markdown.js';
+import { buildTitleLookup, findTitleMatch } from '@/utils/title-lookup.js';
 
 const H2_HEADING_RE = /^##\s+(.*)$/;
 const PR_URL_RE = /https?:\/\/\S+\/pull\/(\d+)/; // captures PR number
@@ -301,50 +299,13 @@ export function buildSectionFromRelease(params: {
   sections?: ReleaseSection[];
 }): string {
   const { version, date, items, categories, sections = [] } = params;
-
-  // Normalize titles for fuzzy matching: lowercase, strip conventional prefix,
-  // collapse non-alphanumerics to spaces, and trim.
-  const normalize = (s: string) => normalizeTitle(s);
-
-  // Build both exact and normalized lookup maps.
-  const titleToItem = new Map<string, ReleaseItem>();
-  const normalizedToItem = new Map<string, ReleaseItem>();
-  for (const item of items) {
-    const keys = [item.title, item.rawTitle].filter(Boolean) as string[];
-    // WHY: Avoid redundant insertions when title === rawTitle or keys differ only
-    // by reference; Set preserves lookup flexibility without extra work.
-    const uniqueKeys = new Set(keys);
-    for (const key of uniqueKeys) {
-      titleToItem.set(key, item);
-      titleToItem.set(key.toLowerCase(), item);
-      const norm = normalize(key);
-      normalizedToItem.set(norm, item);
-    }
-  }
-
-  const findItem = (lookupTitle: string): ReleaseItem | undefined => {
-    if (!lookupTitle) return undefined;
-    const direct =
-      titleToItem.get(lookupTitle) ||
-      titleToItem.get(lookupTitle.toLowerCase()) ||
-      titleToItem.get(stripConventionalPrefix(lookupTitle)) ||
-      titleToItem.get(stripConventionalPrefix(lookupTitle).toLowerCase());
-    if (direct) return direct;
-
-    // Fuzzy: try normalized matching with bidirectional prefix check.
-    const normalizedLookup = normalize(lookupTitle);
-    const exact = normalizedToItem.get(normalizedLookup);
-    if (exact) return exact;
-    for (const [k, item] of normalizedToItem) {
-      const minLen = Math.min(k.length, normalizedLookup.length);
-      const maxLen = Math.max(k.length, normalizedLookup.length);
-      // Only match if the shorter string is at least 50% of the longer
-      if (minLen / maxLen < 0.5) continue;
-      if (k.startsWith(normalizedLookup) || normalizedLookup.startsWith(k))
-        return item;
-    }
-    return undefined;
-  };
+  const itemLookup = buildTitleLookup(
+    items.map((item) => ({
+      // WHY: LLM output can refer to either the stripped or raw release-note title.
+      titles: new Set([item.title, item.rawTitle].filter(Boolean) as string[]),
+      value: item,
+    })),
+  );
   const lines: string[] = [`## [v${version}] - ${date}`, ''];
 
   function formatBullet(item: ReleaseItem): string {
@@ -361,7 +322,9 @@ export function buildSectionFromRelease(params: {
     const titles = categories[section] || [];
     const entries: ReleaseItem[] = [];
     for (const candidateTitle of titles) {
-      const item = findItem(candidateTitle);
+      const item = findTitleMatch(candidateTitle, itemLookup, {
+        minRelativePrefixLength: 0.5,
+      });
       if (item) {
         const key = item.pr
           ? `pr-${item.pr}`
