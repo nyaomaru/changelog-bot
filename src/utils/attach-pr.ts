@@ -2,7 +2,7 @@
 // conventional commit prefix (with optional scope) to compare plain subjects.
 import { isBulletLine } from '@/utils/is.js';
 import { INLINE_PR_PRESENT_RE } from '@/constants/conventional.js';
-import { normalizeTitle } from '@/utils/title-normalize.js';
+import { buildTitleLookup, findTitleMatch } from '@/utils/title-lookup.js';
 
 /** Maps original PR titles to their numeric identifiers. */
 type TitleToPr = Record<string, number>;
@@ -24,32 +24,6 @@ function hasInlinePrReference(line: string): boolean {
 }
 
 /**
- * Build a map keyed by normalized titles for efficient fuzzy matching.
- * @param titleToPr Original title-to-PR map.
- * @returns Map keyed by normalized titles.
- */
-function buildNormalizedLookup(titleToPr: TitleToPr): Map<string, number> {
-  const normalized = new Map<string, number>();
-  for (const [originalTitle, prNumber] of Object.entries(titleToPr)) {
-    const key = normalizeTitle(originalTitle);
-    if (normalized.has(key)) {
-      const existing = normalized.get(key)!;
-      // WHY: Collisions happen when titles differ only by punctuation/case.
-      // Prefer the higher PR number (usually newer) and log for visibility.
-      if (prNumber !== existing) {
-        console.warn(
-          `Title collision: "${originalTitle}" -> "${key}" (PR #${prNumber} vs #${existing})`,
-        );
-      }
-      normalized.set(key, Math.max(existing, prNumber));
-    } else {
-      normalized.set(key, prNumber);
-    }
-  }
-  return normalized;
-}
-
-/**
  * Split a markdown bullet line into prefix ("- ") and text segments.
  * @param line Markdown line to split.
  * @returns Bullet fragments or `undefined` when the line is not a bullet.
@@ -59,30 +33,6 @@ function splitBulletLine(line: string): BulletParts | undefined {
   if (!bulletMatch) return undefined;
   const [, prefix, text] = bulletMatch;
   return { prefix, text };
-}
-
-/**
- * Find a PR number whose normalized title matches the bullet text (prefix matching both ways).
- * @param normalizedBulletText Normalized bullet content.
- * @param normalizedTitleToPr Map of normalized titles to PR numbers.
- * @returns Matching PR number when found.
- */
-function findMatchingPrNumber(
-  normalizedBulletText: string,
-  normalizedTitleToPr: Map<string, number>,
-): number | undefined {
-  const direct = normalizedTitleToPr.get(normalizedBulletText);
-  if (direct) return direct;
-
-  for (const [normalizedTitle, prNumber] of normalizedTitleToPr) {
-    if (
-      normalizedBulletText.startsWith(normalizedTitle) ||
-      normalizedTitle.startsWith(normalizedBulletText)
-    ) {
-      return prNumber;
-    }
-  }
-  return undefined;
 }
 
 /**
@@ -97,7 +47,29 @@ export function attachPrNumbers(
   titleToPr: TitleToPr,
   repo?: { owner: string; repo: string },
 ): string {
-  const normalizedTitleToPr = buildNormalizedLookup(titleToPr);
+  const titleLookup = buildTitleLookup(
+    Object.entries(titleToPr).map(([title, prNumber]) => ({
+      titles: [title],
+      value: prNumber,
+    })),
+    {
+      onNormalizedCollision: ({
+        title,
+        normalizedTitle,
+        existingValue,
+        incomingValue,
+      }) => {
+        // WHY: Collisions happen when titles differ only by punctuation/case.
+        // Prefer the higher PR number (usually newer) and log for visibility.
+        if (incomingValue !== existingValue) {
+          console.warn(
+            `Title collision: "${title}" -> "${normalizedTitle}" (PR #${incomingValue} vs #${existingValue})`,
+          );
+        }
+        return Math.max(existingValue, incomingValue);
+      },
+    },
+  );
 
   const lines = md.split('\n');
   const updated = lines.map((line) => {
@@ -107,11 +79,7 @@ export function attachPrNumbers(
     const bulletParts = splitBulletLine(line);
     if (!bulletParts) return line;
 
-    const normalizedBulletText = normalizeTitle(bulletParts.text);
-    const matchedPrNumber = findMatchingPrNumber(
-      normalizedBulletText,
-      normalizedTitleToPr,
-    );
+    const matchedPrNumber = findTitleMatch(bulletParts.text, titleLookup);
 
     if (!matchedPrNumber) return line;
 
