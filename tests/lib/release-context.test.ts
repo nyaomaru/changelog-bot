@@ -82,10 +82,16 @@ describe('lib/release-context', () => {
     resolveGitHubAuth.mockResolvedValue({ token: 'gh-token', source: 'pat' });
 
     const credentials = await resolveRunCredentials('openai', 'octo', 'repo', {
-      OPENAI_API_KEY: 'openai-key',
+      github: { apiBase: 'https://api.github.com' },
+      providers: {
+        openai: { apiKey: 'openai-key', model: 'gpt-4o-mini' },
+        anthropic: { apiKey: undefined, model: 'claude-3-5-sonnet-20240620' },
+      },
     });
 
-    expect(resolveGitHubAuth).toHaveBeenCalledWith('octo', 'repo');
+    expect(resolveGitHubAuth).toHaveBeenCalledWith('octo', 'repo', {
+      apiBase: 'https://api.github.com',
+    });
     expect(credentials).toEqual({
       token: 'gh-token',
       hasProviderKey: true,

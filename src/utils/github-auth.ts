@@ -1,6 +1,4 @@
 import { createSign } from 'node:crypto';
-import { EnvSchema } from '@/schema/env.js';
-import type { Env } from '@/schema/env.js';
 import {
   GitHubAccessTokenSchema,
   GitHubInstallationSchema,
@@ -8,19 +6,16 @@ import {
 import {
   GITHUB_ACCEPT,
   GITHUB_API_VERSION,
-  GITHUB_API_BASE,
   GITHUB_APP_JWT_ALG,
   GITHUB_APP_JWT_SKEW_SECONDS,
   GITHUB_APP_JWT_TTL_SECONDS,
   GITHUB_APP_SIGN_ALG,
 } from '@/constants/github.js';
 import { getJson, postJson } from '@/utils/http.js';
+import type { GitHubRuntimeConfig } from '@/types/config.js';
 import type { GitHubAuth } from '@/types/github.js';
 import { base64url } from '@/utils/base64url.js';
 import { MS_PER_SECOND } from '@/constants/time.js';
-import { getEnv } from '@/utils/env.js';
-
-// API base comes from constants (supports GHES override via env)
 
 /**
  * Normalize private key: allow either multiline PEM or single-line with \n.
@@ -88,30 +83,28 @@ function ghHeaders(auth?: string): Record<string, string> {
  * - Else, if GITHUB_APP_ID + GITHUB_APP_PRIVATE_KEY present, exchanges for an installation token.
  * @param owner Org/user name.
  * @param repo Repository name.
+ * @param config GitHub runtime configuration for the current invocation.
  */
 export async function resolveGitHubAuth(
   owner: string,
   repo: string,
+  config: GitHubRuntimeConfig,
 ): Promise<GitHubAuth | undefined> {
-  const parsed = EnvSchema.safeParse(process.env);
-  const parsedEnv: Env | undefined = parsed.success ? parsed.data : undefined;
-  const get = <K extends keyof Env>(key: K) => getEnv(key, parsedEnv);
-
-  const pat = get('GITHUB_TOKEN');
+  const pat = config.token;
   if (pat) return { token: pat, source: 'pat' };
 
   // Use CI-safe aliases only (no GITHUB_ prefix for Secrets compatibility)
-  const appId = get('CHANGELOG_BOT_APP_ID');
-  const privateKeyRaw = get('CHANGELOG_BOT_APP_PRIVATE_KEY');
+  const appId = config.appId;
+  const privateKeyRaw = config.appPrivateKey;
   if (!appId || !privateKeyRaw) return undefined;
 
   const privateKey = normalizePrivateKey(String(privateKeyRaw));
   const jwt = createAppJwt(String(appId), privateKey);
 
   // Determine installation id: env or via repo lookup
-  let installationId = get('CHANGELOG_BOT_APP_INSTALLATION_ID');
+  let installationId = config.appInstallationId;
   if (!installationId) {
-    const instUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/installation`;
+    const instUrl = `${config.apiBase}/repos/${owner}/${repo}/installation`;
     const inst = await getJson<unknown>(instUrl, ghHeaders(jwt), 'GitHub API');
     const parsed = GitHubInstallationSchema.safeParse(inst);
     if (!parsed.success) {
@@ -123,7 +116,7 @@ export async function resolveGitHubAuth(
   }
 
   // Exchange for installation access token
-  const tokenUrl = `${GITHUB_API_BASE}/app/installations/${installationId}/access_tokens`;
+  const tokenUrl = `${config.apiBase}/app/installations/${installationId}/access_tokens`;
   const tokenRes = await postJson<unknown>(
     tokenUrl,
     {},

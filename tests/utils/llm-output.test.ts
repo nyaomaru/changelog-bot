@@ -22,6 +22,11 @@ const mockProvider = {
   },
 };
 
+const mockProviderConfig = {
+  apiKey: undefined,
+  model: 'mock-model',
+};
+
 describe('llm-output', () => {
   test('falls back when no provider key and no release notes', async () => {
     const result = await buildChangelogLlmOutput({
@@ -38,8 +43,10 @@ describe('llm-output', () => {
       prMapBySha: {},
       titleToPr: {},
       provider: mockProvider,
+      providerConfig: mockProviderConfig,
       hasProviderKey: false,
       token: undefined,
+      githubApiBase: 'https://api.github.com',
     });
 
     expect(result.fallbackReasons).toContain(
@@ -69,8 +76,10 @@ describe('llm-output', () => {
       prMapBySha: {},
       titleToPr: {},
       provider: mockProvider,
+      providerConfig: mockProviderConfig,
       hasProviderKey: false,
       token: undefined,
+      githubApiBase: 'https://api.github.com',
     });
 
     expect(result.fallbackReasons).toContain(
@@ -105,8 +114,10 @@ describe('llm-output', () => {
       prMapBySha: {},
       titleToPr: {},
       provider: mockProvider,
+      providerConfig: mockProviderConfig,
       hasProviderKey: false,
       token: undefined,
+      githubApiBase: 'https://api.github.com',
     });
 
     expect(result.fallbackReasons).toContain(
@@ -144,8 +155,10 @@ describe('llm-output', () => {
       prMapBySha: {},
       titleToPr: {},
       provider: mockProvider,
+      providerConfig: mockProviderConfig,
       hasProviderKey: true,
       token: undefined,
+      githubApiBase: 'https://api.github.com',
     });
 
     expect(result.aiUsed).toBe(false);

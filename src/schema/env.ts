@@ -12,10 +12,13 @@ export const EnvSchema = z.object({
   CHANGELOG_BOT_APP_PRIVATE_KEY: z.string().min(1).optional(),
   CHANGELOG_BOT_APP_INSTALLATION_ID: z.string().min(1).optional(),
   CHANGELOG_BOT_API_BASE: z.string().min(1).optional(),
+  GITHUB_API_BASE: z.string().min(1).optional(),
+  GITHUB_REPOSITORY: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   REPO_FULL_NAME: z.string().min(1).optional(),
   OPENAI_MODEL: z.string().optional(),
+  ANTHROPIC_MODEL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

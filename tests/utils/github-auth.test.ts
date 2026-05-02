@@ -15,6 +15,7 @@ jest.unstable_mockModule('node:crypto', () => ({
 }));
 
 // Import after mocks
+const { loadAppConfig } = await import('@/lib/app-config.js');
 const { resolveGitHubAuth } = await import('@/utils/github-auth.js');
 
 type FetchOptions = {
@@ -28,38 +29,29 @@ function createFetchMock(): FetchMock {
 }
 
 describe('github-auth utils', () => {
-  const originalEnv = { ...process.env };
   const originalFetch = global.fetch;
 
   beforeEach(() => {
     jest.resetAllMocks();
-    // reset env per test
-    process.env = { ...originalEnv };
-    // default: undefined token/app vars
-    delete process.env.GITHUB_TOKEN;
-    delete process.env.CHANGELOG_BOT_APP_ID;
-    delete process.env.CHANGELOG_BOT_APP_PRIVATE_KEY;
-    delete process.env.CHANGELOG_BOT_APP_INSTALLATION_ID;
-    delete process.env.GITHUB_API_BASE;
   });
 
   afterEach(() => {
     global.fetch = originalFetch as unknown as typeof fetch;
-    process.env = originalEnv;
   });
 
   test('returns PAT when GITHUB_TOKEN is set', async () => {
-    process.env.GITHUB_TOKEN = 'ghp_test';
+    const config = loadAppConfig({ GITHUB_TOKEN: 'ghp_test' });
 
-    const auth = await resolveGitHubAuth('acme', 'repo');
+    const auth = await resolveGitHubAuth('acme', 'repo', config.github);
     expect(auth).toEqual({ token: 'ghp_test', source: 'pat' });
   });
 
   test('exchanges App credentials for installation token (auto-detect install)', async () => {
-    process.env.CHANGELOG_BOT_APP_ID = '12345';
-    // Provide a private key with \n escapes; normalization should handle it
-    process.env.CHANGELOG_BOT_APP_PRIVATE_KEY =
-      '-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n';
+    const config = loadAppConfig({
+      CHANGELOG_BOT_APP_ID: '12345',
+      CHANGELOG_BOT_APP_PRIVATE_KEY:
+        '-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n',
+    });
 
     const calls: Array<{ url: string; options: FetchOptions }> = [];
     // Mock fetch for: GET /repos/{owner}/{repo}/installation then POST /app/installations/{id}/access_tokens
@@ -92,7 +84,7 @@ describe('github-auth utils', () => {
     ) as FetchMock;
     global.fetch = fetchMock;
 
-    const auth = await resolveGitHubAuth('acme', 'repo');
+    const auth = await resolveGitHubAuth('acme', 'repo', config.github);
     expect(auth?.source).toBe('app');
     expect(auth?.token).toBe('ghs_install_token');
     expect(auth?.expiresAt).toBe('2030-01-01T00:00:00Z');
@@ -107,10 +99,12 @@ describe('github-auth utils', () => {
   });
 
   test('uses provided installation id and skips detection', async () => {
-    process.env.CHANGELOG_BOT_APP_ID = '12345';
-    process.env.CHANGELOG_BOT_APP_PRIVATE_KEY =
-      '-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n';
-    process.env.CHANGELOG_BOT_APP_INSTALLATION_ID = '777';
+    const config = loadAppConfig({
+      CHANGELOG_BOT_APP_ID: '12345',
+      CHANGELOG_BOT_APP_PRIVATE_KEY:
+        '-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n',
+      CHANGELOG_BOT_APP_INSTALLATION_ID: '777',
+    });
 
     let requestCount = 0;
     const fetchMock = createFetchMock().mockImplementation(async (url) => {
@@ -133,7 +127,7 @@ describe('github-auth utils', () => {
     }) as FetchMock;
     global.fetch = fetchMock;
 
-    const auth = await resolveGitHubAuth('acme', 'repo');
+    const auth = await resolveGitHubAuth('acme', 'repo', config.github);
     expect(auth?.source).toBe('app');
     expect(auth?.token).toBe('ghs_token_777');
     // Only one request (no installation detection)

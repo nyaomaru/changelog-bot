@@ -1,12 +1,10 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
+import type { ProviderRuntimeConfig } from '@/types/config.js';
 import type { Provider } from '@/types/provider.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
 import { postJson } from '@/utils/http.js';
-import {
-  DEFAULT_OPENAI_MODEL,
-  OPENAI_RESPONSES_API,
-} from '@/constants/openai.js';
+import { OPENAI_RESPONSES_API } from '@/constants/openai.js';
 import {
   LLM_GENERATE_MAX_TOKENS,
   LLM_TEMPERATURE_DEFAULT,
@@ -15,8 +13,6 @@ import {
 import { isReasoningModel } from '@/utils/is.js';
 import { PROVIDER_OPENAI } from '@/constants/provider.js';
 import { RELEASE_NOTES_SYSTEM_PROMPT } from '@/constants/system-prompts.js';
-
-const MODEL = DEFAULT_OPENAI_MODEL;
 
 /** Subset of the OpenAI Responses API response payload we rely on. */
 type OpenAIResponse = {
@@ -34,17 +30,25 @@ type OpenAIResponse = {
 
 export class OpenAIProvider implements Provider {
   name = PROVIDER_OPENAI;
-  modelName = MODEL;
-  supports = {
-    jsonMode: true,
-    streaming: false,
-    reasoning: isReasoningModel(MODEL),
-    maxOutputTokens: LLM_GENERATE_MAX_TOKENS,
-  } as const;
+  modelName: string;
+  supports: Provider['supports'];
+
+  private readonly apiKey?: string;
+
+  constructor(config: ProviderRuntimeConfig) {
+    this.apiKey = config.apiKey;
+    this.modelName = config.model;
+    this.supports = {
+      jsonMode: true,
+      streaming: false,
+      reasoning: isReasoningModel(this.modelName),
+      maxOutputTokens: LLM_GENERATE_MAX_TOKENS,
+    } as const;
+  }
 
   async generate(input: LLMInput): Promise<LLMOutput> {
     const base: Record<string, unknown> = {
-      model: MODEL,
+      model: this.modelName,
       input: [
         { role: 'system', content: RELEASE_NOTES_SYSTEM_PROMPT },
         {
@@ -57,7 +61,7 @@ export class OpenAIProvider implements Provider {
       ],
       max_output_tokens: LLM_GENERATE_MAX_TOKENS,
     };
-    if (!isReasoningModel(MODEL)) {
+    if (!isReasoningModel(this.modelName)) {
       base.temperature = LLM_TEMPERATURE_DEFAULT;
     } else {
       base.reasoning = { effort: LLM_REASONING_EFFORT };
@@ -66,7 +70,7 @@ export class OpenAIProvider implements Provider {
     const resp = await postJson<OpenAIResponse>(
       OPENAI_RESPONSES_API,
       base,
-      { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      { Authorization: `Bearer ${this.apiKey ?? ''}` },
       'OpenAI error',
     );
     const outputText =
