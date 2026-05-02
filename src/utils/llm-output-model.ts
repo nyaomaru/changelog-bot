@@ -12,6 +12,7 @@ import type {
   BuildLlmOutputResult,
 } from '@/types/changelog-output.js';
 import type { CommitLite } from '@/types/commit.js';
+import type { LLMOutput } from '@/types/llm.js';
 import {
   appendFallbackNote,
   applyLlmDefaults,
@@ -69,7 +70,7 @@ export async function buildOutputFromModelOrFallback(
   });
 
   let aiUsed = false;
-  let llm = null;
+  let llm: LLMOutput | null = null;
 
   if (!hasProviderKey) {
     fallbackReasons.push(`Missing API key for provider: ${provider.name}`);
