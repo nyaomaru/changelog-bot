@@ -1,5 +1,12 @@
 // @ts-nocheck
-import { describe, test, expect, jest } from '@jest/globals';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  test,
+  expect,
+  jest,
+} from '@jest/globals';
 import { loadAppConfig } from '@/lib/app-config.js';
 import { classifyTitles } from '@/utils/classify.js';
 import { PROVIDER_OPENAI, PROVIDER_ANTHROPIC } from '@/constants/provider.js';
@@ -7,9 +14,15 @@ import { PROVIDER_OPENAI, PROVIDER_ANTHROPIC } from '@/constants/provider.js';
 describe('classifyTitles', () => {
   const originalFetch = global.fetch;
 
-  test('falls back to Chore when no API key', async () => {
+  beforeEach(() => {
     jest.resetAllMocks();
+  });
+
+  afterEach(() => {
     global.fetch = originalFetch;
+  });
+
+  test('falls back to Chore when no API key', async () => {
     const config = loadAppConfig({}).providers.openai;
     const out = await classifyTitles(['Add login'], PROVIDER_OPENAI, config);
 
@@ -17,7 +30,6 @@ describe('classifyTitles', () => {
   });
 
   test('classifies via OpenAI with mocked fetch', async () => {
-    jest.resetAllMocks();
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       text: async () =>
@@ -40,7 +52,6 @@ describe('classifyTitles', () => {
   });
 
   test('classifies via Anthropic with mocked fetch', async () => {
-    jest.resetAllMocks();
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       text: async () =>
