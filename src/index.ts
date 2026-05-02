@@ -4,6 +4,7 @@ import { createPR } from '@/lib/pr.js';
 import { mapCommitsToPrs, fetchReleaseBody } from '@/lib/github.js';
 
 import { ensureGithubTokenRequired } from '@/schema/env.js';
+import { getProviderRuntimeConfig, loadAppConfig } from '@/lib/app-config.js';
 import { providerFactory } from '@/utils/provider.js';
 import { getRepoFullName } from '@/utils/repository.js';
 import { parseCliArgs } from '@/lib/cli-args.js';
@@ -28,7 +29,8 @@ import { buildPrMapBySha, buildTitleToPr } from '@/utils/pr-mapping.js';
  */
 export async function runCli(): Promise<void> {
   const cli = await parseCliArgs(process.argv);
-  const provider = providerFactory(cli.provider);
+  const appConfig = loadAppConfig();
+  const provider = providerFactory(cli.provider, appConfig.providers);
   const {
     owner,
     repo,
@@ -38,7 +40,7 @@ export async function runCli(): Promise<void> {
     version,
     prevRef,
     date,
-  } = resolveReleasePlan(cli, getRepoFullName());
+  } = resolveReleasePlan(cli, getRepoFullName(appConfig));
   const prs = gitMergedPRs(prevRef, releaseRef, repoPath);
   const existing = prepareExistingChangelog(changelogPath, version);
 
@@ -50,14 +52,27 @@ export async function runCli(): Promise<void> {
     provider.name,
     owner,
     repo,
+    appConfig,
   );
   if (token) {
-    apiPrMap = await mapCommitsToPrs(owner, repo, commitShas, token);
+    apiPrMap = await mapCommitsToPrs(
+      owner,
+      repo,
+      commitShas,
+      token,
+      appConfig.github.apiBase,
+    );
   }
 
   let releaseBody = cli.releaseBody || '';
   if (!releaseBody && cli.releaseTag) {
-    releaseBody = await fetchReleaseBody(owner, repo, cli.releaseTag, token);
+    releaseBody = await fetchReleaseBody(
+      owner,
+      repo,
+      cli.releaseTag,
+      token,
+      appConfig.github.apiBase,
+    );
   }
   const prMapBySha = buildPrMapBySha({
     commitList,
@@ -80,8 +95,10 @@ export async function runCli(): Promise<void> {
     prMapBySha,
     titleToPr,
     provider,
+    providerConfig: getProviderRuntimeConfig(appConfig, provider.name),
     hasProviderKey,
     token,
+    githubApiBase: appConfig.github.apiBase,
   });
 
   const finalizedUpdate = finalizeChangelogUpdate({

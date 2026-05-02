@@ -6,11 +6,11 @@ import {
 } from '@/schema/github.js';
 import {
   GITHUB_ACCEPT,
+  GITHUB_API_BASE_DEFAULT,
   GITHUB_API_VERSION,
   PRS_LOOKUP_COMMIT_LIMIT,
 } from '@/constants/github.js';
 import { getJson } from '@/utils/http.js';
-import { GITHUB_API_BASE as API_BASE } from '@/constants/github.js';
 
 /**
  * Perform a GitHub API GET request with standard headers.
@@ -42,9 +42,10 @@ export async function fetchReleaseBody(
   repo: string,
   tag: string,
   token?: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
 ): Promise<string> {
   // GET /repos/{owner}/{repo}/releases/tags/{tag}
-  const endpoint = `${API_BASE}/repos/${owner}/${repo}/releases/tags/${tag}`;
+  const endpoint = `${apiBase}/repos/${owner}/${repo}/releases/tags/${tag}`;
   try {
     const data = await ghGet<unknown>(endpoint, token);
     const parsed = GitHubReleaseByTagSchema.safeParse(data);
@@ -68,8 +69,9 @@ export async function fetchPRInfo(
   repo: string,
   number: number,
   token?: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
 ): Promise<{ author?: string; url?: string } | null> {
-  const endpoint = `${API_BASE}/repos/${owner}/${repo}/pulls/${number}`;
+  const endpoint = `${apiBase}/repos/${owner}/${repo}/pulls/${number}`;
   try {
     const data = await ghGet<unknown>(endpoint, token);
     const parsed = GitHubPRInfoSchema.safeParse(data);
@@ -97,9 +99,10 @@ export async function prsForCommit(
   repo: string,
   sha: string,
   token: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
 ): Promise<PullRef[]> {
   // GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls
-  const endpoint = `${API_BASE}/repos/${owner}/${repo}/commits/${sha}/pulls`;
+  const endpoint = `${apiBase}/repos/${owner}/${repo}/commits/${sha}/pulls`;
   const data = await ghGet<unknown>(endpoint, token);
   const parsed = GitHubCommitPullsArraySchema.safeParse(data);
   const pullRequests = parsed.success ? parsed.data : [];
@@ -124,11 +127,18 @@ export async function mapCommitsToPrs(
   repo: string,
   shas: string[],
   token: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
 ): Promise<Record<string, PullRef[]>> {
   const commitToPullRefs: Record<string, PullRef[]> = {};
   for (const sha of shas.slice(0, PRS_LOOKUP_COMMIT_LIMIT)) {
     try {
-      commitToPullRefs[sha] = await prsForCommit(owner, repo, sha, token);
+      commitToPullRefs[sha] = await prsForCommit(
+        owner,
+        repo,
+        sha,
+        token,
+        apiBase,
+      );
     } catch {
       commitToPullRefs[sha] = [];
     }

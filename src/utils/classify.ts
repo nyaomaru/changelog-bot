@@ -1,12 +1,9 @@
 import type { ProviderName } from '@/types/llm.js';
+import type { ProviderRuntimeConfig } from '@/types/config.js';
 import { SECTION_ORDER } from '@/constants/changelog.js';
 import { PROVIDER_ANTHROPIC } from '@/constants/provider.js';
-import {
-  ANTHROPIC_API,
-  ANTHROPIC_VERSION,
-  DEFAULT_ANTHROPIC_MODEL,
-} from '@/constants/anthropic.js';
-import { OPENAI_CHAT_API, DEFAULT_OPENAI_MODEL } from '@/constants/openai.js';
+import { ANTHROPIC_API, ANTHROPIC_VERSION } from '@/constants/anthropic.js';
+import { OPENAI_CHAT_API } from '@/constants/openai.js';
 import { LLM_CLASSIFY_MAX_TOKENS } from '@/constants/prompt.js';
 
 import type { CategoryMap } from '@/types/changelog.js';
@@ -92,6 +89,7 @@ type RequestConfig = {
  */
 function buildAnthropicRequest(
   apiKey: string,
+  modelName: string,
   prompt: ClassificationPrompt,
 ): RequestConfig {
   // Define a structured output schema via tools to force JSON.
@@ -100,7 +98,7 @@ function buildAnthropicRequest(
     properties[cat] = { type: 'array', items: { type: 'string' } };
   }
   const payload = {
-    model: DEFAULT_ANTHROPIC_MODEL,
+    model: modelName,
     max_tokens: LLM_CLASSIFY_MAX_TOKENS,
     temperature: 0,
     system: SYSTEM_ANTHROPIC,
@@ -136,10 +134,11 @@ function buildAnthropicRequest(
  */
 function buildOpenAiRequest(
   apiKey: string,
+  modelName: string,
   prompt: ClassificationPrompt,
 ): RequestConfig {
   const payload = {
-    model: DEFAULT_OPENAI_MODEL,
+    model: modelName,
     temperature: 0,
     messages: [
       { role: 'system', content: SYSTEM_OPENAI },
@@ -167,11 +166,12 @@ function buildOpenAiRequest(
 function buildClassifyRequest(
   provider: ProviderName,
   apiKey: string,
+  modelName: string,
   prompt: ClassificationPrompt,
 ): RequestConfig {
   return provider === PROVIDER_ANTHROPIC
-    ? buildAnthropicRequest(apiKey, prompt)
-    : buildOpenAiRequest(apiKey, prompt);
+    ? buildAnthropicRequest(apiKey, modelName, prompt)
+    : buildOpenAiRequest(apiKey, modelName, prompt);
 }
 
 /**
@@ -210,20 +210,17 @@ function parseCategoryMap(rawJson: string): CategoryMap | undefined {
 export async function classifyTitles(
   titles: string[],
   provider: ProviderName,
+  config: ProviderRuntimeConfig,
 ): Promise<CategoryMap> {
   if (!titles.length) return {};
   const prompt: ClassificationPrompt = { titles, categories: SECTION_ORDER };
-
-  const apiKey =
-    provider === PROVIDER_ANTHROPIC
-      ? process.env.ANTHROPIC_API_KEY
-      : process.env.OPENAI_API_KEY;
+  const apiKey = config.apiKey;
   if (!apiKey) {
     return { Chore: titles };
   }
 
   try {
-    const req = buildClassifyRequest(provider, apiKey, prompt);
+    const req = buildClassifyRequest(provider, apiKey, config.model, prompt);
     const json = await postJson<unknown>(
       req.url,
       req.payload,

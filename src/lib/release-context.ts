@@ -5,15 +5,15 @@ import {
   dateForRef,
 } from '@/lib/git.js';
 import { readChangelog } from '@/lib/changelog.js';
-import { EnvSchema } from '@/schema/env.js';
 import type { CliOptions } from '@/schema/cli.js';
+import { getProviderRuntimeConfig } from '@/lib/app-config.js';
+import type { AppConfig } from '@/types/config.js';
 import type { ProviderName } from '@/types/llm.js';
 import { resolveGitHubAuth } from '@/utils/github-auth.js';
 import { versionFromRef } from '@/utils/version.js';
 import { escapeRegExp } from '@/utils/escape.js';
 import { HEAD_REF } from '@/constants/git.js';
 import { DATE_YYYY_MM_DD_LEN } from '@/constants/time.js';
-import { PROVIDER_OPENAI } from '@/constants/provider.js';
 
 /** Derived release metadata used across the CLI workflow. */
 export type ReleasePlan = {
@@ -42,20 +42,6 @@ export type RunCredentials = {
   /** Whether the selected provider has an API key configured. */
   hasProviderKey: boolean;
 };
-
-function getProviderApiKey(
-  providerName: ProviderName,
-  env: NodeJS.ProcessEnv,
-): string | undefined {
-  const parsedEnv = EnvSchema.safeParse(env);
-  const openAiApiKey = parsedEnv.success
-    ? parsedEnv.data.OPENAI_API_KEY
-    : env.OPENAI_API_KEY;
-  const anthropicApiKey = parsedEnv.success
-    ? parsedEnv.data.ANTHROPIC_API_KEY
-    : env.ANTHROPIC_API_KEY;
-  return providerName === PROVIDER_OPENAI ? openAiApiKey : anthropicApiKey;
-}
 
 /**
  * Resolve release refs, version, and date from CLI options and repository state.
@@ -120,11 +106,13 @@ export async function resolveRunCredentials(
   providerName: ProviderName,
   owner: string,
   repo: string,
-  env: NodeJS.ProcessEnv = process.env,
+  appConfig: AppConfig,
 ): Promise<RunCredentials> {
-  const gitHubAuth = await resolveGitHubAuth(owner, repo);
+  const gitHubAuth = await resolveGitHubAuth(owner, repo, appConfig.github);
   return {
     token: gitHubAuth?.token,
-    hasProviderKey: Boolean(getProviderApiKey(providerName, env)),
+    hasProviderKey: Boolean(
+      getProviderRuntimeConfig(appConfig, providerName).apiKey,
+    ),
   };
 }
