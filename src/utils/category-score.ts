@@ -251,74 +251,87 @@ export const SCORE_THRESHOLDS = {
 // Use centralized BucketName type for section identifiers.
 type SectionName = BucketName;
 
+type ScoreDeltas = Partial<Record<SectionName, number>>;
+
+type WeightedKeyword =
+  | string
+  | { readonly keyword: string; readonly weight: number };
+
 type KeywordIndex = Map<
   string,
   Array<{ section: SectionName; weight: number }>
 >;
 
+/**
+ * Add a weighted keyword entry to a keyword index.
+ * @param index Keyword index being built.
+ * @param section Changelog section affected by the keyword.
+ * @param entry Keyword string or explicit weighted keyword.
+ * @param defaultWeight Weight used for plain string entries.
+ */
+function addKeywordToIndex(
+  index: KeywordIndex,
+  section: SectionName,
+  entry: WeightedKeyword,
+  defaultWeight: number,
+): void {
+  const { keyword, weight } =
+    typeof entry === 'string'
+      ? { keyword: entry, weight: defaultWeight }
+      : entry;
+  const existingEntries = index.get(keyword) || [];
+  existingEntries.push({ section, weight });
+  index.set(keyword, existingEntries);
+}
+
+/**
+ * Build an index from grouped weighted keyword entries.
+ * @param groups Section-keyword groups to index.
+ * @param defaultWeight Weight used for plain string entries.
+ * @returns Map from keyword phrase to section-weight pairs.
+ */
+function buildKeywordIndex(
+  groups: Array<{
+    section: SectionName;
+    entries: readonly WeightedKeyword[];
+  }>,
+  defaultWeight: number,
+): KeywordIndex {
+  const index: KeywordIndex = new Map();
+  for (const { section, entries } of groups) {
+    for (const entry of entries) {
+      addKeywordToIndex(index, section, entry, defaultWeight);
+    }
+  }
+  return index;
+}
+
 // WHY: Build keyword indices once at module init time to avoid per-call allocation.
-/**
- * Build an index of strong keywords to section/weight mappings.
- * @returns Map from keyword phrase to section-weight pairs.
- */
-function buildStrongKeywordIndex(): KeywordIndex {
-  const index: KeywordIndex = new Map();
-  const add = (
-    section: SectionName,
-    entry: string | { keyword: string; weight: number },
-    defaultWeight = WEIGHT.strong.default,
-  ) => {
-    const { keyword, weight } =
-      typeof entry === 'string'
-        ? { keyword: entry, weight: defaultWeight }
-        : entry;
-    const existing = index.get(keyword) || [];
-    existing.push({ section, weight });
-    index.set(keyword, existing);
-  };
-  for (const entry of CATEGORY_WEIGHTS.strong.breaking)
-    add(SECTION_BREAKING_CHANGES, entry, WEIGHT.strong.default);
-  for (const entry of CATEGORY_WEIGHTS.strong.added)
-    add(SECTION_ADDED, entry, WEIGHT.strong.default);
-  for (const entry of CATEGORY_WEIGHTS.strong.fixed)
-    add(SECTION_FIXED, entry, WEIGHT.strong.default);
-  for (const entry of CATEGORY_WEIGHTS.strong.changed)
-    add(SECTION_CHANGED, entry, WEIGHT.strong.default);
-  for (const entry of CATEGORY_WEIGHTS.strong.docs)
-    add(SECTION_DOCS, entry, WEIGHT.strong.default);
-  for (const entry of CATEGORY_WEIGHTS.strong.test)
-    add(SECTION_TEST, entry, WEIGHT.strong.default);
-  for (const entry of CATEGORY_WEIGHTS.strong.chore)
-    add(SECTION_CHORE, entry, WEIGHT.strong.default);
-  return index;
-}
-
-/**
- * Build an index of weak keywords to section/weight mappings.
- * @returns Map from keyword phrase to section-weight pairs.
- */
-function buildWeakKeywordIndex(): KeywordIndex {
-  const index: KeywordIndex = new Map();
-  const add = (section: SectionName, keyword: string) => {
-    const existing = index.get(keyword) || [];
-    existing.push({ section, weight: WEAK_KEYWORD_WEIGHT });
-    index.set(keyword, existing);
-  };
-  for (const keyword of CATEGORY_WEIGHTS.weak.added)
-    add(SECTION_ADDED, keyword);
-  for (const keyword of CATEGORY_WEIGHTS.weak.fixed)
-    add(SECTION_FIXED, keyword);
-  for (const keyword of CATEGORY_WEIGHTS.weak.changed)
-    add(SECTION_CHANGED, keyword);
-  for (const keyword of CATEGORY_WEIGHTS.weak.docs) add(SECTION_DOCS, keyword);
-  for (const keyword of CATEGORY_WEIGHTS.weak.chore)
-    add(SECTION_CHORE, keyword);
-  return index;
-}
-
-// Module-level caches
-const STRONG_KEYWORD_INDEX: KeywordIndex = buildStrongKeywordIndex();
-const WEAK_KEYWORD_INDEX: KeywordIndex = buildWeakKeywordIndex();
+const STRONG_KEYWORD_INDEX: KeywordIndex = buildKeywordIndex(
+  [
+    {
+      section: SECTION_BREAKING_CHANGES,
+      entries: CATEGORY_WEIGHTS.strong.breaking,
+    },
+    { section: SECTION_ADDED, entries: CATEGORY_WEIGHTS.strong.added },
+    { section: SECTION_FIXED, entries: CATEGORY_WEIGHTS.strong.fixed },
+    { section: SECTION_CHANGED, entries: CATEGORY_WEIGHTS.strong.changed },
+    { section: SECTION_DOCS, entries: CATEGORY_WEIGHTS.strong.docs },
+    { section: SECTION_TEST, entries: CATEGORY_WEIGHTS.strong.test },
+    { section: SECTION_CHORE, entries: CATEGORY_WEIGHTS.strong.chore },
+  ],
+  WEIGHT.strong.default,
+);
+const WEAK_KEYWORD_INDEX: KeywordIndex = buildKeywordIndex(
+  [
+    { section: SECTION_ADDED, entries: CATEGORY_WEIGHTS.weak.added },
+    { section: SECTION_FIXED, entries: CATEGORY_WEIGHTS.weak.fixed },
+    { section: SECTION_CHANGED, entries: CATEGORY_WEIGHTS.weak.changed },
+    { section: SECTION_DOCS, entries: CATEGORY_WEIGHTS.weak.docs },
+    { section: SECTION_CHORE, entries: CATEGORY_WEIGHTS.weak.chore },
+  ],
+  WEAK_KEYWORD_WEIGHT,
+);
 
 /**
  * Initialize an empty score object with zero for every section.
@@ -342,6 +355,211 @@ function hasBreakingMarkerInPrefix(rawTitle: string): boolean {
 }
 
 /**
+ * Add score deltas to a mutable score object.
+ * @param scores Score object to mutate.
+ * @param deltas Per-section deltas to apply.
+ */
+function addScoreDeltas(scores: CategoryScores, deltas: ScoreDeltas): void {
+  for (const [sectionName, weight] of Object.entries(deltas) as Array<
+    [SectionName, number]
+  >) {
+    scores[sectionName] += weight;
+  }
+}
+
+/**
+ * Generate normalized words and short n-grams for keyword matching.
+ * @param normalizedTitle Title after lowercasing and normalization.
+ * @returns Unique phrases eligible for keyword scoring.
+ */
+function createNormalizedPhrases(normalizedTitle: string): Set<string> {
+  const words = normalizedTitle.split(/\s+/).filter(Boolean);
+  const shouldUseNgrams = words.length <= NGRAM_MAX_WORDS;
+  if (!shouldUseNgrams) return new Set(words);
+
+  const phrases = new Set(words);
+  for (let wordIndex = 0; wordIndex < words.length - 1; wordIndex++) {
+    phrases.add(`${words[wordIndex]} ${words[wordIndex + 1]}`);
+  }
+  for (let wordIndex = 0; wordIndex < words.length - 2; wordIndex++) {
+    phrases.add(
+      `${words[wordIndex]} ${words[wordIndex + 1]} ${words[wordIndex + 2]}`,
+    );
+  }
+  return phrases;
+}
+
+/**
+ * Score conventional prefix signals.
+ * @param rawTitle Original title, preserving prefix punctuation.
+ * @param lowercasedTitle Lowercased title used by prefix regexes.
+ * @returns Per-section prefix score deltas.
+ */
+function collectPrefixFamilyDeltas(
+  rawTitle: string,
+  lowercasedTitle: string,
+): ScoreDeltas {
+  const deltas: ScoreDeltas = {};
+
+  if (hasBreakingMarkerInPrefix(rawTitle)) {
+    deltas[SECTION_BREAKING_CHANGES] = CATEGORY_WEIGHTS.prefix.breaking;
+  }
+  if (FEAT_PREFIX_FLEX_RE.test(lowercasedTitle)) {
+    deltas[SECTION_ADDED] = CATEGORY_WEIGHTS.prefix.feat;
+  }
+  if (FIX_PREFIX_FLEX_RE.test(lowercasedTitle)) {
+    deltas[SECTION_FIXED] = CATEGORY_WEIGHTS.prefix.fix;
+  }
+  if (REFACTOR_PERF_STYLE_PREFIX_FLEX_RE.test(lowercasedTitle)) {
+    deltas[SECTION_CHANGED] = Math.max(
+      CATEGORY_WEIGHTS.prefix.refactor,
+      PERF_PREFIX_FLEX_RE.test(lowercasedTitle)
+        ? CATEGORY_WEIGHTS.prefix.perf
+        : CATEGORY_WEIGHTS.prefix.refactor,
+    );
+  }
+  if (DOCS_PREFIX_FLEX_RE.test(lowercasedTitle)) {
+    deltas[SECTION_DOCS] = CATEGORY_WEIGHTS.prefix.docs;
+  }
+  if (TEST_PREFIX_FLEX_RE.test(lowercasedTitle)) {
+    deltas[SECTION_TEST] = CATEGORY_WEIGHTS.prefix.test;
+  }
+  if (REVERT_PREFIX_FLEX_RE.test(lowercasedTitle)) {
+    deltas[SECTION_REVERTED] = CATEGORY_WEIGHTS.prefix.revert;
+  }
+  if (CHORE_PREFIX_FLEX_RE.test(lowercasedTitle)) {
+    deltas[SECTION_CHORE] = CATEGORY_WEIGHTS.prefix.chore;
+  }
+
+  return deltas;
+}
+
+/**
+ * Collect capped keyword scores for one keyword family.
+ * @param normalizedPhrases Normalized words and n-grams from the title.
+ * @param keywordIndex Index for the keyword family to score.
+ * @returns Max matching keyword score per section.
+ */
+function collectKeywordFamilyDeltas(
+  normalizedPhrases: Set<string>,
+  keywordIndex: KeywordIndex,
+): ScoreDeltas {
+  const deltas: ScoreDeltas = {};
+
+  for (const phrase of normalizedPhrases) {
+    const keywordHits = keywordIndex.get(phrase);
+    if (!keywordHits) continue;
+
+    for (const { section, weight } of keywordHits) {
+      deltas[section] = Math.max(deltas[section] || 0, weight);
+    }
+  }
+
+  return deltas;
+}
+
+/**
+ * Attenuate the strongest main category when the title includes uncertainty signals.
+ * @param scores Mutable scores to adjust.
+ * @param normalizedPhrases Normalized words and n-grams from the title.
+ */
+function applyNegativeSignalAttenuation(
+  scores: CategoryScores,
+  normalizedPhrases: Set<string>,
+): void {
+  const hasNegativeSignal = CATEGORY_WEIGHTS.negative.some(({ keyword }) =>
+    normalizedPhrases.has(keyword),
+  );
+  if (!hasNegativeSignal) return;
+
+  const candidateSections: SectionName[] = [
+    SECTION_FIXED,
+    SECTION_CHANGED,
+    SECTION_ADDED,
+  ];
+  let bestSection: SectionName | null = null;
+  let bestScore = -Infinity;
+
+  for (const section of candidateSections) {
+    if (scores[section] > bestScore) {
+      bestScore = scores[section];
+      bestSection = section;
+    }
+  }
+
+  if (bestSection) {
+    scores[bestSection] = Math.max(
+      scores[bestSection] - NEGATIVE_ATTENUATION_WEIGHT,
+      SCORE_MIN,
+    );
+  }
+}
+
+/**
+ * Apply phrase-combination heuristics that need regex context beyond n-grams.
+ * @param scores Mutable scores to adjust.
+ * @param normalizedTitle Normalized title used by combo regexes.
+ */
+function applyComboHeuristics(
+  scores: CategoryScores,
+  normalizedTitle: string,
+): void {
+  if (COMBO_ADD_TO_IMPROVE_RE.test(normalizedTitle)) {
+    scores[SECTION_ADDED] += WEAK_KEYWORD_WEIGHT;
+    scores[SECTION_CHANGED] += WEIGHT.strong.default;
+  }
+  if (COMBO_TIGHTEN_TYPE_RE.test(normalizedTitle)) {
+    scores[SECTION_FIXED] += WEIGHT.strong.default;
+    scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
+  }
+  if (COMBO_FIX_BY_ADDING_RE.test(normalizedTitle)) {
+    scores[SECTION_FIXED] += WEIGHT.strong.default;
+    scores[SECTION_ADDED] += WEAK_KEYWORD_WEIGHT;
+  }
+  if (COMBO_REMOVE_WITHOUT_REPLACEMENT_RE.test(normalizedTitle)) {
+    scores[SECTION_BREAKING_CHANGES] += WEIGHT.strong.high;
+    scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
+  }
+}
+
+/**
+ * Apply dependency version bump heuristics.
+ * @param scores Mutable scores to adjust.
+ * @param normalizedTitle Normalized title used by dependency regexes.
+ */
+function applyDependencyBumpHeuristic(
+  scores: CategoryScores,
+  normalizedTitle: string,
+): void {
+  if (!BUMP_OR_UPGRADE_RE.test(normalizedTitle)) return;
+
+  scores[SECTION_CHORE] += WEIGHT_LEVEL.low;
+  const versionRangeMatch = normalizedTitle.match(VERSION_FROM_TO_RE);
+  if (!versionRangeMatch) return;
+
+  const fromMajorVersion = parseInt(versionRangeMatch[1], 10);
+  const toMajorVersion = parseInt(versionRangeMatch[2], 10);
+  if (
+    !Number.isNaN(fromMajorVersion) &&
+    !Number.isNaN(toMajorVersion) &&
+    toMajorVersion > fromMajorVersion
+  ) {
+    scores[SECTION_BREAKING_CHANGES] += WEIGHT_LEVEL.low;
+    scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
+  }
+}
+
+/**
+ * Clamp all category scores to the supported scoring range.
+ * @param scores Mutable scores to clamp.
+ */
+function clampScores(scores: CategoryScores): void {
+  for (const section of SECTION_ORDER) {
+    scores[section] = Math.max(SCORE_MIN, Math.min(SCORE_MAX, scores[section]));
+  }
+}
+
+/**
  * Compute heuristic scores per category from a raw title.
  * @param rawTitle Original PR title or commit subject.
  * @returns Scores for each CHANGELOG section.
@@ -351,143 +569,23 @@ export function scoreCategories(rawTitle: string): CategoryScores {
   if (!rawTitle) return scores;
   const lowercasedTitle = rawTitle.toLowerCase();
   const normalizedTitle = normalizeTitle(lowercasedTitle);
-  const words = normalizedTitle.split(/\s+/).filter(Boolean);
-  const useNgrams = words.length <= NGRAM_MAX_WORDS;
-  const biGrams: string[] = [];
-  const triGrams: string[] = [];
-  if (useNgrams) {
-    for (let i = 0; i < words.length - 1; i++)
-      biGrams.push(`${words[i]} ${words[i + 1]}`);
-    for (let i = 0; i < words.length - 2; i++)
-      triGrams.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
-  }
-  const normalizedPhrases = new Set<string>(
-    useNgrams ? [...words, ...biGrams, ...triGrams] : words,
+  const normalizedPhrases = createNormalizedPhrases(normalizedTitle);
+
+  addScoreDeltas(scores, collectPrefixFamilyDeltas(rawTitle, lowercasedTitle));
+  addScoreDeltas(
+    scores,
+    collectKeywordFamilyDeltas(normalizedPhrases, STRONG_KEYWORD_INDEX),
+  );
+  addScoreDeltas(
+    scores,
+    collectKeywordFamilyDeltas(normalizedPhrases, WEAK_KEYWORD_INDEX),
   );
 
-  // Prefix family
-  const prefixFamilyDeltas: Partial<Record<SectionName, number>> = {};
-  if (hasBreakingMarkerInPrefix(rawTitle))
-    prefixFamilyDeltas[SECTION_BREAKING_CHANGES] =
-      CATEGORY_WEIGHTS.prefix.breaking;
-  if (FEAT_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas[SECTION_ADDED] = CATEGORY_WEIGHTS.prefix.feat;
-  if (FIX_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas[SECTION_FIXED] = CATEGORY_WEIGHTS.prefix.fix;
-  if (REFACTOR_PERF_STYLE_PREFIX_FLEX_RE.test(lowercasedTitle)) {
-    prefixFamilyDeltas[SECTION_CHANGED] = Math.max(
-      CATEGORY_WEIGHTS.prefix.refactor,
-      PERF_PREFIX_FLEX_RE.test(lowercasedTitle)
-        ? CATEGORY_WEIGHTS.prefix.perf
-        : CATEGORY_WEIGHTS.prefix.refactor,
-    );
-  }
-  if (DOCS_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas[SECTION_DOCS] = CATEGORY_WEIGHTS.prefix.docs;
-  if (TEST_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas[SECTION_TEST] = CATEGORY_WEIGHTS.prefix.test;
-  if (REVERT_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas[SECTION_REVERTED] = CATEGORY_WEIGHTS.prefix.revert;
-  if (CHORE_PREFIX_FLEX_RE.test(lowercasedTitle))
-    prefixFamilyDeltas[SECTION_CHORE] = CATEGORY_WEIGHTS.prefix.chore;
-  for (const [sectionName, weight] of Object.entries(prefixFamilyDeltas))
-    scores[sectionName as SectionName] += weight || 0;
+  applyNegativeSignalAttenuation(scores, normalizedPhrases);
+  applyComboHeuristics(scores, normalizedTitle);
+  applyDependencyBumpHeuristic(scores, normalizedTitle);
+  clampScores(scores);
 
-  // Keyword indices are prebuilt once at module init time
-  // Strong family accumulation with family cap per section
-  const strongFamilyDeltas: Partial<Record<SectionName, number>> = {};
-  for (const phrase of normalizedPhrases) {
-    const keywordHits = STRONG_KEYWORD_INDEX.get(phrase);
-    if (!keywordHits) continue;
-    for (const { section, weight } of keywordHits) {
-      strongFamilyDeltas[section] = Math.max(
-        strongFamilyDeltas[section] || 0,
-        weight,
-      );
-    }
-  }
-  for (const [sectionName, weight] of Object.entries(strongFamilyDeltas))
-    scores[sectionName as SectionName] += weight || 0;
-
-  // Weak family accumulation with cap
-  const weakFamilyDeltas: Partial<Record<SectionName, number>> = {};
-  for (const phrase of normalizedPhrases) {
-    const keywordHits = WEAK_KEYWORD_INDEX.get(phrase);
-    if (!keywordHits) continue;
-    for (const { section, weight } of keywordHits) {
-      weakFamilyDeltas[section] = Math.max(
-        weakFamilyDeltas[section] || 0,
-        weight,
-      );
-    }
-  }
-  for (const [sectionName, weight] of Object.entries(weakFamilyDeltas))
-    scores[sectionName as SectionName] += weight || 0;
-
-  // Negative signals family (attenuation applied to strongest of Fixed/Changed/Added)
-  const hasNegative = CATEGORY_WEIGHTS.negative.some(({ keyword }) =>
-    normalizedPhrases.has(keyword),
-  );
-  if (hasNegative) {
-    const candidateSections: SectionName[] = [
-      SECTION_FIXED,
-      SECTION_CHANGED,
-      SECTION_ADDED,
-    ];
-    let bestSection: SectionName | null = null;
-    let bestScore = -Infinity;
-    for (const section of candidateSections) {
-      if (scores[section] > bestScore) {
-        bestScore = scores[section];
-        bestSection = section;
-      }
-    }
-    if (bestSection) {
-      scores[bestSection] = Math.max(
-        scores[bestSection] - NEGATIVE_ATTENUATION_WEIGHT,
-        0,
-      );
-    }
-  }
-
-  // Combos (pattern-based)
-  const comboText = normalizedTitle;
-  if (COMBO_ADD_TO_IMPROVE_RE.test(comboText)) {
-    scores[SECTION_ADDED] += WEAK_KEYWORD_WEIGHT;
-    scores[SECTION_CHANGED] += WEIGHT.strong.default;
-  }
-  if (COMBO_TIGHTEN_TYPE_RE.test(comboText)) {
-    scores[SECTION_FIXED] += WEIGHT.strong.default;
-    scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
-  }
-  if (COMBO_FIX_BY_ADDING_RE.test(comboText)) {
-    scores[SECTION_FIXED] += WEIGHT.strong.default;
-    scores[SECTION_ADDED] += WEAK_KEYWORD_WEIGHT;
-  }
-  if (COMBO_REMOVE_WITHOUT_REPLACEMENT_RE.test(comboText)) {
-    scores[SECTION_BREAKING_CHANGES] += WEIGHT.strong.high;
-    scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
-  }
-
-  // Dependency major bump heuristic (e.g., bump X from 1 to 2)
-  const hasBumpOrUpgradeKeyword = BUMP_OR_UPGRADE_RE.test(comboText);
-  if (hasBumpOrUpgradeKeyword) {
-    scores[SECTION_CHORE] += WEIGHT_LEVEL.low;
-    const versionRangeMatch = comboText.match(VERSION_FROM_TO_RE);
-    if (versionRangeMatch) {
-      const from = parseInt(versionRangeMatch[1], 10);
-      const to = parseInt(versionRangeMatch[2], 10);
-      if (!Number.isNaN(from) && !Number.isNaN(to) && to > from) {
-        scores[SECTION_BREAKING_CHANGES] += WEIGHT_LEVEL.low;
-        scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
-      }
-    }
-  }
-
-  // Clamp totals
-  for (const section of SECTION_ORDER) {
-    scores[section] = Math.max(SCORE_MIN, Math.min(SCORE_MAX, scores[section]));
-  }
   return scores;
 }
 
