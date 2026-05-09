@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.14] - 2026-05-02
+
+### Changed
+
+- centralize runtime config and split changelog output pipeline by @nyaomaru in [#98](https://github.com/nyaomaru/changelog-bot/pull/98)
+
+### Chore
+
+- 0.1.13 by [bot] by @github-actions in [#97](https://github.com/nyaomaru/changelog-bot/pull/97)
+- Release: 0.1.14 by [bot] by @github-actions in [#99](https://github.com/nyaomaru/changelog-bot/pull/99)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.14
+
+[v0.1.14]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.14
+
 ## [v0.1.13] - 2026-04-25
 
 ### Changed
