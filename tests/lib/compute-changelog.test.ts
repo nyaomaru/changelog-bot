@@ -120,3 +120,38 @@ test('compare link append and unreleased update', () => {
   const compareMatches2 = again.match(/^\[v1\.1\.0\]: .+$/gm) || [];
   expect(compareMatches2.length).toBe(1);
 });
+
+test('preserves header block and exact spacing when anchor is missing', () => {
+  const current = [
+    '# Changelog',
+    '',
+    'Release history for the project.',
+    '',
+    '## [v0.9.0]',
+    '- old',
+    '',
+  ].join('\n');
+
+  const out = computeChangelog(current, {
+    version: '1.0.0',
+    newSection: ['## [v1.0.0]', '', '### Added', '- new'].join('\n'),
+    insertAfterAnchor: 'not-a-heading',
+  });
+
+  expect(out).toBe(
+    [
+      '# Changelog',
+      '',
+      'Release history for the project.',
+      '',
+      '## [v1.0.0]',
+      '',
+      '### Added',
+      '- new',
+      '',
+      '## [v0.9.0]',
+      '- old',
+      '',
+    ].join('\n'),
+  );
+});

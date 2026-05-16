@@ -40,4 +40,26 @@ describe('category-score', () => {
     const s = scoreCategories('security: patch CVE-2025-12345');
     expect(bestCategory(s)).toBe('Fixed');
   });
+
+  test('explicit breaking change marker and keywords win over feat prefix', () => {
+    const s = scoreCategories('feat!: breaking change drop support for v1 API');
+    expect(s['Breaking Changes']).toBeGreaterThan(s.Added);
+    expect(bestCategory(s)).toBe('Breaking Changes');
+  });
+
+  test('negative uncertainty signal attenuates strongest main category', () => {
+    const baseline = scoreCategories('fix: prevent crash in parser');
+    const attenuated = scoreCategories(
+      'fix: temporary workaround to prevent crash in parser',
+    );
+
+    expect(attenuated.Fixed).toBeLessThan(baseline.Fixed);
+    expect(bestCategory(attenuated)).toBe('Fixed');
+  });
+
+  test('docs prefix and keyword select Docs', () => {
+    const s = scoreCategories('docs: update README reference');
+    expect(s.Docs).toBeGreaterThan(s.Chore);
+    expect(bestCategory(s)).toBe('Docs');
+  });
 });
