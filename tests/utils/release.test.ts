@@ -74,6 +74,27 @@ describe('release utils', () => {
     );
   });
 
+  test('parseReleaseNotes strips trailing attribution noise after PR and author extraction', () => {
+    const body = [
+      '# v0.2.0',
+      '',
+      "## What's Changed",
+      '- chore: Update docs by @bob by in #77',
+    ].join('\n');
+
+    const parsed = parseReleaseNotes(body, { owner: 'acme', repo: 'repo' });
+
+    expect(parsed.items).toEqual([
+      {
+        title: 'Update docs',
+        rawTitle: 'chore: Update docs',
+        author: 'bob',
+        pr: 77,
+        url: 'https://github.com/acme/repo/pull/77',
+      },
+    ]);
+  });
+
   test('buildSectionFromRelease formats bullets with author and PR link', () => {
     const items = [
       {
@@ -109,6 +130,36 @@ describe('release utils', () => {
     expect(section).toContain('### Release Notes');
     expect(section).toContain(
       'Remember to update configuration files manually.',
+    );
+  });
+
+  test('buildSectionFromRelease matches raw conventional titles and avoids duplicate category membership', () => {
+    const section = buildSectionFromRelease({
+      version: '1.2.3',
+      date: '2026-05-16',
+      items: [
+        {
+          title: 'Add export flag',
+          rawTitle: 'feat: Add export flag',
+          pr: 100,
+          url: 'https://github.com/acme/repo/pull/100',
+        },
+      ],
+      categories: {
+        Added: ['feat: Add export flag'],
+        Changed: ['Add export flag'],
+      },
+    });
+
+    expect(section).toBe(
+      [
+        '## [v1.2.3] - 2026-05-16',
+        '',
+        '### Added',
+        '',
+        '- Add export flag in [#100](https://github.com/acme/repo/pull/100)',
+        '',
+      ].join('\n'),
     );
   });
 });
