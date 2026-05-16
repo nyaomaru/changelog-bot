@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.15] - 2026-05-09
+
+### Changed
+
+- split category scoring helpers by @nyaomaru in [#101](https://github.com/nyaomaru/changelog-bot/pull/101)
+
+### Chore
+
+- 0.1.14 by [bot] by @github-actions in [#100](https://github.com/nyaomaru/changelog-bot/pull/100)
+- Release: 0.1.15 by [bot] by @github-actions in [#102](https://github.com/nyaomaru/changelog-bot/pull/102)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.1.15
+
+[v0.1.15]: https://github.com/nyaomaru/changelog-bot/compare/v0.1.14...v0.1.15
+
 ## [v0.1.14] - 2026-05-02
 
 ### Changed
