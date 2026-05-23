@@ -189,10 +189,10 @@ export async function executeChangelogRun(params: {
     return;
   }
 
-  deps.writeChangelog(changelogPath, updated);
-
   deps.ensureGithubTokenRequired(cli.dryRun, token);
   const ghToken = token as string;
+
+  deps.writeChangelog(changelogPath, updated);
 
   const branch = `${PR_BRANCH_PREFIX}${version}`;
   const prNum = await deps.createPR({
