@@ -5,6 +5,7 @@ import type {
 } from '@/types/config.js';
 import type { CategoryMap } from '@/types/changelog.js';
 import type { Provider } from '@/types/provider.js';
+import { fallbackCategoryMap } from '@/providers/classification.js';
 import { providerFactory } from '@/utils/provider.js';
 
 function providerFromConfig(
@@ -38,7 +39,7 @@ export async function classifyTitles(
     return provider.classifyTitles(titles);
   }
   if (!config) {
-    throw new Error('Provider runtime config is required for classification.');
+    return fallbackCategoryMap(titles);
   }
   const providerAdapter = providerFromConfig(provider, config);
   return providerAdapter.classifyTitles(titles);
