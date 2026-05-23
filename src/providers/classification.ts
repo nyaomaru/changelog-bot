@@ -49,6 +49,10 @@ export function parseCategoryMap(rawJson: string): CategoryMap | undefined {
       }
     }
 
+    if (Object.keys(result).length === 0) {
+      return undefined;
+    }
+
     return result;
   } catch {
     return undefined;
