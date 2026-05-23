@@ -1,6 +1,5 @@
 import { fetchPRInfo } from '@/lib/github.js';
 import { parseReleaseNotes, buildSectionFromRelease } from '@/utils/release.js';
-import { classifyTitles } from '@/utils/classify.js';
 import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
 import { buildTitlesForClassification } from '@/utils/classify-pre.js';
 import {
@@ -85,7 +84,6 @@ export async function buildOutputFromReleaseNotes(
     releaseBody,
     titleToPr,
     provider,
-    providerConfig,
     hasProviderKey,
     token,
     githubApiBase,
@@ -112,11 +110,7 @@ export async function buildOutputFromReleaseNotes(
   const titlesForLLM = buildTitlesForClassification(parsedRelease.items);
   let categories: Record<string, string[]> = {};
   if (titlesForLLM.length) {
-    categories = await classifyTitles(
-      titlesForLLM,
-      provider.name,
-      providerConfig,
-    );
+    categories = await provider.classifyTitles(titlesForLLM);
     // Mark AI usage only when classification had input and a provider key is available.
     aiUsed = aiUsed || hasProviderKey;
     // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.

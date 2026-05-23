@@ -1,4 +1,5 @@
 import type { LLMInput, LLMOutput, ProviderName } from '@/types/llm.js';
+import type { CategoryMap } from '@/types/changelog.js';
 
 /** Capability flags for a provider implementation. */
 export type ProviderCapabilities = {
@@ -29,4 +30,6 @@ export type ProviderInfo = {
 export interface Provider extends ProviderInfo {
   /** Generate structured output from normalized input. */
   generate(input: LLMInput): Promise<LLMOutput>;
+  /** Classify titles into changelog categories. */
+  classifyTitles(titles: string[]): Promise<CategoryMap>;
 }
