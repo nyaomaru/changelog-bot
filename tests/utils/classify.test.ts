@@ -29,6 +29,12 @@ describe('classifyTitles', () => {
     expect(out).toEqual({ Chore: ['Add login'] });
   });
 
+  test('falls back to Chore when provider config is omitted', async () => {
+    const out = await classifyTitles(['Add login'], PROVIDER_OPENAI);
+
+    expect(out).toEqual({ Chore: ['Add login'] });
+  });
+
   test('classifies via OpenAI with mocked fetch', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,

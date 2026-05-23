@@ -20,6 +20,7 @@ const mockProvider = {
   generate: async () => {
     throw new Error('Unexpected model call');
   },
+  classifyTitles: async () => ({ Added: ['Add feature'] }),
 };
 
 const mockProviderConfig = {
