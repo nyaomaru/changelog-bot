@@ -64,4 +64,45 @@ describe('GeminiProvider', () => {
       }),
     );
   });
+
+  test('classifies titles via generateContent', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      Added: ['Add Gemini support'],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+    });
+
+    const provider = new GeminiProvider({
+      apiKey: 'gemini-test',
+      model: 'gemini-test-model',
+    });
+
+    const output = await provider.classifyTitles(['Add Gemini support']);
+
+    expect(output).toEqual({ Added: ['Add Gemini support'] });
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-test-model:generateContent',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'x-goog-api-key': 'gemini-test',
+        }),
+      }),
+    );
+  });
 });

@@ -80,7 +80,7 @@ pnpm dlx @nyaomaru/changelog-bot \
 
 ### Run without AI keys (fallback)
 
-If `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` are not set, the CLI skips model calls and builds a heuristic section from git logs (or uses GitHub Release Notes when provided). The PR body includes a note with the fallback reason, so everyone knows the run was deterministic.
+If the selected provider API key is not set, the CLI skips model calls and builds a heuristic section from git logs (or uses GitHub Release Notes when provided). The PR body includes a note with the fallback reason, so everyone knows the run was deterministic.
 
 ```sh
 # No AI keys in env
