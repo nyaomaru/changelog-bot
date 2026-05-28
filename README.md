@@ -65,6 +65,9 @@ pnpm dlx @nyaomaru/changelog-bot \
   --dry-run
 ```
 
+Dry-runs print provider diagnostics before the generated changelog so you can
+confirm whether an LLM request was used or the run fell back.
+
 ### Generate changelog for a tagged release
 
 ```sh
