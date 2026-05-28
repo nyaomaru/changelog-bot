@@ -15,6 +15,7 @@ function providerFromConfig(
   const providerConfigs = {
     openai: config,
     anthropic: config,
+    gemini: config,
   } satisfies ProviderRuntimeConfigMap;
   return providerFactory(providerName, providerConfigs);
 }

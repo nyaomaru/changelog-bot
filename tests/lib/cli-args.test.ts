@@ -6,7 +6,11 @@ import {
   DEFAULT_BASE_BRANCH,
   DEFAULT_CHANGELOG_FILE,
 } from '@/constants/git.js';
-import { PROVIDER_ANTHROPIC, PROVIDER_OPENAI } from '@/constants/provider.js';
+import {
+  PROVIDER_ANTHROPIC,
+  PROVIDER_GEMINI,
+  PROVIDER_OPENAI,
+} from '@/constants/provider.js';
 
 describe('cli-args', () => {
   test('parses defaults with minimal argv', async () => {
@@ -51,5 +55,16 @@ describe('cli-args', () => {
     expect(out.releaseName).toBe('1.2.3');
     expect(out.releaseBody).toBe('notes');
     expect(out.dryRun).toBe(true);
+  });
+
+  test('parses gemini provider', async () => {
+    const out = await parseCliArgs([
+      'node',
+      'cli',
+      '--provider',
+      PROVIDER_GEMINI,
+    ]);
+
+    expect(out.provider).toBe(PROVIDER_GEMINI);
   });
 });

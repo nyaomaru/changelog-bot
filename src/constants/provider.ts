@@ -5,8 +5,13 @@ import type { ProviderName } from '@/types/llm.js';
  */
 export const PROVIDER_OPENAI: ProviderName = 'openai';
 export const PROVIDER_ANTHROPIC: ProviderName = 'anthropic';
+export const PROVIDER_GEMINI: ProviderName = 'gemini';
 
 /**
  * Ordered list used for CLI choices and validation.
  */
-export const PROVIDER_NAMES = [PROVIDER_OPENAI, PROVIDER_ANTHROPIC] as const;
+export const PROVIDER_NAMES = [
+  PROVIDER_OPENAI,
+  PROVIDER_ANTHROPIC,
+  PROVIDER_GEMINI,
+] as const;

@@ -3,7 +3,7 @@ import {
   DEFAULT_BASE_BRANCH,
   DEFAULT_CHANGELOG_FILE,
 } from '@/constants/git.js';
-import { PROVIDER_ANTHROPIC, PROVIDER_OPENAI } from '@/constants/provider.js';
+import { PROVIDER_NAMES } from '@/constants/provider.js';
 
 /**
  * Runtime validation for CLI options after yargs parsing.
@@ -13,7 +13,7 @@ export const CliOptionsSchema = z.object({
   repoPath: z.string().default('.'),
   changelogPath: z.string().default(DEFAULT_CHANGELOG_FILE),
   baseBranch: z.string().default(DEFAULT_BASE_BRANCH),
-  provider: z.enum([PROVIDER_OPENAI, PROVIDER_ANTHROPIC]),
+  provider: z.enum(PROVIDER_NAMES),
   releaseTag: z.string().optional(),
   releaseName: z.string().optional(),
   releaseBody: z.string().default(''),

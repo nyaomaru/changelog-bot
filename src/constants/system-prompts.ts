@@ -1,6 +1,6 @@
 /**
  * Shared system prompt guiding LLM providers to produce consistent changelog output.
- * WHY: Keep provider instructions aligned so OpenAI and Anthropic follow the same rules.
+ * WHY: Keep provider instructions aligned so adapters follow the same rules.
  */
 export const RELEASE_NOTES_SYSTEM_PROMPT = `You are a release notes editor for a repository.
 Follow "Keep a Changelog" + SemVer.
