@@ -1,6 +1,6 @@
 [tools]
 node = "22"
-pnpm = "11.2.2"
+"npm:pnpm" = "11.2.2"
 
 [tasks.start]
 run = "pnpm start"
