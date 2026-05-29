@@ -237,6 +237,8 @@ jobs:
       release_tag: ${{ github.event.release.tag_name }}
       release_name: ${{ github.event.release.tag_name }}
       # release_body: '...'
+      # language: ja
+      # instructions_file: .github/changelog-instructions.md
       # dry_run: 'true'
     secrets:
       REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
