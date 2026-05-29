@@ -15,11 +15,17 @@ export async function buildChangelogLlmOutput(
   params: BuildChangelogLlmOutputParams,
 ): Promise<BuildLlmOutputResult> {
   const fallbackReasons: string[] = [];
-  const fromRelease = await buildOutputFromReleaseNotes(
-    params,
-    fallbackReasons,
+  const hasCustomization = Boolean(
+    params.customInstructions || params.language !== 'en',
   );
-  if (fromRelease) return fromRelease;
+
+  if (!hasCustomization) {
+    const fromRelease = await buildOutputFromReleaseNotes(
+      params,
+      fallbackReasons,
+    );
+    if (fromRelease) return fromRelease;
+  }
 
   return buildOutputFromModelOrFallback(params, fallbackReasons);
 }
