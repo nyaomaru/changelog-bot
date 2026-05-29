@@ -46,6 +46,8 @@ export async function buildOutputFromModelOrFallback(
     prevRef,
     releaseRef,
     releaseBody,
+    language,
+    customInstructions,
     existingChangelog,
     commitList,
     prs,
@@ -66,7 +68,8 @@ export async function buildOutputFromModelOrFallback(
     gitLog: logsForLLM,
     mergedPRs: prs,
     changelog: existingChangelog,
-    language: 'en',
+    language,
+    customInstructions,
   });
 
   let aiUsed = false;

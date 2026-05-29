@@ -32,6 +32,9 @@ export async function parseCliArgs(argv: string[]): Promise<CliOptions> {
     .option('release-tag', { type: 'string' })
     .option('release-name', { type: 'string' })
     .option('release-body', { type: 'string', default: '' })
+    .option('language', { type: 'string', default: 'en' })
+    .option('instructions', { type: 'string' })
+    .option('instructions-file', { type: 'string' })
     .option('dry-run', { type: 'boolean', default: false })
     .strict()
     .parse();
@@ -44,6 +47,9 @@ export async function parseCliArgs(argv: string[]): Promise<CliOptions> {
     releaseTag: parsed['release-tag'],
     releaseName: parsed['release-name'],
     releaseBody: parsed['release-body'],
+    language: parsed.language,
+    instructions: parsed.instructions,
+    instructionsFile: parsed['instructions-file'],
     dryRun: parsed['dry-run'],
   });
 }

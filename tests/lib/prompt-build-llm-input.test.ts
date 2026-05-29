@@ -16,7 +16,8 @@ test('buildLLMInput truncates changelog to preview limit and maps fields', () =>
     gitLog: 'abc Fix: something',
     mergedPRs: '- #123 Some PR',
     changelog: longChangelog,
-    language: 'en',
+    language: 'ja',
+    customInstructions: 'Write concise user-facing bullets.',
   });
 
   expect(input.repo).toBe('owner/repo');
@@ -27,6 +28,7 @@ test('buildLLMInput truncates changelog to preview limit and maps fields', () =>
   expect(input.releaseBody).toBe('release body');
   expect(input.gitLog).toBe('abc Fix: something');
   expect(input.mergedPRs).toBe('- #123 Some PR');
-  expect(input.language).toBe('en');
+  expect(input.language).toBe('ja');
+  expect(input.customInstructions).toBe('Write concise user-facing bullets.');
   expect(input.changelogPreview.length).toBe(CHANGELOG_PREVIEW_LIMIT);
 });

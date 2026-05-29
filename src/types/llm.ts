@@ -21,8 +21,10 @@ export type LLMInput = {
   mergedPRs: string;
   /** Truncated snapshot of the existing changelog. */
   changelogPreview: string;
-  /** Output language; currently fixed to English. */
-  language: 'en';
+  /** Output language requested for generated changelog text. */
+  language: string;
+  /** Optional user-provided writing and grouping guidance. */
+  customInstructions?: string;
 };
 
 /** Structured output expected from provider responses. */

@@ -25,6 +25,10 @@ export type BuildChangelogLlmOutputParams = {
   prevRef: string;
   /** Release notes body fetched from GitHub or provided by CLI. */
   releaseBody: string;
+  /** Output language requested for generated changelog text. */
+  language: string;
+  /** Optional user-provided writing and grouping guidance. */
+  customInstructions?: string;
   /** Existing changelog content before the update. */
   existingChangelog: string;
   /** Commits included in the current release range. */

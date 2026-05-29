@@ -17,6 +17,9 @@ export const CliOptionsSchema = z.object({
   releaseTag: z.string().optional(),
   releaseName: z.string().optional(),
   releaseBody: z.string().default(''),
+  language: z.string().min(1).default('en'),
+  instructions: z.string().optional(),
+  instructionsFile: z.string().optional(),
   dryRun: z.boolean().default(false),
 });
 

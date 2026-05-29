@@ -27,6 +27,16 @@ inputs:
   release-body:
     description: 'Additional release notes body to merge in'
     required: false
+  language:
+    description: 'Language for generated changelog prose'
+    required: false
+    default: 'en'
+  instructions:
+    description: 'Additional changelog writing and grouping instructions'
+    required: false
+  instructions-file:
+    description: 'Path to a file with additional changelog instructions'
+    required: false
   npm-version:
     description: 'npm dist-tag or version range for @nyaomaru/changelog-bot'
     required: false
@@ -67,6 +77,7 @@ runs:
         REPO_FULL_NAME: ${{ github.repository }}
         # Capture release_body safely without inline interpolation issues
         INPUT_RELEASE_BODY: ${{ inputs['release-body'] }}
+        INPUT_INSTRUCTIONS: ${{ inputs.instructions }}
         INPUT_MINIMUM_PACKAGE_AGE_DAYS: ${{ inputs['minimum-package-age-days'] }}
       run: |
         set -euo pipefail
@@ -90,6 +101,7 @@ runs:
           --changelog-path "${{ inputs['changelog-path'] }}"
           --base-branch "${{ inputs['base-branch'] }}"
           --provider "${{ inputs.provider }}"
+          --language "${{ inputs.language }}"
         )
 
         if [ -n "${{ inputs['release-tag'] }}" ]; then
@@ -100,6 +112,12 @@ runs:
         fi
         if [ -n "${INPUT_RELEASE_BODY:-}" ]; then
           CMD+=(--release-body "${INPUT_RELEASE_BODY}")
+        fi
+        if [ -n "${INPUT_INSTRUCTIONS:-}" ]; then
+          CMD+=(--instructions "${INPUT_INSTRUCTIONS}")
+        fi
+        if [ -n "${{ inputs['instructions-file'] }}" ]; then
+          CMD+=(--instructions-file "${{ inputs['instructions-file'] }}")
         fi
         if [ "${{ inputs['dry-run'] }}" = "true" ]; then
           CMD+=(--dry-run)
