@@ -77,7 +77,9 @@ runs:
         REPO_FULL_NAME: ${{ github.repository }}
         # Capture release_body safely without inline interpolation issues
         INPUT_RELEASE_BODY: ${{ inputs['release-body'] }}
+        INPUT_LANGUAGE: ${{ inputs.language }}
         INPUT_INSTRUCTIONS: ${{ inputs.instructions }}
+        INPUT_INSTRUCTIONS_FILE: ${{ inputs['instructions-file'] }}
         INPUT_MINIMUM_PACKAGE_AGE_DAYS: ${{ inputs['minimum-package-age-days'] }}
       run: |
         set -euo pipefail
@@ -101,7 +103,7 @@ runs:
           --changelog-path "${{ inputs['changelog-path'] }}"
           --base-branch "${{ inputs['base-branch'] }}"
           --provider "${{ inputs.provider }}"
-          --language "${{ inputs.language }}"
+          --language "${INPUT_LANGUAGE}"
         )
 
         if [ -n "${{ inputs['release-tag'] }}" ]; then
@@ -116,8 +118,8 @@ runs:
         if [ -n "${INPUT_INSTRUCTIONS:-}" ]; then
           CMD+=(--instructions "${INPUT_INSTRUCTIONS}")
         fi
-        if [ -n "${{ inputs['instructions-file'] }}" ]; then
-          CMD+=(--instructions-file "${{ inputs['instructions-file'] }}")
+        if [ -n "${INPUT_INSTRUCTIONS_FILE:-}" ]; then
+          CMD+=(--instructions-file "${INPUT_INSTRUCTIONS_FILE}")
         fi
         if [ "${{ inputs['dry-run'] }}" = "true" ]; then
           CMD+=(--dry-run)
