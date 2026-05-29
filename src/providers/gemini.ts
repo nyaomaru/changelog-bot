@@ -101,12 +101,8 @@ export class GeminiProvider implements Provider {
       generationConfig: {
         maxOutputTokens: LLM_GENERATE_MAX_TOKENS,
         temperature: LLM_TEMPERATURE_DEFAULT,
-        responseFormat: {
-          text: {
-            mimeType: 'application/json',
-            schema: outputSchema,
-          },
-        },
+        responseMimeType: 'application/json',
+        responseJsonSchema: outputSchema,
       },
     } as const;
 
@@ -142,15 +138,11 @@ export class GeminiProvider implements Provider {
       generationConfig: {
         maxOutputTokens: LLM_CLASSIFY_MAX_TOKENS,
         temperature: 0,
-        responseFormat: {
-          text: {
-            mimeType: 'application/json',
-            schema: {
-              type: 'object',
-              properties,
-              required: [...prompt.categories],
-            },
-          },
+        responseMimeType: 'application/json',
+        responseJsonSchema: {
+          type: 'object',
+          properties,
+          required: [...prompt.categories],
         },
       },
     } as const;

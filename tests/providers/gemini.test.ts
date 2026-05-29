@@ -63,6 +63,14 @@ describe('GeminiProvider', () => {
         }),
       }),
     );
+    const requestBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(requestBody.generationConfig).toEqual(
+      expect.objectContaining({
+        responseMimeType: 'application/json',
+        responseJsonSchema: expect.any(Object),
+      }),
+    );
+    expect(requestBody.generationConfig.responseFormat).toBeUndefined();
   });
 
   test('classifies titles via generateContent', async () => {
@@ -104,5 +112,15 @@ describe('GeminiProvider', () => {
         }),
       }),
     );
+    const requestBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(requestBody.generationConfig).toEqual(
+      expect.objectContaining({
+        responseMimeType: 'application/json',
+        responseJsonSchema: expect.objectContaining({
+          type: 'object',
+        }),
+      }),
+    );
+    expect(requestBody.generationConfig.responseFormat).toBeUndefined();
   });
 });
