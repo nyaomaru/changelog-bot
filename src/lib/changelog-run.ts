@@ -13,6 +13,7 @@ import {
   resolveRunCredentials,
 } from '@/lib/release-context.js';
 import { finalizeChangelogUpdate } from '@/lib/changelog-update.js';
+import { formatDryRunDiagnostics } from '@/utils/dry-run-diagnostics.js';
 import {
   DEFAULT_PR_LABELS,
   PR_BRANCH_PREFIX,
@@ -150,7 +151,11 @@ export async function executeChangelogRun(params: {
     apiPrMap,
   });
   const titleToPr = deps.buildTitleToPr(commitList, prs, prMapBySha);
-  let { llm } = await deps.buildChangelogLlmOutput({
+  const providerConfig = deps.getProviderRuntimeConfig(
+    appConfig,
+    provider.name,
+  );
+  const llmOutput = await deps.buildChangelogLlmOutput({
     owner,
     repo,
     version,
@@ -164,11 +169,12 @@ export async function executeChangelogRun(params: {
     prMapBySha,
     titleToPr,
     provider,
-    providerConfig: deps.getProviderRuntimeConfig(appConfig, provider.name),
+    providerConfig,
     hasProviderKey,
     token,
     githubApiBase: appConfig.github.apiBase,
   });
+  let llm = llmOutput.llm;
 
   const finalizedUpdate = deps.finalizeChangelogUpdate({
     owner,
@@ -185,6 +191,15 @@ export async function executeChangelogRun(params: {
 
   if (cli.dryRun) {
     log('==== DRY RUN (no PR) ====');
+    log(
+      formatDryRunDiagnostics({
+        providerName: provider.name,
+        modelName: providerConfig.model,
+        aiUsed: llmOutput.aiUsed,
+        fallbackReasons: llmOutput.fallbackReasons,
+      }),
+    );
+    log('');
     log(updated);
     return;
   }

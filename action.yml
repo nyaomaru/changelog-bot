@@ -15,7 +15,7 @@ inputs:
     required: false
     default: 'main'
   provider:
-    description: 'LLM provider to use (openai|anthropic)'
+    description: 'LLM provider to use (openai|anthropic|gemini)'
     required: false
     default: 'openai'
   release-tag:
@@ -114,3 +114,4 @@ runs:
 #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 #     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 #     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+#     GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

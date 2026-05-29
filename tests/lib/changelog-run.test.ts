@@ -110,6 +110,16 @@ describe('executeChangelogRun', () => {
       }),
     );
     expect(log).toHaveBeenNthCalledWith(1, '==== DRY RUN (no PR) ====');
-    expect(log).toHaveBeenNthCalledWith(2, 'updated changelog');
+    expect(log).toHaveBeenNthCalledWith(
+      2,
+      [
+        'Provider: openai',
+        'Model: mock-openai',
+        'AI used: false',
+        'Fallback reasons: none',
+      ].join('\n'),
+    );
+    expect(log).toHaveBeenNthCalledWith(3, '');
+    expect(log).toHaveBeenNthCalledWith(4, 'updated changelog');
   });
 });

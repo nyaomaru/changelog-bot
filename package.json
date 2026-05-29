@@ -44,7 +44,8 @@
     "github-actions",
     "cli",
     "openai",
-    "anthropic"
+    "anthropic",
+    "gemini"
   ],
   "dependencies": {
     "is-kit": "^1.6.4",

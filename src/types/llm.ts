@@ -1,5 +1,5 @@
 /** Supported LLM provider identifiers. */
-export type ProviderName = 'openai' | 'anthropic';
+export type ProviderName = 'openai' | 'anthropic' | 'gemini';
 
 /** Input payload shared across all LLM providers. */
 export type LLMInput = {

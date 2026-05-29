@@ -1,9 +1,20 @@
 import { OpenAIProvider } from '@/providers/openai.js';
 import { AnthropicProvider } from '@/providers/anthropic.js';
-import type { ProviderRuntimeConfigMap } from '@/types/config.js';
+import { GeminiProvider } from '@/providers/gemini.js';
+import type {
+  ProviderRuntimeConfig,
+  ProviderRuntimeConfigMap,
+} from '@/types/config.js';
 import type { Provider } from '@/types/provider.js';
 import type { ProviderName } from '@/types/llm.js';
-import { PROVIDER_ANTHROPIC } from '@/constants/provider.js';
+
+type ProviderConstructor = new (config: ProviderRuntimeConfig) => Provider;
+
+const PROVIDER_REGISTRY: Record<ProviderName, ProviderConstructor> = {
+  openai: OpenAIProvider,
+  anthropic: AnthropicProvider,
+  gemini: GeminiProvider,
+};
 
 /**
  * Construct an LLM provider by name.
@@ -15,7 +26,6 @@ export function providerFactory(
   name: ProviderName,
   config: ProviderRuntimeConfigMap,
 ): Provider {
-  return name === PROVIDER_ANTHROPIC
-    ? new AnthropicProvider(config[PROVIDER_ANTHROPIC])
-    : new OpenAIProvider(config[name]);
+  const ProviderAdapter = PROVIDER_REGISTRY[name];
+  return new ProviderAdapter(config[name]);
 }

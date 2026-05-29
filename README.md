@@ -46,7 +46,7 @@ Using it in CI? Jump to [GitHub Actions integration](#github-actions-integration
 | `--repo-path`      | Path to repository root                             | `.`                |
 | `--changelog-path` | Path to CHANGELOG file                              | `CHANGELOG.md`     |
 | `--base-branch`    | Base branch for PR                                  | `main`             |
-| `--provider`       | LLM provider (`openai` or `anthropic`)              | `openai`           |
+| `--provider`       | LLM provider (`openai`, `anthropic`, or `gemini`)   | `openai`           |
 | `--release-tag`    | Git ref (tag or HEAD) to generate release for       | latest tag or HEAD |
 | `--release-name`   | Display name for version (without `v`)              | derived from tag   |
 | `--release-body`   | Additional release notes body                       | `""`               |
@@ -65,6 +65,9 @@ pnpm dlx @nyaomaru/changelog-bot \
   --dry-run
 ```
 
+Dry-runs print provider diagnostics before the generated changelog so you can
+confirm whether an LLM request was used or the run fell back.
+
 ### Generate changelog for a tagged release
 
 ```sh
@@ -77,7 +80,7 @@ pnpm dlx @nyaomaru/changelog-bot \
 
 ### Run without AI keys (fallback)
 
-If `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` are not set, the CLI skips model calls and builds a heuristic section from git logs (or uses GitHub Release Notes when provided). The PR body includes a note with the fallback reason, so everyone knows the run was deterministic.
+If the selected provider API key is not set, the CLI skips model calls and builds a heuristic section from git logs (or uses GitHub Release Notes when provided). The PR body includes a note with the fallback reason, so everyone knows the run was deterministic.
 
 ```sh
 # No AI keys in env
@@ -114,9 +117,11 @@ Bring your own keys and tokens as needed—`changelog-bot` only asks for what it
     - `CHANGELOG_BOT_API_BASE` (optional; GHES, e.g., `https://ghe.example.com/api/v3`)
   - `OPENAI_API_KEY` (optional)
   - `ANTHROPIC_API_KEY` (optional)
+  - `GEMINI_API_KEY` (optional)
   - `REPO_FULL_NAME` (optional, `owner/repo`; used for link resolution)
   - `OPENAI_MODEL` (optional; defaults to `gpt-4o-mini`)
   - `ANTHROPIC_MODEL` (optional; defaults to `claude-3-5-sonnet-20240620`)
+  - `GEMINI_MODEL` (optional; defaults to `gemini-3.5-flash`)
 
 ### Fallback behavior (when AI is unavailable)
 
@@ -163,6 +168,7 @@ jobs:
           # Optional: set one of the following to enable AI generation
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
@@ -196,6 +202,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_FULL_NAME: ${{ github.repository }}
 ```
@@ -218,13 +225,14 @@ jobs:
       REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
 Action inputs (for both 1 and 3):
 
 - `changelog-path` / `changelog_path`: path to `CHANGELOG.md` (default `CHANGELOG.md`).
 - `base-branch` / `base_branch`: base branch for PR (default `main`).
-- `provider`: `openai` or `anthropic` (default `openai`).
+- `provider`: `openai`, `anthropic`, or `gemini` (default `openai`).
 - `npm-version` / `npm_version`: npm dist-tag or range for the CLI package (default `latest`).
 - `minimum-package-age-days` / `minimum_package_age_days`: minimum publish age required for the resolved npm package version before the action installs it (default `2`, set to `0` to disable explicitly).
 - `release-tag` / `release_tag`: tag or ref to generate for.

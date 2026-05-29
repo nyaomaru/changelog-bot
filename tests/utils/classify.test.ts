@@ -9,7 +9,11 @@ import {
 } from '@jest/globals';
 import { loadAppConfig } from '@/lib/app-config.js';
 import { classifyTitles } from '@/utils/classify.js';
-import { PROVIDER_OPENAI, PROVIDER_ANTHROPIC } from '@/constants/provider.js';
+import {
+  PROVIDER_OPENAI,
+  PROVIDER_ANTHROPIC,
+  PROVIDER_GEMINI,
+} from '@/constants/provider.js';
 
 describe('classifyTitles', () => {
   const originalFetch = global.fetch;
@@ -72,5 +76,28 @@ describe('classifyTitles', () => {
     const out = await classifyTitles(['Fix bug'], PROVIDER_ANTHROPIC, config);
 
     expect(out).toEqual({ Fixed: ['Fix bug'] });
+  });
+
+  test('classifies via Gemini with mocked fetch', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: JSON.stringify({ Changed: ['Tune parser'] }) }],
+              },
+            },
+          ],
+        }),
+    });
+
+    const config = loadAppConfig({
+      GEMINI_API_KEY: 'gemini-test',
+    }).providers.gemini;
+    const out = await classifyTitles(['Tune parser'], PROVIDER_GEMINI, config);
+
+    expect(out).toEqual({ Changed: ['Tune parser'] });
   });
 });
