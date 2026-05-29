@@ -118,6 +118,7 @@ describe('GeminiProvider', () => {
         responseMimeType: 'application/json',
         responseJsonSchema: expect.objectContaining({
           type: 'object',
+          additionalProperties: false,
         }),
       }),
     );

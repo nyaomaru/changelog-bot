@@ -143,6 +143,7 @@ export class GeminiProvider implements Provider {
           type: 'object',
           properties,
           required: [...prompt.categories],
+          additionalProperties: false,
         },
       },
     } as const;
