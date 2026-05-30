@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.1] - 2026-05-30
+
+### Fixed
+
+- CLI version difference by @nyaomaru in [#119](https://github.com/nyaomaru/changelog-bot/pull/119)
+
+### Chore
+
+- Release: 0.3.1 by [bot] by @github-actions in [#120](https://github.com/nyaomaru/changelog-bot/pull/120)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.3.1
+
+[v0.3.1]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.3.1
+
 ## [v0.3.0] - 2026-05-30
 
 ### Added
