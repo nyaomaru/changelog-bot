@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.0] - 2026-05-30
+
+### Added
+
+- add changelog generation customization by @nyaomaru in [#114](https://github.com/nyaomaru/changelog-bot/pull/114)
+
+### Fixed
+
+- read bumped version from package json by @nyaomaru in [#116](https://github.com/nyaomaru/changelog-bot/pull/116)
+
+### Chore
+
+- 0.2.0 by [bot] by @github-actions in [#113](https://github.com/nyaomaru/changelog-bot/pull/113)
+- update pnpm to 11.2.2 by @nyaomaru in [#115](https://github.com/nyaomaru/changelog-bot/pull/115)
+- Release: 0.3.0 by [bot] by @github-actions in [#117](https://github.com/nyaomaru/changelog-bot/pull/117)
+
+### What's new 🚀
+
+- Adds changelog customization for AI-generated output.
+- You can now set the output language with `--language`, such as `nl` for Dutch.
+- Adds `--instructions` for inline writing and grouping guidance.
+- Adds `--instructions-file` for repo-local changelog style rules, such as `.github/changelog-instructions.md`.
+
+Example:
+
+```sh
+changelog-bot \
+  --provider gemini \
+  --release-tag HEAD \
+  --release-name 0.3.0 \
+  --language nl \
+  --instructions "Schrijf kort en duidelijk in het Nederlands. Groepeer interne wijzigingen onder Chore." \
+  --dry-run
+```
+
+With an instructions file:
+
+```
+changelog-bot \
+  --provider openai \
+  --release-tag HEAD \
+  --release-name 0.3.0 \
+  --language nl \
+  --instructions-file .github/changelog-instructions.md \
+  --dry-run
+```
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.3.0
+
+[v0.3.0]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.3.0
+
 ## [v0.2.0] - 2026-05-29
 
 ### Added
