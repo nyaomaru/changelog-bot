@@ -36,7 +36,7 @@ on:
       minimum_package_age_days:
         required: false
         type: string
-        default: '2'
+        default: '0'
       dry_run:
         required: false
         type: string
