@@ -168,4 +168,37 @@ describe('llm-output', () => {
     );
     expect(result.llm.new_section_markdown).toContain('Customized output');
   });
+
+  test('uses model path when non-default language is set with release notes', async () => {
+    const generate = jest.fn(async (input) => ({
+      new_section_markdown: `## [v${input.version}] - ${input.date}\n### Added\n- 日本語の出力`,
+      insert_after_anchor: '## [Unreleased]',
+      pr_title: `docs(changelog): ${input.version}`,
+      pr_body: 'Localized changelog.',
+      labels: ['changelog'],
+    }));
+    const providerWithModel = { ...mockProvider, generate };
+
+    const result = await buildChangelogLlmOutput(
+      buildBaseParams({
+        releaseBody: "## What's Changed\n- Add feature\n",
+        language: 'ja',
+        provider: providerWithModel,
+        providerConfig: { apiKey: 'sk-test', model: 'mock-model' },
+        hasProviderKey: true,
+      }),
+    );
+
+    expect(generate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        releaseBody: "## What's Changed\n- Add feature\n",
+        language: 'ja',
+      }),
+    );
+    expect(result.aiUsed).toBe(true);
+    expect(result.fallbackReasons).not.toContain(
+      'Used GitHub Release Notes as the source (no model call)',
+    );
+    expect(result.llm.new_section_markdown).toContain('日本語の出力');
+  });
 });
