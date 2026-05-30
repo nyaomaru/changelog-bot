@@ -19,7 +19,7 @@ export async function buildChangelogLlmOutput(
     params.customInstructions || params.language !== 'en',
   );
 
-  if (!hasCustomization) {
+  if (!hasCustomization || !params.hasProviderKey) {
     const fromRelease = await buildOutputFromReleaseNotes(
       params,
       fallbackReasons,
