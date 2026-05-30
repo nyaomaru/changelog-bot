@@ -368,7 +368,7 @@ If you're contributing to `changelog-bot`, the repo ships a `mise.toml` to pin t
 
 ### Mise (toolchain & tasks)
 
-- Tools: Node `22`, pnpm `10.12`.
+- Tools: Node `22`, pnpm `11.2.2`.
 - Tasks: `lint`, `build`, `test`, `test_unit`, `test_performance`, `qa`.
 
 ```sh
