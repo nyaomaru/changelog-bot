@@ -51,9 +51,10 @@ jobs:
       - name: Generate new version
         id: version
         run: |
-          NEW_VERSION=$(pnpm version ${{ inputs.release_type }} --no-git-tag-version | awk '{print $NF}')
-          version_no_v=${NEW_VERSION#v}
-          echo "new_version=$version_no_v" >> $GITHUB_ENV
+          set -euo pipefail
+          pnpm version ${{ inputs.release_type }} --no-git-tag-version
+          version_no_v=$(node -p "require('./package.json').version")
+          printf 'new_version=%s\n' "$version_no_v" >> "$GITHUB_ENV"
 
       - name: Create new branch
         run: git checkout -b "release/${{ env.new_version }}"
