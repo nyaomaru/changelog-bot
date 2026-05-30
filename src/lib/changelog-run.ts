@@ -13,6 +13,7 @@ import {
   resolveRunCredentials,
 } from '@/lib/release-context.js';
 import { finalizeChangelogUpdate } from '@/lib/changelog-update.js';
+import { resolveCustomInstructions } from '@/lib/customization.js';
 import { formatDryRunDiagnostics } from '@/utils/dry-run-diagnostics.js';
 import {
   DEFAULT_PR_LABELS,
@@ -46,6 +47,8 @@ export type ChangelogRunDependencies = {
   mapCommitsToPrs: typeof mapCommitsToPrs;
   /** Fetch GitHub release notes when not passed by CLI. */
   fetchReleaseBody: typeof fetchReleaseBody;
+  /** Resolve inline and file-based changelog customization instructions. */
+  resolveCustomInstructions: typeof resolveCustomInstructions;
   /** Build commit SHA -> PR number mappings. */
   buildPrMapBySha: typeof buildPrMapBySha;
   /** Build normalized title -> PR number mappings. */
@@ -74,6 +77,7 @@ const defaultDependencies: ChangelogRunDependencies = {
   resolveRunCredentials,
   mapCommitsToPrs,
   fetchReleaseBody,
+  resolveCustomInstructions,
   buildPrMapBySha,
   buildTitleToPr,
   getProviderRuntimeConfig,
@@ -151,6 +155,11 @@ export async function executeChangelogRun(params: {
     apiPrMap,
   });
   const titleToPr = deps.buildTitleToPr(commitList, prs, prMapBySha);
+  const customInstructions = deps.resolveCustomInstructions({
+    instructions: cli.instructions,
+    instructionsFile: cli.instructionsFile,
+    repoPath,
+  });
   const providerConfig = deps.getProviderRuntimeConfig(
     appConfig,
     provider.name,
@@ -163,6 +172,8 @@ export async function executeChangelogRun(params: {
     releaseRef,
     prevRef,
     releaseBody,
+    language: cli.language,
+    customInstructions,
     existingChangelog: existing,
     commitList,
     prs,

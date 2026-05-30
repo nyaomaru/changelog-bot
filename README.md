@@ -41,16 +41,19 @@ Using it in CI? Jump to [GitHub Actions integration](#github-actions-integration
 
 ### Options
 
-| Option             | Description                                         | Default            |
-| ------------------ | --------------------------------------------------- | ------------------ |
-| `--repo-path`      | Path to repository root                             | `.`                |
-| `--changelog-path` | Path to CHANGELOG file                              | `CHANGELOG.md`     |
-| `--base-branch`    | Base branch for PR                                  | `main`             |
-| `--provider`       | LLM provider (`openai`, `anthropic`, or `gemini`)   | `openai`           |
-| `--release-tag`    | Git ref (tag or HEAD) to generate release for       | latest tag or HEAD |
-| `--release-name`   | Display name for version (without `v`)              | derived from tag   |
-| `--release-body`   | Additional release notes body                       | `""`               |
-| `--dry-run`        | Print updated CHANGELOG to stdout, don’t write file | `false`            |
+| Option                | Description                                         | Default            |
+| --------------------- | --------------------------------------------------- | ------------------ |
+| `--repo-path`         | Path to repository root                             | `.`                |
+| `--changelog-path`    | Path to CHANGELOG file                              | `CHANGELOG.md`     |
+| `--base-branch`       | Base branch for PR                                  | `main`             |
+| `--provider`          | LLM provider (`openai`, `anthropic`, or `gemini`)   | `openai`           |
+| `--release-tag`       | Git ref (tag or HEAD) to generate release for       | latest tag or HEAD |
+| `--release-name`      | Display name for version (without `v`)              | derived from tag   |
+| `--release-body`      | Additional release notes body                       | `""`               |
+| `--language`          | Language for generated changelog prose              | `en`               |
+| `--instructions`      | Additional changelog writing/grouping instructions  | unset              |
+| `--instructions-file` | Path to a file with additional instructions         | unset              |
+| `--dry-run`           | Print updated CHANGELOG to stdout, don’t write file | `false`            |
 
 ## Examples
 
@@ -100,6 +103,20 @@ export OPENAI_MODEL=gpt-4o-mini
 export OPENAI_API_KEY=sk-xxxx
 pnpm dlx @nyaomaru/changelog-bot --release-tag HEAD --release-name 1.0.0 --dry-run
 ```
+
+### Customize generated changelog style
+
+```sh
+pnpm dlx @nyaomaru/changelog-bot \
+  --release-tag HEAD \
+  --release-name 1.0.0 \
+  --language ja \
+  --instructions-file .github/changelog-instructions.md \
+  --dry-run
+```
+
+Custom instructions are additive: the bot still enforces its JSON schema,
+deduplication, and factuality rules.
 
 ### From source (local checkout)
 
@@ -220,6 +237,8 @@ jobs:
       release_tag: ${{ github.event.release.tag_name }}
       release_name: ${{ github.event.release.tag_name }}
       # release_body: '...'
+      # language: ja
+      # instructions_file: .github/changelog-instructions.md
       # dry_run: 'true'
     secrets:
       REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -238,6 +257,9 @@ Action inputs (for both 1 and 3):
 - `release-tag` / `release_tag`: tag or ref to generate for.
 - `release-name` / `release_name`: display version (without `v`).
 - `release-body` / `release_body`: extra release notes to merge.
+- `language`: language for generated changelog prose (default `en`).
+- `instructions`: extra changelog writing and grouping instructions.
+- `instructions-file` / `instructions_file`: path to an instructions file, relative to the repository root.
 - `dry-run` / `dry_run`: `'true'` to print without writing/PR.
 
 Outputs: None.

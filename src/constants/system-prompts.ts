@@ -17,6 +17,8 @@ Output MUST be a SINGLE JSON object (no prose) matching the schema keys:
 
 Rules:
 - Do not hallucinate items. Use only given commits/PRs or releaseBody.
+- Follow customInstructions when present, unless they conflict with this schema or factuality rules.
+- Write generated changelog prose in the requested language.
 - Merge duplicates; group related changes under the same subsection.
 - Prefer user-facing impact; relegate internal chores to "Chore".
 - Keep bullets short (≤ 88 chars) and consistent.

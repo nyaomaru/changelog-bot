@@ -11,6 +11,9 @@ const cli = {
   releaseTag: 'v1.2.3',
   releaseName: '1.2.3',
   releaseBody: 'release notes from cli',
+  language: 'ja',
+  instructions: 'Use concise bullets.',
+  instructionsFile: '.github/changelog-instructions.md',
   dryRun: true,
 };
 
@@ -66,6 +69,7 @@ describe('executeChangelogRun', () => {
       })),
       mapCommitsToPrs: jest.fn(),
       fetchReleaseBody: jest.fn(),
+      resolveCustomInstructions: jest.fn(() => 'combined instructions'),
       buildPrMapBySha: jest.fn(() => ({ abcdef1234567890: [123] })),
       buildTitleToPr: jest.fn(() => ({ 'add CLI dry run': 123 })),
       getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
@@ -104,6 +108,8 @@ describe('executeChangelogRun', () => {
     expect(deps.buildChangelogLlmOutput).toHaveBeenCalledWith(
       expect.objectContaining({
         releaseBody: 'release notes from cli',
+        language: 'ja',
+        customInstructions: 'combined instructions',
         prs: 'merged prs',
         existingChangelog: 'existing changelog',
         provider,

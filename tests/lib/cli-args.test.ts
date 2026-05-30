@@ -23,6 +23,9 @@ describe('cli-args', () => {
     expect(out.releaseTag).toBeUndefined();
     expect(out.releaseName).toBeUndefined();
     expect(out.releaseBody).toBe('');
+    expect(out.language).toBe('en');
+    expect(out.instructions).toBeUndefined();
+    expect(out.instructionsFile).toBeUndefined();
     expect(out.dryRun).toBe(false);
   });
 
@@ -44,6 +47,12 @@ describe('cli-args', () => {
       '1.2.3',
       '--release-body',
       'notes',
+      '--language',
+      'ja',
+      '--instructions',
+      'Use concise bullets.',
+      '--instructions-file',
+      '.github/changelog-instructions.md',
       '--dry-run',
     ]);
 
@@ -54,6 +63,9 @@ describe('cli-args', () => {
     expect(out.releaseTag).toBe('v1.2.3');
     expect(out.releaseName).toBe('1.2.3');
     expect(out.releaseBody).toBe('notes');
+    expect(out.language).toBe('ja');
+    expect(out.instructions).toBe('Use concise bullets.');
+    expect(out.instructionsFile).toBe('.github/changelog-instructions.md');
     expect(out.dryRun).toBe(true);
   });
 

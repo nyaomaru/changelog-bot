@@ -23,6 +23,16 @@ on:
       release_body:
         required: false
         type: string
+      language:
+        required: false
+        type: string
+        default: 'en'
+      instructions:
+        required: false
+        type: string
+      instructions_file:
+        required: false
+        type: string
       minimum_package_age_days:
         required: false
         type: string
@@ -37,6 +47,8 @@ on:
       OPENAI_API_KEY:
         required: false
       ANTHROPIC_API_KEY:
+        required: false
+      GEMINI_API_KEY:
         required: false
 
 jobs:
@@ -58,9 +70,13 @@ jobs:
           release-tag: ${{ inputs.release_tag }}
           release-name: ${{ inputs.release_name }}
           release-body: ${{ inputs.release_body }}
+          language: ${{ inputs.language }}
+          instructions: ${{ inputs.instructions }}
+          instructions-file: ${{ inputs.instructions_file }}
           minimum-package-age-days: ${{ inputs.minimum_package_age_days }}
           dry-run: ${{ inputs.dry_run }}
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

@@ -30,5 +30,6 @@ export function buildLLMInput(input: BuildLLMInput): LLMInput {
     mergedPRs: input.mergedPRs,
     changelogPreview,
     language: input.language,
+    customInstructions: input.customInstructions,
   };
 }
