@@ -44,7 +44,7 @@ inputs:
   minimum-package-age-days:
     description: 'Minimum age in days required for the npm package version resolved from npm-version'
     required: false
-    default: '2'
+    default: '0'
   dry-run:
     description: "If 'true', print updated changelog without writing or PR"
     required: false
