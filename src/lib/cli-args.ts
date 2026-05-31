@@ -2,48 +2,60 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
 import { CliOptionsSchema, type CliOptions } from '@/schema/cli.js';
-import {
-  DEFAULT_BASE_BRANCH,
-  DEFAULT_CHANGELOG_FILE,
-} from '@/constants/git.js';
 import { PROVIDER_NAMES, PROVIDER_OPENAI } from '@/constants/provider.js';
 import type { ProviderName } from '@/types/llm.js';
+import { loadCliConfigFile } from '@/lib/config-file.js';
+
+type ParseCliArgsOptions = {
+  /** Directory used to resolve config files. */
+  cwd?: string;
+};
+
+function omitUndefined<T extends Record<string, unknown>>(
+  value: T,
+): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, fieldValue]) => fieldValue !== undefined),
+  ) as Partial<T>;
+}
 
 /**
  * Parse CLI arguments and normalize them with schema validation.
  * @param argv Raw argv array (typically `process.argv`).
+ * @param options Optional parser dependencies for tests.
  * @returns Validated CLI options.
  */
-export async function parseCliArgs(argv: string[]): Promise<CliOptions> {
+export async function parseCliArgs(
+  argv: string[],
+  options: ParseCliArgsOptions = {},
+): Promise<CliOptions> {
   const parsed = await yargs(hideBin(argv))
     // Force English help/messages regardless of system locale
     .locale('en')
-    .option('repo-path', { type: 'string', default: '.' })
-    .option('changelog-path', {
-      type: 'string',
-      default: DEFAULT_CHANGELOG_FILE,
-    })
-    .option('base-branch', { type: 'string', default: DEFAULT_BASE_BRANCH })
+    .option('config', { type: 'string' })
+    .option('repo-path', { type: 'string' })
+    .option('changelog-path', { type: 'string' })
+    .option('base-branch', { type: 'string' })
     .option('provider', {
       type: 'string',
       choices: [...PROVIDER_NAMES] as unknown as readonly string[],
-      default: PROVIDER_OPENAI,
     })
     .option('release-tag', { type: 'string' })
     .option('release-name', { type: 'string' })
-    .option('release-body', { type: 'string', default: '' })
-    .option('language', { type: 'string', default: 'en' })
+    .option('release-body', { type: 'string' })
+    .option('language', { type: 'string' })
     .option('instructions', { type: 'string' })
     .option('instructions-file', { type: 'string' })
-    .option('dry-run', { type: 'boolean', default: false })
+    .option('dry-run', { type: 'boolean' })
     .strict()
     .parse();
 
-  return CliOptionsSchema.parse({
+  const config = loadCliConfigFile(parsed.config, options.cwd);
+  const cliOverrides = omitUndefined({
     repoPath: parsed['repo-path'],
     changelogPath: parsed['changelog-path'],
     baseBranch: parsed['base-branch'],
-    provider: parsed.provider as ProviderName,
+    provider: parsed.provider as ProviderName | undefined,
     releaseTag: parsed['release-tag'],
     releaseName: parsed['release-name'],
     releaseBody: parsed['release-body'],
@@ -51,5 +63,11 @@ export async function parseCliArgs(argv: string[]): Promise<CliOptions> {
     instructions: parsed.instructions,
     instructionsFile: parsed['instructions-file'],
     dryRun: parsed['dry-run'],
+  });
+
+  return CliOptionsSchema.parse({
+    provider: PROVIDER_OPENAI,
+    ...config,
+    ...cliOverrides,
   });
 }

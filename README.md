@@ -41,19 +41,20 @@ Using it in CI? Jump to [GitHub Actions integration](#github-actions-integration
 
 ### Options
 
-| Option                | Description                                         | Default            |
-| --------------------- | --------------------------------------------------- | ------------------ |
-| `--repo-path`         | Path to repository root                             | `.`                |
-| `--changelog-path`    | Path to CHANGELOG file                              | `CHANGELOG.md`     |
-| `--base-branch`       | Base branch for PR                                  | `main`             |
-| `--provider`          | LLM provider (`openai`, `anthropic`, or `gemini`)   | `openai`           |
-| `--release-tag`       | Git ref (tag or HEAD) to generate release for       | latest tag or HEAD |
-| `--release-name`      | Display name for version (without `v`)              | derived from tag   |
-| `--release-body`      | Additional release notes body                       | `""`               |
-| `--language`          | Language for generated changelog prose              | `en`               |
-| `--instructions`      | Additional changelog writing/grouping instructions  | unset              |
-| `--instructions-file` | Path to a file with additional instructions         | unset              |
-| `--dry-run`           | Print updated CHANGELOG to stdout, don’t write file | `false`            |
+| Option                | Description                                         | Default                                |
+| --------------------- | --------------------------------------------------- | -------------------------------------- |
+| `--repo-path`         | Path to repository root                             | `.`                                    |
+| `--config`            | Path to JSON config file                            | `changelog-bot.config.json` if present |
+| `--changelog-path`    | Path to CHANGELOG file                              | `CHANGELOG.md`                         |
+| `--base-branch`       | Base branch for PR                                  | `main`                                 |
+| `--provider`          | LLM provider (`openai`, `anthropic`, or `gemini`)   | `openai`                               |
+| `--release-tag`       | Git ref (tag or HEAD) to generate release for       | latest tag or HEAD                     |
+| `--release-name`      | Display name for version (without `v`)              | derived from tag                       |
+| `--release-body`      | Additional release notes body                       | `""`                                   |
+| `--language`          | Language for generated changelog prose              | `en`                                   |
+| `--instructions`      | Additional changelog writing/grouping instructions  | unset                                  |
+| `--instructions-file` | Path to a file with additional instructions         | unset                                  |
+| `--dry-run`           | Print updated CHANGELOG to stdout, don’t write file | `false`                                |
 
 ## Examples
 
@@ -117,6 +118,35 @@ pnpm dlx @nyaomaru/changelog-bot \
 
 Custom instructions are additive: the bot still enforces its JSON schema,
 deduplication, and factuality rules.
+
+### Use a config file
+
+Create `changelog-bot.config.json` in the directory where you run the CLI:
+
+```json
+{
+  "provider": "gemini",
+  "language": "nl",
+  "instructionsFile": ".github/changelog-instructions.md"
+}
+```
+
+Then run normally:
+
+```sh
+pnpm dlx @nyaomaru/changelog-bot --release-tag HEAD --release-name 1.0.0
+```
+
+CLI flags override config file values. To use a different file:
+
+```sh
+pnpm dlx @nyaomaru/changelog-bot --config .github/changelog-bot.json --dry-run
+```
+
+Config files use camelCase keys matching the CLI options:
+`repoPath`, `changelogPath`, `baseBranch`, `provider`, `releaseTag`,
+`releaseName`, `releaseBody`, `language`, `instructions`,
+`instructionsFile`, and `dryRun`. Unknown keys are rejected so typos fail fast.
 
 ### From source (local checkout)
 
@@ -232,6 +262,7 @@ jobs:
     uses: nyaomaru/changelog-bot/.github/workflows/changelog.yaml@main
     with:
       changelog_path: CHANGELOG.md
+      # config_path: .github/changelog-bot.json
       base_branch: main
       provider: openai
       release_tag: ${{ github.event.release.tag_name }}
@@ -250,6 +281,7 @@ jobs:
 Action inputs (for both 1 and 3):
 
 - `changelog-path` / `changelog_path`: path to `CHANGELOG.md` (default `CHANGELOG.md`).
+- `config-path` / `config_path`: path to a JSON config file.
 - `base-branch` / `base_branch`: base branch for PR (default `main`).
 - `provider`: `openai`, `anthropic`, or `gemini` (default `openai`).
 - `npm-version` / `npm_version`: npm dist-tag or range for the CLI package (default `latest`).
