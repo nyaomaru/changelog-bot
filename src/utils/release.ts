@@ -11,6 +11,8 @@ import { BULLET_PREFIX_RE } from '@/constants/markdown.js';
 import { buildTitleLookup, findTitleMatch } from '@/utils/title-lookup.js';
 
 const H2_HEADING_RE = /^##\s+(.*)$/;
+const EMBEDDED_H2_HEADING_RE = /##\s+(.*)$/;
+const LETTER_OR_NUMBER_RE = /[\p{L}\p{N}]/u;
 const PR_URL_RE = /https?:\/\/\S+\/pull\/(\d+)/; // captures PR number
 const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
 const AUTHOR_RE = /@([A-Za-z0-9_-]+)/;
@@ -116,7 +118,20 @@ function collectH2Sections(body: string): RawSection[] {
   let current: RawSection | null = null;
 
   for (const rawLine of lines) {
-    const headingMatch = rawLine.match(H2_HEADING_RE);
+    let headingMatch = rawLine.match(H2_HEADING_RE);
+    // WHY: When release-body text is copied or routed through workflow inputs,
+    // a stray prefix can appear before the first heading. Only triage pre-section
+    // lines this way so normal markdown inside sections keeps its literal text.
+    if (!headingMatch && !current && !sections.length) {
+      const embeddedHeadingMatch = rawLine.match(EMBEDDED_H2_HEADING_RE);
+      if (embeddedHeadingMatch) {
+        const headingStart = rawLine.indexOf('##');
+        const prefix = rawLine.slice(0, headingStart).trim();
+        if (!LETTER_OR_NUMBER_RE.test(prefix)) {
+          headingMatch = embeddedHeadingMatch;
+        }
+      }
+    }
     if (headingMatch) {
       if (current) sections.push(current);
       current = { heading: headingMatch[1].trim(), lines: [] };

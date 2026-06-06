@@ -74,6 +74,58 @@ describe('release utils', () => {
     );
   });
 
+  test('parseReleaseNotes triages stray prefix before the first custom heading', () => {
+    const body = [
+      '# v1.2.0',
+      '',
+      '\u2022 ## What\u2019s New \u{1F680}',
+      '- GitHub Action inputs respect config precedence.',
+      '',
+      '### Sample implementation',
+      '',
+      '```yaml',
+      '- uses: nyaomaru/changelog-bot@v0',
+      '```',
+      '',
+      '## What\u2019s Changed',
+      '- feat: add config file support by @alice in #321',
+      '',
+      '**Full Changelog**: v1.1.13...v1.2.0',
+    ].join('\n');
+
+    const parsed = parseReleaseNotes(body, { owner: 'acme', repo: 'repo' });
+
+    expect(parsed.items).toHaveLength(1);
+    expect(parsed.sections).toEqual([
+      {
+        heading: 'What\u2019s New \u{1F680}',
+        body: [
+          '- GitHub Action inputs respect config precedence.',
+          '',
+          '### Sample implementation',
+          '',
+          '```yaml',
+          '- uses: nyaomaru/changelog-bot@v0',
+          '```',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  test('parseReleaseNotes does not promote prose before an embedded heading marker', () => {
+    const body = [
+      'Release summary ## Not a Heading',
+      '',
+      '## What\u2019s Changed',
+      '- feat: add config file support by @alice in #321',
+    ].join('\n');
+
+    const parsed = parseReleaseNotes(body, { owner: 'acme', repo: 'repo' });
+
+    expect(parsed.items).toHaveLength(1);
+    expect(parsed.sections).toBeUndefined();
+  });
+
   test('parseReleaseNotes strips trailing attribution noise after PR and author extraction', () => {
     const body = [
       '# v0.2.0',
