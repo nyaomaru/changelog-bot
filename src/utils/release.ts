@@ -10,7 +10,9 @@ import { FULL_CHANGELOG_RE } from '@/constants/release.js';
 import { BULLET_PREFIX_RE } from '@/constants/markdown.js';
 import { buildTitleLookup, findTitleMatch } from '@/utils/title-lookup.js';
 
+const ATX_HEADING_RE = /^(#{1,6})(?!#)\s+(.*)$/;
 const H2_HEADING_RE = /^##\s+(.*)$/;
+const PREFIXED_ATX_HEADING_RE = /^([^\p{L}\p{N}#>*+-]+?)(#{1,6})(?!#)\s+(.*)$/u;
 const PR_URL_RE = /https?:\/\/\S+\/pull\/(\d+)/; // captures PR number
 const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
 const AUTHOR_RE = /@([A-Za-z0-9_-]+)/;
@@ -41,6 +43,30 @@ type RawSection = {
  */
 function stripBulletPrefix(input: string): string {
   return input.replace(BULLET_PREFIX_RE, '').trim();
+}
+
+/**
+ * Normalize stray non-text prefixes before Markdown ATX headings.
+ * @param line Raw release-note line.
+ * @returns Line with accidental heading prefixes removed.
+ */
+function normalizeReleaseHeadingLine(line: string): string {
+  if (ATX_HEADING_RE.test(line)) return line;
+
+  const prefixedHeadingMatch = line.match(PREFIXED_ATX_HEADING_RE);
+  if (!prefixedHeadingMatch) return line;
+
+  return `${prefixedHeadingMatch[2]} ${prefixedHeadingMatch[3]}`;
+}
+
+/**
+ * Parse an H2 heading from a normalized release-note line.
+ * @param line Raw release-note line.
+ * @returns Heading text or `undefined` when the line is not an H2 heading.
+ */
+function parseReleaseHeading(line: string): string | undefined {
+  const headingMatch = line.match(H2_HEADING_RE);
+  return headingMatch ? headingMatch[1].trim() : undefined;
 }
 
 /**
@@ -116,14 +142,18 @@ function collectH2Sections(body: string): RawSection[] {
   let current: RawSection | null = null;
 
   for (const rawLine of lines) {
-    const headingMatch = rawLine.match(H2_HEADING_RE);
-    if (headingMatch) {
+    // WHY: When release-body text is copied or routed through workflow inputs,
+    // stray non-text prefixes can appear before headings. Normalize ATX heading
+    // lines first, then only H2 headings become release-note section boundaries.
+    const line = normalizeReleaseHeadingLine(rawLine);
+    const heading = parseReleaseHeading(line);
+    if (heading) {
       if (current) sections.push(current);
-      current = { heading: headingMatch[1].trim(), lines: [] };
+      current = { heading, lines: [] };
       continue;
     }
     if (!current) continue;
-    current.lines.push(rawLine);
+    current.lines.push(line);
   }
 
   if (current) sections.push(current);
