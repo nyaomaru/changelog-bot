@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.4.0] - 2026-06-06
 
+### What's new 🚀
+
+- GitHub Action inputs now play nicer with `config-path`: omitted inputs can come from `changelog-bot.config.json`, while explicitly set workflow values still win.
+- Default-looking workflow values like `provider: openai`, `base-branch: main`, `changelog-path: CHANGELOG.md`, and `language: en` are now respected as explicit overrides.
+- `dry-run: 'false'` can now override `dryRun: true` from config files, so workflows can force a real PR run when needed.
+
+#### Sample implementation
+
+```yaml
+- uses: nyaomaru/changelog-bot@v0
+  with:
+    config-path: .github/changelog-bot.config.json
+    provider: openai
+    language: en
+    dry-run: 'false'
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+`.github/changelog-bot.config.json`
+
+```json
+{
+  "provider": "gemini",
+  "language": "ja",
+  "dryRun": true
+}
+```
+
 ### Added
 
 - add config file support by @nyaomaru in [#122](https://github.com/nyaomaru/changelog-bot/pull/122)
