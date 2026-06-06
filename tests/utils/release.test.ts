@@ -126,6 +126,79 @@ describe('release utils', () => {
     expect(parsed.sections).toBeUndefined();
   });
 
+  test('parseReleaseNotes keeps H3 headings inside custom section bodies', () => {
+    const body = [
+      '## What\u2019s New',
+      'Highlights for this release.',
+      '',
+      '\u2022 ### Sample implementation',
+      'Use the action from workflow YAML.',
+    ].join('\n');
+
+    const parsed = parseReleaseNotes(body, { owner: 'acme', repo: 'repo' });
+
+    expect(parsed.sections).toEqual([
+      {
+        heading: 'What\u2019s New',
+        body: [
+          'Highlights for this release.',
+          '',
+          '### Sample implementation',
+          'Use the action from workflow YAML.',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  test('parseReleaseNotes normalizes noisy non-H2 headings without making them section boundaries', () => {
+    const body = [
+      '## What\u2019s New',
+      '\u2022 # Context',
+      'Release-level context stays in the custom section body.',
+      '',
+      '> ## Quoted heading stays literal',
+      '- ### List heading stays literal',
+    ].join('\n');
+
+    const parsed = parseReleaseNotes(body, { owner: 'acme', repo: 'repo' });
+
+    expect(parsed.sections).toEqual([
+      {
+        heading: 'What\u2019s New',
+        body: [
+          '# Context',
+          'Release-level context stays in the custom section body.',
+          '',
+          '> ## Quoted heading stays literal',
+          '- ### List heading stays literal',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  test('parseReleaseNotes triages stray prefix before generated notes headings', () => {
+    const body = [
+      '# v1.2.0',
+      '',
+      '\u2022 ## What\u2019s Changed',
+      '- feat: add config file support by @alice in #321',
+      '',
+      '\u2022 ## Migration Notes',
+      'No migration steps required.',
+    ].join('\n');
+
+    const parsed = parseReleaseNotes(body, { owner: 'acme', repo: 'repo' });
+
+    expect(parsed.items).toHaveLength(1);
+    expect(parsed.items[0].title).toBe('add config file support');
+    expect(parsed.sections).toEqual([
+      {
+        heading: 'Migration Notes',
+        body: 'No migration steps required.',
+      },
+    ]);
+  });
+
   test('parseReleaseNotes strips trailing attribution noise after PR and author extraction', () => {
     const body = [
       '# v0.2.0',
