@@ -258,6 +258,37 @@ describe('release utils', () => {
     );
   });
 
+  test('buildSectionFromRelease demotes headings inside custom release-note sections', () => {
+    const section = buildSectionFromRelease({
+      version: '1.8.0',
+      date: '2026-06-06',
+      items: [],
+      categories: {},
+      sections: [
+        {
+          heading: 'What\u2019s new \u{1F680}',
+          body: [
+            '### Add `typedStruct`',
+            '',
+            '`typedStruct<T>()` keeps guards aligned with existing types.',
+            '',
+            '```ts',
+            '### Not a markdown heading',
+            'typedStruct<User>()({',
+            '  id: isNumber',
+            '});',
+            '```',
+          ].join('\n'),
+        },
+      ],
+    });
+
+    expect(section).toContain('### What\u2019s new \u{1F680}');
+    expect(section).toContain('#### Add `typedStruct`');
+    expect(section).not.toContain('\n### Add `typedStruct`');
+    expect(section).toContain('```ts\n### Not a markdown heading\n');
+  });
+
   test('buildSectionFromRelease matches raw conventional titles and avoids duplicate category membership', () => {
     const section = buildSectionFromRelease({
       version: '1.2.3',
