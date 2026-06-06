@@ -292,7 +292,7 @@ Action inputs (for both 1 and 3):
 - `language`: language for generated changelog prose (default `en`).
 - `instructions`: extra changelog writing and grouping instructions.
 - `instructions-file` / `instructions_file`: path to an instructions file, relative to the repository root.
-- `dry-run` / `dry_run`: `'true'` to print without writing/PR.
+- `dry-run` / `dry_run`: `'true'` to print without writing/PR; explicitly set `'false'` to override `dryRun: true` from config.
 
 When `config-path` is used, omitted action inputs can be supplied by the config file. Inputs that are explicitly set in workflow YAML are forwarded as CLI flags and take precedence over config values, even when the value matches the documented default.
 

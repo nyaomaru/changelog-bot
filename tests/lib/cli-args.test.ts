@@ -130,13 +130,14 @@ describe('cli-args', () => {
           PROVIDER_ANTHROPIC,
           '--language',
           'en',
+          '--no-dry-run',
         ],
         { cwd },
       );
 
       expect(out.provider).toBe(PROVIDER_ANTHROPIC);
       expect(out.language).toBe('en');
-      expect(out.dryRun).toBe(true);
+      expect(out.dryRun).toBe(false);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

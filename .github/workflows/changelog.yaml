@@ -42,7 +42,6 @@ on:
       dry_run:
         required: false
         type: string
-        default: 'false'
     secrets:
       REPO_TOKEN:
         required: true

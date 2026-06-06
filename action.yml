@@ -50,7 +50,6 @@ inputs:
   dry-run:
     description: "If 'true', print updated changelog without writing or PR"
     required: false
-    default: 'false'
 
 runs:
   using: 'composite'
@@ -142,8 +141,10 @@ runs:
         if [ -n "${INPUT_INSTRUCTIONS_FILE:-}" ]; then
           CMD+=(--instructions-file "${INPUT_INSTRUCTIONS_FILE}")
         fi
-        if [ "${INPUT_DRY_RUN:-false}" = "true" ]; then
+        if [ "${INPUT_DRY_RUN:-}" = "true" ]; then
           CMD+=(--dry-run)
+        elif [ "${INPUT_DRY_RUN:-}" = "false" ]; then
+          CMD+=(--no-dry-run)
         fi
 
         echo "+ ${CMD[@]}"
