@@ -1,4 +1,7 @@
 // @ts-nocheck
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { describe, expect, test } from '@jest/globals';
 
 import { parseCliArgs } from '@/lib/cli-args.js';
@@ -78,5 +81,65 @@ describe('cli-args', () => {
     ]);
 
     expect(out.provider).toBe(PROVIDER_GEMINI);
+  });
+
+  test('loads default config file from cwd', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'changelog-bot-'));
+    try {
+      writeFileSync(
+        join(cwd, 'changelog-bot.config.json'),
+        JSON.stringify({
+          provider: PROVIDER_GEMINI,
+          language: 'nl',
+          instructionsFile: '.github/changelog-instructions.md',
+        }),
+        'utf8',
+      );
+
+      const out = await parseCliArgs(['node', 'cli'], { cwd });
+
+      expect(out.provider).toBe(PROVIDER_GEMINI);
+      expect(out.language).toBe('nl');
+      expect(out.instructionsFile).toBe('.github/changelog-instructions.md');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test('lets CLI flags override config file values', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'changelog-bot-'));
+    try {
+      const configPath = join(cwd, 'custom-config.json');
+      writeFileSync(
+        configPath,
+        JSON.stringify({
+          provider: PROVIDER_GEMINI,
+          language: 'nl',
+          dryRun: true,
+        }),
+        'utf8',
+      );
+
+      const out = await parseCliArgs(
+        [
+          'node',
+          'cli',
+          '--config',
+          configPath,
+          '--provider',
+          PROVIDER_ANTHROPIC,
+          '--language',
+          'en',
+          '--no-dry-run',
+        ],
+        { cwd },
+      );
+
+      expect(out.provider).toBe(PROVIDER_ANTHROPIC);
+      expect(out.language).toBe('en');
+      expect(out.dryRun).toBe(false);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
   });
 });

@@ -6,18 +6,21 @@ branding:
   color: 'blue'
 
 inputs:
+  # WHY: CLI-backed inputs intentionally omit action metadata defaults. GitHub
+  # Actions exposes omitted inputs and default-valued explicit inputs the same
+  # way, so defaults here would make config-file precedence impossible to honor.
   changelog-path:
     description: 'Path to CHANGELOG file'
     required: false
-    default: 'CHANGELOG.md'
+  config-path:
+    description: 'Path to changelog-bot JSON config file'
+    required: false
   base-branch:
     description: 'Base branch for the PR'
     required: false
-    default: 'main'
   provider:
     description: 'LLM provider to use (openai|anthropic|gemini)'
     required: false
-    default: 'openai'
   release-tag:
     description: 'Git ref (tag or HEAD) to generate changelog for'
     required: false
@@ -30,7 +33,6 @@ inputs:
   language:
     description: 'Language for generated changelog prose'
     required: false
-    default: 'en'
   instructions:
     description: 'Additional changelog writing and grouping instructions'
     required: false
@@ -48,7 +50,6 @@ inputs:
   dry-run:
     description: "If 'true', print updated changelog without writing or PR"
     required: false
-    default: 'false'
 
 runs:
   using: 'composite'
@@ -76,11 +77,19 @@ runs:
         # Allow repo name to be auto-detected by the CLI
         REPO_FULL_NAME: ${{ github.repository }}
         # Capture release_body safely without inline interpolation issues
+        INPUT_CONFIG_PATH: ${{ inputs['config-path'] }}
+        INPUT_CHANGELOG_PATH: ${{ inputs['changelog-path'] }}
+        INPUT_BASE_BRANCH: ${{ inputs['base-branch'] }}
+        INPUT_PROVIDER: ${{ inputs.provider }}
+        INPUT_NPM_VERSION: ${{ inputs['npm-version'] }}
+        INPUT_RELEASE_TAG: ${{ inputs['release-tag'] }}
+        INPUT_RELEASE_NAME: ${{ inputs['release-name'] }}
         INPUT_RELEASE_BODY: ${{ inputs['release-body'] }}
         INPUT_LANGUAGE: ${{ inputs.language }}
         INPUT_INSTRUCTIONS: ${{ inputs.instructions }}
         INPUT_INSTRUCTIONS_FILE: ${{ inputs['instructions-file'] }}
         INPUT_MINIMUM_PACKAGE_AGE_DAYS: ${{ inputs['minimum-package-age-days'] }}
+        INPUT_DRY_RUN: ${{ inputs['dry-run'] }}
       run: |
         set -euo pipefail
 
@@ -99,18 +108,29 @@ runs:
           # `minimum-release-age`: https://pnpm.io/npmrc#minimumreleaseage
           "--config.minimum-release-age=${MINIMUM_PACKAGE_AGE_MINUTES}"
           dlx
-          @nyaomaru/changelog-bot@"${{ inputs.npm-version }}"
-          --changelog-path "${{ inputs['changelog-path'] }}"
-          --base-branch "${{ inputs['base-branch'] }}"
-          --provider "${{ inputs.provider }}"
-          --language "${INPUT_LANGUAGE}"
+          @nyaomaru/changelog-bot@"${INPUT_NPM_VERSION:-latest}"
         )
 
-        if [ -n "${{ inputs['release-tag'] }}" ]; then
-          CMD+=(--release-tag "${{ inputs['release-tag'] }}")
+        if [ -n "${INPUT_CONFIG_PATH:-}" ]; then
+          CMD+=(--config "${INPUT_CONFIG_PATH}")
         fi
-        if [ -n "${{ inputs['release-name'] }}" ]; then
-          CMD+=(--release-name "${{ inputs['release-name'] }}")
+        if [ -n "${INPUT_CHANGELOG_PATH:-}" ]; then
+          CMD+=(--changelog-path "${INPUT_CHANGELOG_PATH}")
+        fi
+        if [ -n "${INPUT_BASE_BRANCH:-}" ]; then
+          CMD+=(--base-branch "${INPUT_BASE_BRANCH}")
+        fi
+        if [ -n "${INPUT_PROVIDER:-}" ]; then
+          CMD+=(--provider "${INPUT_PROVIDER}")
+        fi
+        if [ -n "${INPUT_LANGUAGE:-}" ]; then
+          CMD+=(--language "${INPUT_LANGUAGE}")
+        fi
+        if [ -n "${INPUT_RELEASE_TAG:-}" ]; then
+          CMD+=(--release-tag "${INPUT_RELEASE_TAG}")
+        fi
+        if [ -n "${INPUT_RELEASE_NAME:-}" ]; then
+          CMD+=(--release-name "${INPUT_RELEASE_NAME}")
         fi
         if [ -n "${INPUT_RELEASE_BODY:-}" ]; then
           CMD+=(--release-body "${INPUT_RELEASE_BODY}")
@@ -121,8 +141,10 @@ runs:
         if [ -n "${INPUT_INSTRUCTIONS_FILE:-}" ]; then
           CMD+=(--instructions-file "${INPUT_INSTRUCTIONS_FILE}")
         fi
-        if [ "${{ inputs['dry-run'] }}" = "true" ]; then
+        if [ "${INPUT_DRY_RUN:-}" = "true" ]; then
           CMD+=(--dry-run)
+        elif [ "${INPUT_DRY_RUN:-}" = "false" ]; then
+          CMD+=(--no-dry-run)
         fi
 
         echo "+ ${CMD[@]}"
