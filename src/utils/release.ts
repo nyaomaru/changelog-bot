@@ -10,9 +10,37 @@ import { FULL_CHANGELOG_RE } from '@/constants/release.js';
 import { BULLET_PREFIX_RE } from '@/constants/markdown.js';
 import { buildTitleLookup, findTitleMatch } from '@/utils/title-lookup.js';
 
-const ATX_HEADING_RE = /^(#{1,6})(?!#)\s+(.*)$/;
-const H2_HEADING_RE = /^##\s+(.*)$/;
-const PREFIXED_ATX_HEADING_RE = /^([^\p{L}\p{N}#>*+-]+?)(#{1,6})(?!#)\s+(.*)$/u;
+const MIN_MARKDOWN_ATX_HEADING_LEVEL = 1;
+const RELEASE_SECTION_HEADING_LEVEL = 2;
+const CHANGELOG_ADDITIONAL_SECTION_HEADING_LEVEL = 3;
+const HEADING_LEVEL_STEP = 1;
+const MAX_MARKDOWN_ATX_HEADING_LEVEL = 6;
+const ATX_HEADING_MARKER_RE_SOURCE = `#{${MIN_MARKDOWN_ATX_HEADING_LEVEL},${MAX_MARKDOWN_ATX_HEADING_LEVEL}}`;
+const ATX_HEADING_RE = new RegExp(
+  `^(${ATX_HEADING_MARKER_RE_SOURCE})(?!#)\\s+(.*)$`,
+);
+const H2_HEADING_RE = new RegExp(
+  `^${'#'.repeat(RELEASE_SECTION_HEADING_LEVEL)}\\s+(.*)$`,
+);
+const PREFIXED_ATX_HEADING_RE = new RegExp(
+  `^([^\\p{L}\\p{N}#>*+-]+?)(${ATX_HEADING_MARKER_RE_SOURCE})(?!#)\\s+(.*)$`,
+  'u',
+);
+const PREFIXED_HEADING_MARKER_MATCH_INDEX = 2;
+const PREFIXED_HEADING_TEXT_MATCH_INDEX = 3;
+const HEADING_MARKER_MATCH_INDEX = 1;
+const HEADING_TEXT_MATCH_INDEX = 2;
+const RELEASE_HEADING_TEXT_MATCH_INDEX = 1;
+const FENCE_MARKER_MATCH_INDEX = 1;
+const AUTHOR_USERNAME_MATCH_INDEX = 1;
+const FULL_MATCH_INDEX = 0;
+const URL_PR_NUMBER_MATCH_INDEX = 1;
+const REF_PAREN_PR_NUMBER_MATCH_INDEX = 1;
+const REF_HASH_PR_NUMBER_MATCH_INDEX = 2;
+const FULL_CHANGELOG_LINK_MATCH_INDEX = 1;
+const MIN_NESTED_ADDITIONAL_SECTION_HEADING_LEVEL =
+  CHANGELOG_ADDITIONAL_SECTION_HEADING_LEVEL + HEADING_LEVEL_STEP;
+const RELEASE_TITLE_MATCH_MIN_RELATIVE_PREFIX_LENGTH = 0.5;
 const PR_URL_RE = /https?:\/\/\S+\/pull\/(\d+)/; // captures PR number
 const PR_REF_RE = /\(#?(\d+)\)|#(\d+)/; // (#123) or #123
 const AUTHOR_RE = /@([A-Za-z0-9_-]+)/;
@@ -56,7 +84,10 @@ function normalizeReleaseHeadingLine(line: string): string {
   const prefixedHeadingMatch = line.match(PREFIXED_ATX_HEADING_RE);
   if (!prefixedHeadingMatch) return line;
 
-  return `${prefixedHeadingMatch[2]} ${prefixedHeadingMatch[3]}`;
+  return [
+    prefixedHeadingMatch[PREFIXED_HEADING_MARKER_MATCH_INDEX],
+    prefixedHeadingMatch[PREFIXED_HEADING_TEXT_MATCH_INDEX],
+  ].join(' ');
 }
 
 /**
@@ -66,7 +97,53 @@ function normalizeReleaseHeadingLine(line: string): string {
  */
 function parseReleaseHeading(line: string): string | undefined {
   const headingMatch = line.match(H2_HEADING_RE);
-  return headingMatch ? headingMatch[1].trim() : undefined;
+  return headingMatch
+    ? headingMatch[RELEASE_HEADING_TEXT_MATCH_INDEX].trim()
+    : undefined;
+}
+
+/**
+ * Demote headings inside release-note sections to fit under changelog H3 headings.
+ * @param body Additional release-note section body.
+ * @returns Body with nested ATX headings adjusted for changelog output.
+ */
+function demoteAdditionalSectionHeadings(body: string): string {
+  let inFence = false;
+  let fenceMarker: string | undefined;
+
+  return body
+    .split('\n')
+    .map((rawLine) => {
+      const line = normalizeReleaseHeadingLine(rawLine);
+      const fenceMatch = line.match(/^(```|~~~)/);
+      if (fenceMatch) {
+        const marker = fenceMatch[FENCE_MARKER_MATCH_INDEX];
+        if (!inFence) {
+          inFence = true;
+          fenceMarker = marker;
+        } else if (marker === fenceMarker) {
+          inFence = false;
+          fenceMarker = undefined;
+        }
+        return line;
+      }
+
+      if (inFence) return line;
+
+      const headingMatch = line.match(ATX_HEADING_RE);
+      if (!headingMatch) return line;
+
+      const headingLevel = headingMatch[HEADING_MARKER_MATCH_INDEX].length;
+      const nestedLevel = Math.min(
+        Math.max(
+          headingLevel + HEADING_LEVEL_STEP,
+          MIN_NESTED_ADDITIONAL_SECTION_HEADING_LEVEL,
+        ),
+        MAX_MARKDOWN_ATX_HEADING_LEVEL,
+      );
+      return `${'#'.repeat(nestedLevel)} ${headingMatch[HEADING_TEXT_MATCH_INDEX]}`;
+    })
+    .join('\n');
 }
 
 /**
@@ -92,8 +169,11 @@ function stripTrailingByIn(input: string): string {
 function extractAuthor(text: string): { author?: string; text: string } {
   const authorMatch = text.match(AUTHOR_RE);
   if (!authorMatch) return { text };
-  const author = authorMatch[1];
-  return { author, text: text.replace(authorMatch[0], '').trim() };
+  const author = authorMatch[AUTHOR_USERNAME_MATCH_INDEX];
+  return {
+    author,
+    text: text.replace(authorMatch[FULL_MATCH_INDEX], '').trim(),
+  };
 }
 
 /**
@@ -113,19 +193,24 @@ function extractPr(
   let remainingText = text;
   const urlMatch = remainingText.match(PR_URL_RE);
   if (urlMatch) {
-    const url = urlMatch[0];
-    const pr = Number(urlMatch[1]);
+    const url = urlMatch[FULL_MATCH_INDEX];
+    const pr = Number(urlMatch[URL_PR_NUMBER_MATCH_INDEX]);
     remainingText = remainingText.replace(url, '').trim();
     return { pr, url, text: remainingText };
   }
 
   const refMatch = remainingText.match(PR_REF_RE);
   if (refMatch) {
-    const pr = Number(refMatch[1] || refMatch[2]);
+    const pr = Number(
+      refMatch[REF_PAREN_PR_NUMBER_MATCH_INDEX] ||
+        refMatch[REF_HASH_PR_NUMBER_MATCH_INDEX],
+    );
     const url = repo
       ? `https://github.com/${repo.owner}/${repo.repo}/pull/${pr}`
       : undefined;
-    remainingText = remainingText.replace(refMatch[0], '').trim();
+    remainingText = remainingText
+      .replace(refMatch[FULL_MATCH_INDEX], '')
+      .trim();
     return { pr, url, text: remainingText };
   }
   return { text: remainingText };
@@ -258,7 +343,7 @@ function extractFullChangelog(
 ): string | undefined {
   const fullMatch = body.match(FULL_CHANGELOG_RE);
   if (!fullMatch) return undefined;
-  const link = fullMatch[1];
+  const link = fullMatch[FULL_CHANGELOG_LINK_MATCH_INDEX];
   if (/^https?:\/\//.test(link)) return link;
   if (repo)
     return `https://github.com/${repo.owner}/${repo.repo}/compare/${link}`;
@@ -353,7 +438,7 @@ export function buildSectionFromRelease(params: {
     const entries: ReleaseItem[] = [];
     for (const candidateTitle of titles) {
       const item = findTitleMatch(candidateTitle, itemLookup, {
-        minRelativePrefixLength: 0.5,
+        minRelativePrefixLength: RELEASE_TITLE_MATCH_MIN_RELATIVE_PREFIX_LENGTH,
       });
       if (item) {
         const key = item.pr
@@ -373,8 +458,11 @@ export function buildSectionFromRelease(params: {
   }
 
   for (const section of sections) {
-    lines.push(`### ${section.heading}`, '');
-    lines.push(section.body.trim(), '');
+    lines.push(
+      `${'#'.repeat(CHANGELOG_ADDITIONAL_SECTION_HEADING_LEVEL)} ${section.heading}`,
+      '',
+    );
+    lines.push(demoteAdditionalSectionHeadings(section.body.trim()), '');
   }
 
   if (params.fullChangelog)
