@@ -114,8 +114,8 @@ function demoteAdditionalSectionHeadings(body: string): string {
   return body
     .split('\n')
     .map((rawLine) => {
-      const line = normalizeReleaseHeadingLine(rawLine);
-      const fenceMatch = line.match(/^(```|~~~)/);
+      const line = inFence ? rawLine : normalizeReleaseHeadingLine(rawLine);
+      const fenceMatch = line.match(/^\s*(```|~~~)/);
       if (fenceMatch) {
         const marker = fenceMatch[FENCE_MARKER_MATCH_INDEX];
         if (!inFence) {
