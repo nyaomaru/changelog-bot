@@ -3,8 +3,10 @@ name: Shared Changelog Workflow
 on:
   workflow_call:
     inputs:
+      # WHY: Keep CLI-backed defaults in the CLI/action. Workflow-call defaults
+      # would be forwarded as explicit values and override config-file settings.
       changelog_path:
-        required: true
+        required: false
         type: string
       config_path:
         required: false
@@ -12,11 +14,9 @@ on:
       base_branch:
         required: false
         type: string
-        default: 'main'
       provider:
         required: false
         type: string
-        default: 'openai'
       release_tag:
         required: false
         type: string
@@ -29,7 +29,6 @@ on:
       language:
         required: false
         type: string
-        default: 'en'
       instructions:
         required: false
         type: string

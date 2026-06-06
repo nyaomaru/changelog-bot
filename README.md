@@ -294,6 +294,8 @@ Action inputs (for both 1 and 3):
 - `instructions-file` / `instructions_file`: path to an instructions file, relative to the repository root.
 - `dry-run` / `dry_run`: `'true'` to print without writing/PR.
 
+When `config-path` is used, omitted action inputs can be supplied by the config file. Inputs that are explicitly set in workflow YAML are forwarded as CLI flags and take precedence over config values, even when the value matches the documented default.
+
 Outputs: None.
 
 Security note:

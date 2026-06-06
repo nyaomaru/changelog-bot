@@ -6,21 +6,21 @@ branding:
   color: 'blue'
 
 inputs:
+  # WHY: CLI-backed inputs intentionally omit action metadata defaults. GitHub
+  # Actions exposes omitted inputs and default-valued explicit inputs the same
+  # way, so defaults here would make config-file precedence impossible to honor.
   changelog-path:
     description: 'Path to CHANGELOG file'
     required: false
-    default: 'CHANGELOG.md'
   config-path:
     description: 'Path to changelog-bot JSON config file'
     required: false
   base-branch:
     description: 'Base branch for the PR'
     required: false
-    default: 'main'
   provider:
     description: 'LLM provider to use (openai|anthropic|gemini)'
     required: false
-    default: 'openai'
   release-tag:
     description: 'Git ref (tag or HEAD) to generate changelog for'
     required: false
@@ -33,7 +33,6 @@ inputs:
   language:
     description: 'Language for generated changelog prose'
     required: false
-    default: 'en'
   instructions:
     description: 'Additional changelog writing and grouping instructions'
     required: false
@@ -116,16 +115,16 @@ runs:
         if [ -n "${INPUT_CONFIG_PATH:-}" ]; then
           CMD+=(--config "${INPUT_CONFIG_PATH}")
         fi
-        if [ "${INPUT_CHANGELOG_PATH:-CHANGELOG.md}" != "CHANGELOG.md" ]; then
+        if [ -n "${INPUT_CHANGELOG_PATH:-}" ]; then
           CMD+=(--changelog-path "${INPUT_CHANGELOG_PATH}")
         fi
-        if [ "${INPUT_BASE_BRANCH:-main}" != "main" ]; then
+        if [ -n "${INPUT_BASE_BRANCH:-}" ]; then
           CMD+=(--base-branch "${INPUT_BASE_BRANCH}")
         fi
-        if [ "${INPUT_PROVIDER:-openai}" != "openai" ]; then
+        if [ -n "${INPUT_PROVIDER:-}" ]; then
           CMD+=(--provider "${INPUT_PROVIDER}")
         fi
-        if [ "${INPUT_LANGUAGE:-en}" != "en" ]; then
+        if [ -n "${INPUT_LANGUAGE:-}" ]; then
           CMD+=(--language "${INPUT_LANGUAGE}")
         fi
         if [ -n "${INPUT_RELEASE_TAG:-}" ]; then
