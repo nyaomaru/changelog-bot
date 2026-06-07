@@ -89,7 +89,7 @@ export async function buildOutputFromModelOrFallback(
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (failOnLlmError) {
-        throw new LlmError(`LLM generation failed: ${message}`);
+        throw err instanceof Error ? err : new LlmError(`LLM generation failed: ${message}`);
       }
       fallbackReasons.push(`LLM generation failed: ${message}`);
     }
