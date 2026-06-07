@@ -49,6 +49,12 @@ export type BuildChangelogLlmOutputParams = {
   token?: string;
   /** GitHub or GHES API base URL. */
   githubApiBase: string;
+  /** Skip all provider calls and force deterministic release-note/fallback output. */
+  noAi: boolean;
+  /** Fail when the selected provider has no configured API key. */
+  requireProvider: boolean;
+  /** Fail instead of falling back when a provider generation/classification call fails. */
+  failOnLlmError: boolean;
 };
 
 /** Result payload for the changelog LLM output builder. */

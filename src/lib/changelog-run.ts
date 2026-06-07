@@ -14,7 +14,10 @@ import {
 } from '@/lib/release-context.js';
 import { finalizeChangelogUpdate } from '@/lib/changelog-update.js';
 import { resolveCustomInstructions } from '@/lib/customization.js';
-import { formatDryRunDiagnostics } from '@/utils/dry-run-diagnostics.js';
+import {
+  formatDryRunDiagnostics,
+  formatDryRunJsonReport,
+} from '@/utils/dry-run-diagnostics.js';
 import {
   DEFAULT_PR_LABELS,
   PR_BRANCH_PREFIX,
@@ -184,6 +187,9 @@ export async function executeChangelogRun(params: {
     hasProviderKey,
     token,
     githubApiBase: appConfig.github.apiBase,
+    noAi: cli.noAi,
+    requireProvider: cli.requireProvider,
+    failOnLlmError: cli.failOnLlmError,
   });
   let llm = llmOutput.llm;
 
@@ -202,13 +208,16 @@ export async function executeChangelogRun(params: {
 
   if (cli.dryRun) {
     log('==== DRY RUN (no PR) ====');
+    const diagnosticsInput = {
+      providerName: provider.name,
+      modelName: providerConfig.model,
+      aiUsed: llmOutput.aiUsed,
+      fallbackReasons: llmOutput.fallbackReasons,
+    };
     log(
-      formatDryRunDiagnostics({
-        providerName: provider.name,
-        modelName: providerConfig.model,
-        aiUsed: llmOutput.aiUsed,
-        fallbackReasons: llmOutput.fallbackReasons,
-      }),
+      cli.dryRunJsonReport
+        ? formatDryRunJsonReport(diagnosticsInput)
+        : formatDryRunDiagnostics(diagnosticsInput),
     );
     log('');
     log(updated);

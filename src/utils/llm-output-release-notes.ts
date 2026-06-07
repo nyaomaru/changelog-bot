@@ -2,6 +2,8 @@ import { fetchPRInfo } from '@/lib/github.js';
 import { parseReleaseNotes, buildSectionFromRelease } from '@/utils/release.js';
 import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
 import { buildTitlesForClassification } from '@/utils/classify-pre.js';
+import { fallbackCategoryMap } from '@/providers/classification.js';
+import { LlmError } from '@/lib/errors.js';
 import {
   DEFAULT_PR_LABELS,
   PR_TITLE_PREFIX,
@@ -85,6 +87,8 @@ export async function buildOutputFromReleaseNotes(
     titleToPr,
     provider,
     hasProviderKey,
+    noAi,
+    failOnLlmError,
     token,
     githubApiBase,
   } = params;
@@ -110,9 +114,22 @@ export async function buildOutputFromReleaseNotes(
   const titlesForLLM = buildTitlesForClassification(parsedRelease.items);
   let categories: Record<string, string[]> = {};
   if (titlesForLLM.length) {
-    categories = await provider.classifyTitles(titlesForLLM);
-    // Mark AI usage only when classification had input and a provider key is available.
-    aiUsed = aiUsed || hasProviderKey;
+    if (noAi) {
+      categories = fallbackCategoryMap(titlesForLLM);
+    } else {
+      try {
+        categories = await provider.classifyTitles(titlesForLLM);
+        // Mark AI usage only when classification had input and a provider key is available.
+        aiUsed = aiUsed || hasProviderKey;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (failOnLlmError) {
+          throw new LlmError(`LLM classification failed: ${message}`);
+        }
+        fallbackReasons.push(`LLM classification failed: ${message}`);
+        categories = fallbackCategoryMap(titlesForLLM);
+      }
+    }
     // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.
     categories = tuneCategoriesByTitle(parsedRelease.items, categories);
   }

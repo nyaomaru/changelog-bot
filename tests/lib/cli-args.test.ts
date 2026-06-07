@@ -30,6 +30,10 @@ describe('cli-args', () => {
     expect(out.instructions).toBeUndefined();
     expect(out.instructionsFile).toBeUndefined();
     expect(out.dryRun).toBe(false);
+    expect(out.dryRunJsonReport).toBe(false);
+    expect(out.failOnLlmError).toBe(false);
+    expect(out.requireProvider).toBe(false);
+    expect(out.noAi).toBe(false);
   });
 
   test('parses explicit flags', async () => {
@@ -57,6 +61,10 @@ describe('cli-args', () => {
       '--instructions-file',
       '.github/changelog-instructions.md',
       '--dry-run',
+      '--dry-run-json-report',
+      '--fail-on-llm-error',
+      '--require-provider',
+      '--ai',
     ]);
 
     expect(out.repoPath).toBe('/tmp/repo');
@@ -70,6 +78,16 @@ describe('cli-args', () => {
     expect(out.instructions).toBe('Use concise bullets.');
     expect(out.instructionsFile).toBe('.github/changelog-instructions.md');
     expect(out.dryRun).toBe(true);
+    expect(out.dryRunJsonReport).toBe(true);
+    expect(out.failOnLlmError).toBe(true);
+    expect(out.requireProvider).toBe(true);
+    expect(out.noAi).toBe(false);
+  });
+
+  test('parses --no-ai as deterministic mode', async () => {
+    const out = await parseCliArgs(['node', 'cli', '--no-ai']);
+
+    expect(out.noAi).toBe(true);
   });
 
   test('parses gemini provider', async () => {
@@ -92,6 +110,8 @@ describe('cli-args', () => {
           provider: PROVIDER_GEMINI,
           language: 'nl',
           instructionsFile: '.github/changelog-instructions.md',
+          dryRunJsonReport: true,
+          noAi: true,
         }),
         'utf8',
       );
@@ -101,6 +121,8 @@ describe('cli-args', () => {
       expect(out.provider).toBe(PROVIDER_GEMINI);
       expect(out.language).toBe('nl');
       expect(out.instructionsFile).toBe('.github/changelog-instructions.md');
+      expect(out.dryRunJsonReport).toBe(true);
+      expect(out.noAi).toBe(true);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -116,6 +138,7 @@ describe('cli-args', () => {
           provider: PROVIDER_GEMINI,
           language: 'nl',
           dryRun: true,
+          noAi: true,
         }),
         'utf8',
       );
@@ -131,6 +154,7 @@ describe('cli-args', () => {
           '--language',
           'en',
           '--no-dry-run',
+          '--ai',
         ],
         { cwd },
       );
@@ -138,8 +162,15 @@ describe('cli-args', () => {
       expect(out.provider).toBe(PROVIDER_ANTHROPIC);
       expect(out.language).toBe('en');
       expect(out.dryRun).toBe(false);
+      expect(out.noAi).toBe(false);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
+  });
+
+  test('rejects contradictory no-ai and require-provider flags', async () => {
+    await expect(
+      parseCliArgs(['node', 'cli', '--no-ai', '--require-provider']),
+    ).rejects.toThrow('--no-ai cannot be combined with --require-provider');
   });
 });

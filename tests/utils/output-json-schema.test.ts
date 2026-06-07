@@ -28,4 +28,43 @@ describe('output-json-schema', () => {
     expect(props.pr_body).toEqual({ type: 'string' });
     expect(props.labels).toEqual({ type: 'array', items: { type: 'string' } });
   });
+
+  test('matches provider-facing schema golden shape', () => {
+    expect(outputSchema).toMatchInlineSnapshot(`
+{
+  "properties": {
+    "compare_link_line": {
+      "type": "string",
+    },
+    "insert_after_anchor": {
+      "type": "string",
+    },
+    "labels": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "new_section_markdown": {
+      "type": "string",
+    },
+    "pr_body": {
+      "type": "string",
+    },
+    "pr_title": {
+      "type": "string",
+    },
+    "unreleased_compare_update": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "new_section_markdown",
+    "pr_title",
+    "pr_body",
+  ],
+  "type": "object",
+}
+`);
+  });
 });

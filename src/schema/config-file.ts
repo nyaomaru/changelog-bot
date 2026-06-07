@@ -19,6 +19,10 @@ export const CliConfigFileSchema = z
     instructions: z.string().optional(),
     instructionsFile: z.string().optional(),
     dryRun: z.boolean().optional(),
+    dryRunJsonReport: z.boolean().optional(),
+    failOnLlmError: z.boolean().optional(),
+    requireProvider: z.boolean().optional(),
+    noAi: z.boolean().optional(),
   })
   .strict();
 

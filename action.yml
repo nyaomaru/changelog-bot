@@ -50,6 +50,18 @@ inputs:
   dry-run:
     description: "If 'true', print updated changelog without writing or PR"
     required: false
+  dry-run-json-report:
+    description: "If 'true', print dry-run provider diagnostics as JSON"
+    required: false
+  fail-on-llm-error:
+    description: "If 'true', fail instead of falling back when provider calls fail"
+    required: false
+  require-provider:
+    description: "If 'true', fail when the selected provider API key is missing"
+    required: false
+  no-ai:
+    description: "If 'true', skip all provider calls and use deterministic output"
+    required: false
 
 runs:
   using: 'composite'
@@ -90,6 +102,10 @@ runs:
         INPUT_INSTRUCTIONS_FILE: ${{ inputs['instructions-file'] }}
         INPUT_MINIMUM_PACKAGE_AGE_DAYS: ${{ inputs['minimum-package-age-days'] }}
         INPUT_DRY_RUN: ${{ inputs['dry-run'] }}
+        INPUT_DRY_RUN_JSON_REPORT: ${{ inputs['dry-run-json-report'] }}
+        INPUT_FAIL_ON_LLM_ERROR: ${{ inputs['fail-on-llm-error'] }}
+        INPUT_REQUIRE_PROVIDER: ${{ inputs['require-provider'] }}
+        INPUT_NO_AI: ${{ inputs['no-ai'] }}
       run: |
         set -euo pipefail
 
@@ -145,6 +161,26 @@ runs:
           CMD+=(--dry-run)
         elif [ "${INPUT_DRY_RUN:-}" = "false" ]; then
           CMD+=(--no-dry-run)
+        fi
+        if [ "${INPUT_DRY_RUN_JSON_REPORT:-}" = "true" ]; then
+          CMD+=(--dry-run-json-report)
+        elif [ "${INPUT_DRY_RUN_JSON_REPORT:-}" = "false" ]; then
+          CMD+=(--no-dry-run-json-report)
+        fi
+        if [ "${INPUT_FAIL_ON_LLM_ERROR:-}" = "true" ]; then
+          CMD+=(--fail-on-llm-error)
+        elif [ "${INPUT_FAIL_ON_LLM_ERROR:-}" = "false" ]; then
+          CMD+=(--no-fail-on-llm-error)
+        fi
+        if [ "${INPUT_REQUIRE_PROVIDER:-}" = "true" ]; then
+          CMD+=(--require-provider)
+        elif [ "${INPUT_REQUIRE_PROVIDER:-}" = "false" ]; then
+          CMD+=(--no-require-provider)
+        fi
+        if [ "${INPUT_NO_AI:-}" = "true" ]; then
+          CMD+=(--no-ai)
+        elif [ "${INPUT_NO_AI:-}" = "false" ]; then
+          CMD+=(--ai)
         fi
 
         echo "+ ${CMD[@]}"
