@@ -118,7 +118,9 @@ export async function buildOutputFromReleaseNotes(
       categories = fallbackCategoryMap(titlesForLLM);
     } else {
       try {
-        categories = await provider.classifyTitles(titlesForLLM);
+        categories = await provider.classifyTitles(titlesForLLM, {
+          throwOnError: true,
+        });
         // Mark AI usage only when classification had input and a provider key is available.
         aiUsed = aiUsed || hasProviderKey;
       } catch (err) {
