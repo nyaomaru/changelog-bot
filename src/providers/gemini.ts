@@ -1,6 +1,6 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
-import type { Provider } from '@/types/provider.js';
+import type { ClassifyTitlesOptions, Provider } from '@/types/provider.js';
 import type { CategoryMap } from '@/types/changelog.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
@@ -115,7 +115,10 @@ export class GeminiProvider implements Provider {
     return extractJsonObject<LLMOutput>(extractGeminiText(response));
   }
 
-  async classifyTitles(titles: string[]): Promise<CategoryMap> {
+  async classifyTitles(
+    titles: string[],
+    options: ClassifyTitlesOptions = {},
+  ): Promise<CategoryMap> {
     if (!titles.length) return {};
     if (!this.apiKey) return fallbackCategoryMap(titles);
 
@@ -155,11 +158,13 @@ export class GeminiProvider implements Provider {
         { 'x-goog-api-key': this.apiKey },
         'Gemini classify error',
       );
-      return (
-        parseCategoryMap(extractGeminiText(response)) ??
-        fallbackCategoryMap(titles)
-      );
-    } catch {
+      const categories = parseCategoryMap(extractGeminiText(response));
+      if (!categories) {
+        throw new Error('Gemini classify output did not match schema');
+      }
+      return categories;
+    } catch (err) {
+      if (options.throwOnError) throw err;
       return fallbackCategoryMap(titles);
     }
   }

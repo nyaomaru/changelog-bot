@@ -41,20 +41,24 @@ Using it in CI? Jump to [GitHub Actions integration](#github-actions-integration
 
 ### Options
 
-| Option                | Description                                         | Default                                |
-| --------------------- | --------------------------------------------------- | -------------------------------------- |
-| `--repo-path`         | Path to repository root                             | `.`                                    |
-| `--config`            | Path to JSON config file                            | `changelog-bot.config.json` if present |
-| `--changelog-path`    | Path to CHANGELOG file                              | `CHANGELOG.md`                         |
-| `--base-branch`       | Base branch for PR                                  | `main`                                 |
-| `--provider`          | LLM provider (`openai`, `anthropic`, or `gemini`)   | `openai`                               |
-| `--release-tag`       | Git ref (tag or HEAD) to generate release for       | latest tag or HEAD                     |
-| `--release-name`      | Display name for version (without `v`)              | derived from tag                       |
-| `--release-body`      | Additional release notes body                       | `""`                                   |
-| `--language`          | Language for generated changelog prose              | `en`                                   |
-| `--instructions`      | Additional changelog writing/grouping instructions  | unset                                  |
-| `--instructions-file` | Path to a file with additional instructions         | unset                                  |
-| `--dry-run`           | Print updated CHANGELOG to stdout, don’t write file | `false`                                |
+| Option                  | Description                                           | Default                                |
+| ----------------------- | ----------------------------------------------------- | -------------------------------------- |
+| `--repo-path`           | Path to repository root                               | `.`                                    |
+| `--config`              | Path to JSON config file                              | `changelog-bot.config.json` if present |
+| `--changelog-path`      | Path to CHANGELOG file                                | `CHANGELOG.md`                         |
+| `--base-branch`         | Base branch for PR                                    | `main`                                 |
+| `--provider`            | LLM provider (`openai`, `anthropic`, or `gemini`)     | `openai`                               |
+| `--release-tag`         | Git ref (tag or HEAD) to generate release for         | latest tag or HEAD                     |
+| `--release-name`        | Display name for version (without `v`)                | derived from tag                       |
+| `--release-body`        | Additional release notes body                         | `""`                                   |
+| `--language`            | Language for generated changelog prose                | `en`                                   |
+| `--instructions`        | Additional changelog writing/grouping instructions    | unset                                  |
+| `--instructions-file`   | Path to a file with additional instructions           | unset                                  |
+| `--dry-run`             | Print updated CHANGELOG to stdout, don’t write file   | `false`                                |
+| `--dry-run-json-report` | Print dry-run provider diagnostics as JSON            | `false`                                |
+| `--fail-on-llm-error`   | Fail instead of falling back when provider calls fail | `false`                                |
+| `--require-provider`    | Fail when the selected provider API key is missing    | `false`                                |
+| `--no-ai`               | Skip all provider calls and use deterministic output  | `false`                                |
 
 ## Examples
 
@@ -70,7 +74,9 @@ pnpm dlx @nyaomaru/changelog-bot \
 ```
 
 Dry-runs print provider diagnostics before the generated changelog so you can
-confirm whether an LLM request was used or the run fell back.
+confirm whether an LLM request was used or the run fell back. Add
+`--dry-run-json-report` to print that diagnostics block as JSON with `provider`,
+`model`, `aiUsed`, and `fallbackReasons`.
 
 ### Generate changelog for a tagged release
 
@@ -84,7 +90,7 @@ pnpm dlx @nyaomaru/changelog-bot \
 
 ### Run without AI keys (fallback)
 
-If the selected provider API key is not set, the CLI skips model calls and builds a heuristic section from git logs (or uses GitHub Release Notes when provided). The PR body includes a note with the fallback reason, so everyone knows the run was deterministic.
+If the selected provider API key is not set, the CLI skips model calls and builds a heuristic section from git logs (or uses GitHub Release Notes when provided). The PR body includes a note with the fallback reason, so everyone knows the run was deterministic. Use `--require-provider` to fail instead when the key is missing, `--fail-on-llm-error` to fail on provider API/schema failures, or `--no-ai` to skip provider calls intentionally.
 
 ```sh
 # No AI keys in env
@@ -146,7 +152,8 @@ pnpm dlx @nyaomaru/changelog-bot --config .github/changelog-bot.json --dry-run
 Config files use camelCase keys matching the CLI options:
 `repoPath`, `changelogPath`, `baseBranch`, `provider`, `releaseTag`,
 `releaseName`, `releaseBody`, `language`, `instructions`,
-`instructionsFile`, and `dryRun`. Unknown keys are rejected so typos fail fast.
+`instructionsFile`, `dryRun`, `dryRunJsonReport`, `failOnLlmError`,
+`requireProvider`, and `noAi`. Unknown keys are rejected so typos fail fast.
 
 ### From source (local checkout)
 
@@ -173,6 +180,9 @@ Bring your own keys and tokens as needed—`changelog-bot` only asks for what it
 ### Fallback behavior (when AI is unavailable)
 
 - Missing AI keys or API failure does not fail the run.
+- `--require-provider` makes missing provider keys fail the run.
+- `--fail-on-llm-error` makes provider generation/classification failures fail the run.
+- `--no-ai` skips provider generation and title classification entirely.
 - If GitHub Release Notes are provided for the tag, they are used as the source of truth.
 - Otherwise, a heuristic section is built from `git log` and merged PRs.
 - The PR body is annotated with: “Generated without LLM. Reason: …”.
@@ -293,6 +303,10 @@ Action inputs (for both 1 and 3):
 - `instructions`: extra changelog writing and grouping instructions.
 - `instructions-file` / `instructions_file`: path to an instructions file, relative to the repository root.
 - `dry-run` / `dry_run`: `'true'` to print without writing/PR; explicitly set `'false'` to override `dryRun: true` from config.
+- `dry-run-json-report` / `dry_run_json_report`: `'true'` to print dry-run provider diagnostics as JSON.
+- `fail-on-llm-error` / `fail_on_llm_error`: `'true'` to fail instead of falling back when provider calls fail.
+- `require-provider` / `require_provider`: `'true'` to fail when the selected provider API key is missing.
+- `no-ai` / `no_ai`: `'true'` to skip all provider calls and use deterministic output.
 
 When `config-path` is used, omitted action inputs can be supplied by the config file. Inputs that are explicitly set in workflow YAML are forwarded as CLI flags and take precedence over config values, even when the value matches the documented default.
 

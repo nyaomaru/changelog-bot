@@ -1,6 +1,6 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
-import type { Provider } from '@/types/provider.js';
+import type { ClassifyTitlesOptions, Provider } from '@/types/provider.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
 import { postJson } from '@/utils/http.js';
@@ -106,7 +106,10 @@ export class OpenAIProvider implements Provider {
     return extractJsonObject<LLMOutput>(outputText);
   }
 
-  async classifyTitles(titles: string[]): Promise<CategoryMap> {
+  async classifyTitles(
+    titles: string[],
+    options: ClassifyTitlesOptions = {},
+  ): Promise<CategoryMap> {
     if (!titles.length) return {};
     if (!this.apiKey) return fallbackCategoryMap(titles);
 
@@ -131,8 +134,13 @@ export class OpenAIProvider implements Provider {
         'OpenAI classify error',
       );
       const text = extractOpenAiClassificationResponse(json);
-      return parseCategoryMap(text) ?? fallbackCategoryMap(titles);
-    } catch {
+      const categories = parseCategoryMap(text);
+      if (!categories) {
+        throw new Error('OpenAI classify output did not match schema');
+      }
+      return categories;
+    } catch (err) {
+      if (options.throwOnError) throw err;
       return fallbackCategoryMap(titles);
     }
   }

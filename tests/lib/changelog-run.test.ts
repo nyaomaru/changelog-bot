@@ -15,6 +15,10 @@ const cli = {
   instructions: 'Use concise bullets.',
   instructionsFile: '.github/changelog-instructions.md',
   dryRun: true,
+  dryRunJsonReport: false,
+  failOnLlmError: false,
+  requireProvider: false,
+  noAi: false,
 };
 
 const appConfig = {
@@ -113,6 +117,9 @@ describe('executeChangelogRun', () => {
         prs: 'merged prs',
         existingChangelog: 'existing changelog',
         provider,
+        noAi: false,
+        requireProvider: false,
+        failOnLlmError: false,
       }),
     );
     expect(log).toHaveBeenNthCalledWith(1, '==== DRY RUN (no PR) ====');
@@ -127,5 +134,74 @@ describe('executeChangelogRun', () => {
     );
     expect(log).toHaveBeenNthCalledWith(3, '');
     expect(log).toHaveBeenNthCalledWith(4, 'updated changelog');
+  });
+
+  test('dry-run can print provider diagnostics as JSON report', async () => {
+    const log = jest.fn();
+    const deps = {
+      providerFactory: jest.fn(() => provider),
+      getRepoFullName: jest.fn(() => 'octo/repo'),
+      resolveReleasePlan: jest.fn(() => ({
+        owner: 'octo',
+        repo: 'repo',
+        repoPath: '.',
+        changelogPath: 'CHANGELOG.md',
+        releaseRef: 'v1.2.3',
+        version: '1.2.3',
+        prevRef: 'v1.2.2',
+        date: '2026-05-23',
+      })),
+      gitMergedPRs: jest.fn(() => 'merged prs'),
+      commitsInRange: jest.fn(() => []),
+      prepareExistingChangelog: jest.fn(() => 'existing changelog'),
+      resolveRunCredentials: jest.fn(async () => ({
+        token: undefined,
+        hasProviderKey: false,
+      })),
+      mapCommitsToPrs: jest.fn(),
+      fetchReleaseBody: jest.fn(),
+      resolveCustomInstructions: jest.fn(() => undefined),
+      buildPrMapBySha: jest.fn(() => ({})),
+      buildTitleToPr: jest.fn(() => ({})),
+      getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
+      buildChangelogLlmOutput: jest.fn(async () => ({
+        llm: {
+          new_section_markdown: 'generated section',
+          insert_after_anchor: '## [Unreleased]',
+          pr_title: 'docs(changelog): 1.2.3',
+          pr_body: 'body',
+          labels: ['changelog'],
+        },
+        aiUsed: false,
+        fallbackReasons: ['AI disabled by --no-ai'],
+      })),
+      finalizeChangelogUpdate: jest.fn(() => ({
+        llm: {
+          new_section_markdown: 'generated section',
+          insert_after_anchor: '## [Unreleased]',
+          pr_title: 'docs(changelog): 1.2.3',
+          pr_body: 'body',
+          labels: ['changelog'],
+        },
+        updated: 'updated changelog',
+      })),
+      writeChangelog: jest.fn(),
+      ensureGithubTokenRequired: jest.fn(),
+      createPR: jest.fn(),
+    };
+
+    await executeChangelogRun({
+      cli: { ...cli, dryRunJsonReport: true, noAi: true },
+      appConfig,
+      log,
+      deps,
+    });
+
+    expect(JSON.parse(log.mock.calls[1][0])).toEqual({
+      provider: 'openai',
+      model: 'mock-openai',
+      aiUsed: false,
+      fallbackReasons: ['AI disabled by --no-ai'],
+    });
   });
 });

@@ -47,6 +47,10 @@ export async function parseCliArgs(
     .option('instructions', { type: 'string' })
     .option('instructions-file', { type: 'string' })
     .option('dry-run', { type: 'boolean' })
+    .option('dry-run-json-report', { type: 'boolean' })
+    .option('fail-on-llm-error', { type: 'boolean' })
+    .option('require-provider', { type: 'boolean' })
+    .option('ai', { type: 'boolean' })
     .strict()
     .parse();
 
@@ -63,6 +67,10 @@ export async function parseCliArgs(
     instructions: parsed.instructions,
     instructionsFile: parsed['instructions-file'],
     dryRun: parsed['dry-run'],
+    dryRunJsonReport: parsed['dry-run-json-report'],
+    failOnLlmError: parsed['fail-on-llm-error'],
+    requireProvider: parsed['require-provider'],
+    noAi: parsed.ai === undefined ? undefined : !parsed.ai,
   });
 
   return CliOptionsSchema.parse({

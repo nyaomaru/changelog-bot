@@ -23,6 +23,12 @@ export type ProviderInfo = {
   supports: ProviderCapabilities;
 };
 
+/** Options controlling provider title classification error handling. */
+export type ClassifyTitlesOptions = {
+  /** Throw provider/parse errors instead of returning deterministic fallback categories. */
+  throwOnError?: boolean;
+};
+
 /**
  * Contract implemented by LLM provider adapters.
  * Implementations should normalize outputs at this boundary.
@@ -31,5 +37,8 @@ export interface Provider extends ProviderInfo {
   /** Generate structured output from normalized input. */
   generate(input: LLMInput): Promise<LLMOutput>;
   /** Classify titles into changelog categories. */
-  classifyTitles(titles: string[]): Promise<CategoryMap>;
+  classifyTitles(
+    titles: string[],
+    options?: ClassifyTitlesOptions,
+  ): Promise<CategoryMap>;
 }

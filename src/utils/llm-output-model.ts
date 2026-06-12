@@ -18,6 +18,7 @@ import {
   applyLlmDefaults,
   buildAutoPrBody,
 } from '@/utils/llm-output-common.js';
+import { LlmError } from '@/lib/errors.js';
 
 function buildLogsForLLM(
   commitList: CommitLite[],
@@ -54,6 +55,8 @@ export async function buildOutputFromModelOrFallback(
     prMapBySha,
     provider,
     hasProviderKey,
+    noAi,
+    failOnLlmError,
   } = params;
 
   const logsForLLM = buildLogsForLLM(commitList, prMapBySha);
@@ -75,7 +78,9 @@ export async function buildOutputFromModelOrFallback(
   let aiUsed = false;
   let llm: LLMOutput | null = null;
 
-  if (!hasProviderKey) {
+  if (noAi) {
+    // The caller has already recorded the flag in fallbackReasons.
+  } else if (!hasProviderKey) {
     fallbackReasons.push(`Missing API key for provider: ${provider.name}`);
   } else {
     try {
@@ -83,6 +88,9 @@ export async function buildOutputFromModelOrFallback(
       aiUsed = true;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      if (failOnLlmError) {
+        throw err instanceof Error ? err : new LlmError(`LLM generation failed: ${message}`);
+      }
       fallbackReasons.push(`LLM generation failed: ${message}`);
     }
   }

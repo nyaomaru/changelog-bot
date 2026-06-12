@@ -124,4 +124,56 @@ describe('GeminiProvider', () => {
     );
     expect(requestBody.generationConfig.responseFormat).toBeUndefined();
   });
+
+  test('throws classification parse errors when requested', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: JSON.stringify({ Added: 'not-array' }) }],
+              },
+            },
+          ],
+        }),
+    });
+
+    const provider = new GeminiProvider({
+      apiKey: 'gemini-test',
+      model: 'gemini-test-model',
+    });
+
+    await expect(
+      provider.classifyTitles(['Add Gemini support'], { throwOnError: true }),
+    ).rejects.toThrow('Gemini classify output did not match schema');
+  });
+
+  test('keeps deterministic classification fallback by default', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: JSON.stringify({ Added: 'not-array' }) }],
+              },
+            },
+          ],
+        }),
+    });
+
+    const provider = new GeminiProvider({
+      apiKey: 'gemini-test',
+      model: 'gemini-test-model',
+    });
+
+    await expect(
+      provider.classifyTitles(['Add Gemini support']),
+    ).resolves.toEqual({
+      Chore: ['Add Gemini support'],
+    });
+  });
 });

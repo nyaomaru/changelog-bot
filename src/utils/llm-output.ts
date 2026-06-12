@@ -1,5 +1,6 @@
 import { buildOutputFromReleaseNotes } from '@/utils/llm-output-release-notes.js';
 import { buildOutputFromModelOrFallback } from '@/utils/llm-output-model.js';
+import { LlmError } from '@/lib/errors.js';
 import type {
   BuildChangelogLlmOutputParams,
   BuildLlmOutputResult,
@@ -15,11 +16,20 @@ export async function buildChangelogLlmOutput(
   params: BuildChangelogLlmOutputParams,
 ): Promise<BuildLlmOutputResult> {
   const fallbackReasons: string[] = [];
+  if (params.noAi) {
+    fallbackReasons.push('AI disabled by --no-ai');
+  }
+  if (params.requireProvider && !params.hasProviderKey) {
+    throw new LlmError(
+      `Provider required but API key is missing for provider: ${params.provider.name}`,
+    );
+  }
+
   const hasCustomization = Boolean(
     params.customInstructions || params.language !== 'en',
   );
 
-  if (!hasCustomization || !params.hasProviderKey) {
+  if (params.noAi || !hasCustomization || !params.hasProviderKey) {
     const fromRelease = await buildOutputFromReleaseNotes(
       params,
       fallbackReasons,

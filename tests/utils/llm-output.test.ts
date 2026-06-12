@@ -7,6 +7,7 @@ await jest.unstable_mockModule('@/utils/classify.js', () => ({
 }));
 
 const { buildChangelogLlmOutput } = await import('@/utils/llm-output.js');
+const { LlmError } = await import('@/lib/errors.js');
 
 const mockProvider = {
   name: 'openai',
@@ -48,6 +49,9 @@ function buildBaseParams(overrides = {}) {
     hasProviderKey: false,
     token: undefined,
     githubApiBase: 'https://api.github.com',
+    noAi: false,
+    requireProvider: false,
+    failOnLlmError: false,
     ...overrides,
   };
 }
@@ -88,6 +92,43 @@ describe('llm-output', () => {
     );
     expect(result.llm.new_section_markdown).toContain('### Added');
     expect(result.llm.new_section_markdown).toContain('- Add feature');
+  });
+
+  test('no-ai uses release notes without provider classification', async () => {
+    const classifyTitles = jest.fn(async () => {
+      throw new Error('classification should be skipped');
+    });
+
+    const result = await buildChangelogLlmOutput(
+      buildBaseParams({
+        releaseBody: "## What's Changed\n- Add feature\n",
+        provider: { ...mockProvider, classifyTitles },
+        hasProviderKey: true,
+        noAi: true,
+      }),
+    );
+
+    expect(classifyTitles).not.toHaveBeenCalled();
+    expect(result.aiUsed).toBe(false);
+    expect(result.fallbackReasons).toEqual(
+      expect.arrayContaining([
+        'AI disabled by --no-ai',
+        'Used GitHub Release Notes as the source (no model call)',
+      ]),
+    );
+    expect(result.llm.pr_body).toContain('Generated without LLM');
+    expect(result.llm.new_section_markdown).toContain('- Add feature');
+  });
+
+  test('require-provider fails when the selected provider has no key', async () => {
+    await expect(
+      buildChangelogLlmOutput(
+        buildBaseParams({
+          releaseBody: "## What's Changed\n- Add feature\n",
+          requireProvider: true,
+        }),
+      ),
+    ).rejects.toThrow(LlmError);
   });
 
   test('preserves custom release-note sections when no items are parsed', async () => {
@@ -200,5 +241,63 @@ describe('llm-output', () => {
       'Used GitHub Release Notes as the source (no model call)',
     );
     expect(result.llm.new_section_markdown).toContain('日本語の出力');
+  });
+
+  test('falls back when mocked provider generation fails by default', async () => {
+    const generate = jest.fn(async () => {
+      throw new Error('provider down');
+    });
+    const providerWithFailure = { ...mockProvider, generate };
+
+    const result = await buildChangelogLlmOutput(
+      buildBaseParams({
+        commitList: [{ sha: 'abcdef1', subject: 'fix: patch bug' }],
+        provider: providerWithFailure,
+        providerConfig: { apiKey: 'sk-test', model: 'mock-model' },
+        hasProviderKey: true,
+      }),
+    );
+
+    expect(generate).toHaveBeenCalled();
+    expect(result.aiUsed).toBe(false);
+    expect(result.fallbackReasons.join('\n')).toContain(
+      'LLM generation failed: provider down',
+    );
+    expect(result.llm.new_section_markdown).toContain('### Fixed');
+  });
+
+  test('fail-on-llm-error throws when mocked provider generation fails', async () => {
+    const generate = jest.fn(async () => {
+      throw new Error('provider down');
+    });
+    const providerWithFailure = { ...mockProvider, generate };
+
+    await expect(
+      buildChangelogLlmOutput(
+        buildBaseParams({
+          provider: providerWithFailure,
+          providerConfig: { apiKey: 'sk-test', model: 'mock-model' },
+          hasProviderKey: true,
+          failOnLlmError: true,
+        }),
+      ),
+    ).rejects.toThrow(LlmError);
+  });
+
+  test('fail-on-llm-error throws when mocked release-note classification fails', async () => {
+    const classifyTitles = jest.fn(async () => {
+      throw new Error('classifier down');
+    });
+
+    await expect(
+      buildChangelogLlmOutput(
+        buildBaseParams({
+          releaseBody: "## What's Changed\n- Add feature\n",
+          provider: { ...mockProvider, classifyTitles },
+          hasProviderKey: true,
+          failOnLlmError: true,
+        }),
+      ),
+    ).rejects.toThrow(LlmError);
   });
 });
