@@ -211,6 +211,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # issues: write # optional, applies labels
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -261,6 +262,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # issues: write # optional, applies labels
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -319,6 +321,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # issues: write # optional, applies labels
     with:
       changelog_path: CHANGELOG.md
       # config_path: .github/changelog-bot.json
@@ -453,6 +456,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # issues: write # optional, applies labels
     with:
       release_tag: ${{ github.event.release.tag_name }}
       release_name: ${{ github.event.release.tag_name }}
