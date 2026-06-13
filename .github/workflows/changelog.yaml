@@ -35,6 +35,9 @@ on:
       instructions_file:
         required: false
         type: string
+      npm_version:
+        required: false
+        type: string
       minimum_package_age_days:
         required: false
         type: string
@@ -42,9 +45,27 @@ on:
       dry_run:
         required: false
         type: string
+      dry_run_json_report:
+        required: false
+        type: string
+      fail_on_llm_error:
+        required: false
+        type: string
+      require_provider:
+        required: false
+        type: string
+      no_ai:
+        required: false
+        type: string
     secrets:
       REPO_TOKEN:
-        required: true
+        required: false
+      CHANGELOG_BOT_APP_ID:
+        required: false
+      CHANGELOG_BOT_APP_PRIVATE_KEY:
+        required: false
+      CHANGELOG_BOT_APP_INSTALLATION_ID:
+        required: false
       OPENAI_API_KEY:
         required: false
       ANTHROPIC_API_KEY:
@@ -58,6 +79,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -75,10 +97,18 @@ jobs:
           language: ${{ inputs.language }}
           instructions: ${{ inputs.instructions }}
           instructions-file: ${{ inputs.instructions_file }}
+          npm-version: ${{ inputs.npm_version }}
           minimum-package-age-days: ${{ inputs.minimum_package_age_days }}
           dry-run: ${{ inputs.dry_run }}
+          dry-run-json-report: ${{ inputs.dry_run_json_report }}
+          fail-on-llm-error: ${{ inputs.fail_on_llm_error }}
+          require-provider: ${{ inputs.require_provider }}
+          no-ai: ${{ inputs.no_ai }}
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+          CHANGELOG_BOT_APP_ID: ${{ secrets.CHANGELOG_BOT_APP_ID }}
+          CHANGELOG_BOT_APP_PRIVATE_KEY: ${{ secrets.CHANGELOG_BOT_APP_PRIVATE_KEY }}
+          CHANGELOG_BOT_APP_INSTALLATION_ID: ${{ secrets.CHANGELOG_BOT_APP_INSTALLATION_ID }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

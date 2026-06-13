@@ -7,6 +7,7 @@
 </p>
 
 Releases should feel exciting, not tedious.
+
 `@nyaomaru/changelog-bot` 🤖 turns your Git history and release notes into a polished changelog entry (and optional PR) in a single run. Drop it into CI, run it locally, or hand it to your release captain—either way, you ship with a crisp changelog and zero copy-paste fatigue.
 
 ## Why changelog-bot?
@@ -190,9 +191,12 @@ Bring your own keys and tokens as needed—`changelog-bot` only asks for what it
 
 ## GitHub Actions integration
 
-Plug it into CI in minutes. Pick the flavor that matches your workflow:
+The published composite action installs the CLI with `pnpm dlx` and forwards
+action inputs to CLI flags. The caller must check out the repository first,
+preferably with `fetch-depth: 0` so tag and history lookups work. Pin `uses:` to
+a tag or commit for repeatable CI.
 
-1. As a GitHub Action (recommended)
+### Release published workflow
 
 ```yaml
 name: Update Changelog
@@ -207,36 +211,50 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
 
-      - uses: nyaomaru/changelog-bot@v0 # Set release version
+      - uses: nyaomaru/changelog-bot@v0
         with:
           changelog-path: CHANGELOG.md
           base-branch: main
           provider: openai
           release-tag: ${{ github.event.release.tag_name }}
           release-name: ${{ github.event.release.tag_name }}
-          # npm-version: latest   # optionally pin a version/range
-          # minimum-package-age-days: '2' # block versions published less than 2 days ago
-          # dry-run: 'true'       # to avoid writing + PR
+          release-body: ${{ github.event.release.body }}
+          # npm-version: 0.5.x
+          # minimum-package-age-days: '2'
         env:
-          # Optional: set one of the following to enable AI generation
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-2. Directly run the CLI in your workflow
+`published` is the safest default for GitHub UI release flows because it also
+runs when a draft release is published. Use `types: [created]` only when your
+process creates non-draft releases directly and you want the changelog PR opened
+before publication.
+
+### Manual dispatch workflow
 
 ```yaml
-name: Update Changelog
+name: Update Changelog Manually
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Git ref or tag to generate from
+        required: true
+        default: HEAD
+      release_name:
+        description: Version label without the v prefix
+        required: true
+      dry_run:
+        description: Print output without writing or opening a PR
+        required: true
+        default: 'true'
 
 jobs:
   changelog:
@@ -244,27 +262,57 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-
-      - run: npx @nyaomaru/changelog-bot@latest \
-          --release-tag ${{ github.event.release.tag_name }} \
-          --release-name ${{ github.event.release.tag_name }} \
-          --changelog-path CHANGELOG.md \
-          --provider openai
+      - uses: nyaomaru/changelog-bot@v0
+        with:
+          changelog-path: CHANGELOG.md
+          base-branch: main
+          provider: openai
+          release-tag: ${{ inputs.release_tag }}
+          release-name: ${{ inputs.release_name }}
+          dry-run: ${{ inputs.dry_run }}
+          dry-run-json-report: 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO_FULL_NAME: ${{ github.repository }}
 ```
 
-3. As a reusable workflow (workflow_call)
+### Dry-run only workflow
+
+```yaml
+name: Preview Changelog
+
+on:
+  workflow_dispatch:
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: nyaomaru/changelog-bot@v0
+        with:
+          release-tag: HEAD
+          release-name: 0.5.0-preview
+          dry-run: 'true'
+          dry-run-json-report: 'true'
+          no-ai: 'true'
+```
+
+Dry-runs do not write `CHANGELOG.md`, push a branch, or create a PR, so they do
+not need `GITHUB_TOKEN` unless you want authenticated GitHub API lookups for a
+private repository.
+
+### Reusable workflow
 
 ```yaml
 jobs:
@@ -280,7 +328,13 @@ jobs:
       # release_body: '...'
       # language: ja
       # instructions_file: .github/changelog-instructions.md
+      # npm_version: 0.5.x
+      # minimum_package_age_days: '2'
       # dry_run: 'true'
+      # dry_run_json_report: 'true'
+      # fail_on_llm_error: 'true'
+      # require_provider: 'true'
+      # no_ai: 'true'
     secrets:
       REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -288,49 +342,73 @@ jobs:
       # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-Action inputs (for both 1 and 3):
+### Action inputs and CLI flags
 
-- `changelog-path` / `changelog_path`: path to `CHANGELOG.md` (default `CHANGELOG.md`).
-- `config-path` / `config_path`: path to a JSON config file.
-- `base-branch` / `base_branch`: base branch for PR (default `main`).
-- `provider`: `openai`, `anthropic`, or `gemini` (default `openai`).
-- `npm-version` / `npm_version`: npm dist-tag or range for the CLI package (default `latest`).
-- `minimum-package-age-days` / `minimum_package_age_days`: minimum publish age required for the resolved npm package version before the action installs it (default `2`, set to `0` to disable explicitly).
-- `release-tag` / `release_tag`: tag or ref to generate for.
-- `release-name` / `release_name`: display version (without `v`).
-- `release-body` / `release_body`: extra release notes to merge.
-- `language`: language for generated changelog prose (default `en`).
-- `instructions`: extra changelog writing and grouping instructions.
-- `instructions-file` / `instructions_file`: path to an instructions file, relative to the repository root.
-- `dry-run` / `dry_run`: `'true'` to print without writing/PR; explicitly set `'false'` to override `dryRun: true` from config.
-- `dry-run-json-report` / `dry_run_json_report`: `'true'` to print dry-run provider diagnostics as JSON.
-- `fail-on-llm-error` / `fail_on_llm_error`: `'true'` to fail instead of falling back when provider calls fail.
-- `require-provider` / `require_provider`: `'true'` to fail when the selected provider API key is missing.
-- `no-ai` / `no_ai`: `'true'` to skip all provider calls and use deterministic output.
+Boolean action and reusable workflow inputs are strings: use `'true'` or
+`'false'`. Omitted CLI-backed inputs keep CLI/config-file defaults. Explicit
+action values are forwarded as CLI flags and override config-file values.
 
-When `config-path` is used, omitted action inputs can be supplied by the config file. Inputs that are explicitly set in workflow YAML are forwarded as CLI flags and take precedence over config values, even when the value matches the documented default.
+| Purpose                 | CLI flag                                             | Action input               | Reusable workflow input    | Config key / default                                        |
+| ----------------------- | ---------------------------------------------------- | -------------------------- | -------------------------- | ----------------------------------------------------------- |
+| Config file             | `--config`                                           | `config-path`              | `config_path`              | auto-loads `changelog-bot.config.json` when present         |
+| Repository path         | `--repo-path`                                        | none                       | none                       | `repoPath`, default `.`; actions run from the checkout root |
+| Changelog path          | `--changelog-path`                                   | `changelog-path`           | `changelog_path`           | `changelogPath`, default `CHANGELOG.md`                     |
+| PR base branch          | `--base-branch`                                      | `base-branch`              | `base_branch`              | `baseBranch`, default `main`                                |
+| Provider                | `--provider`                                         | `provider`                 | `provider`                 | `provider`, default `openai`                                |
+| Release ref             | `--release-tag`                                      | `release-tag`              | `release_tag`              | `releaseTag`, default latest tag or `HEAD`                  |
+| Version label           | `--release-name`                                     | `release-name`             | `release_name`             | `releaseName`, derived from release ref                     |
+| Release notes body      | `--release-body`                                     | `release-body`             | `release_body`             | `releaseBody`, default empty                                |
+| Output language         | `--language`                                         | `language`                 | `language`                 | `language`, default `en`                                    |
+| Extra instructions      | `--instructions`                                     | `instructions`             | `instructions`             | `instructions`, unset                                       |
+| Instructions file       | `--instructions-file`                                | `instructions-file`        | `instructions_file`        | `instructionsFile`, unset                                   |
+| Preview only            | `--dry-run` / `--no-dry-run`                         | `dry-run`                  | `dry_run`                  | `dryRun`, default `false`                                   |
+| JSON dry-run report     | `--dry-run-json-report` / `--no-dry-run-json-report` | `dry-run-json-report`      | `dry_run_json_report`      | `dryRunJsonReport`, default `false`                         |
+| Fail on provider errors | `--fail-on-llm-error` / `--no-fail-on-llm-error`     | `fail-on-llm-error`        | `fail_on_llm_error`        | `failOnLlmError`, default `false`                           |
+| Require provider key    | `--require-provider` / `--no-require-provider`       | `require-provider`         | `require_provider`         | `requireProvider`, default `false`                          |
+| Deterministic mode      | `--no-ai` / `--ai`                                   | `no-ai`                    | `no_ai`                    | `noAi`, default `false`                                     |
+| CLI package version     | none                                                 | `npm-version`              | `npm_version`              | Action-only, default `latest`                               |
+| Package age guard       | none                                                 | `minimum-package-age-days` | `minimum_package_age_days` | Action-only, default `0`                                    |
 
 Outputs: None.
 
-Security note:
+### Package install guard
 
-- The published action installs the CLI with `pnpm dlx` and sets pnpm’s `minimumReleaseAge` so versions published less than 2 days earlier are blocked by default.
-- The action passes that setting via pnpm’s CLI config override form, `--config.minimum-release-age=...`, which is the flag shape pnpm accepts at runtime.
-- If you need an emergency rollout, either pin an older exact version or set `minimum-package-age-days: '0'` to disable the guard intentionally.
-- If you run the CLI directly with `npx`, this guard does not apply automatically. Use `pnpm dlx` with `minimumReleaseAge`, or pin an exact version yourself if you want the same protection.
+The action installs `@nyaomaru/changelog-bot` with `pnpm dlx`. By default,
+`minimum-package-age-days` is `0`, which disables pnpm's `minimumReleaseAge`
+guard. Set it to a positive integer, such as `'2'`, to block package versions
+published less than that many days ago. The action forwards the value through
+pnpm's runtime config flag, `--config.minimum-release-age=...`.
 
-Environment:
+If you run the CLI directly with `npx`, this action-level guard does not apply.
+Use `pnpm dlx` with `minimumReleaseAge`, or pin an exact version yourself if you
+want the same protection.
 
-- `GITHUB_TOKEN` (required to create the PR; not needed in dry-run).
-- Or GitHub App auth variables (`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, optional `GITHUB_APP_INSTALLATION_ID`).
-- `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` (optional for AI generation).
-- `REPO_FULL_NAME` auto-set by the Action; set yourself if calling the CLI directly.
+### Authentication and permissions
 
-### GitHub App authentication in Actions (YAML examples)
+For non-dry-run PR creation, provide either `GITHUB_TOKEN`/PAT or GitHub App
+credentials. `GITHUB_TOKEN` takes precedence when both are present.
 
-Use a GitHub App instead of a PAT so PRs come from your bot account and permissions are least‑privilege.
+Workflow permissions for `GITHUB_TOKEN`:
 
-1. Using the published Action with a GitHub App
+- `contents: write` to commit and push the changelog branch.
+- `pull-requests: write` to open the PR.
+- `issues: write` to apply default labels to the PR.
+
+Fine-grained PAT or GitHub App permissions:
+
+- Repository contents: read and write.
+- Pull requests: read and write.
+- Issues: read and write, required for labels.
+- Metadata: read, included by GitHub Apps.
+
+Set `REPO_FULL_NAME` manually only when running the CLI directly outside GitHub
+Actions. The composite action sets it from `github.repository`.
+
+### GitHub App authentication
+
+Use a GitHub App when PRs should be authored by the App account and scoped to
+least privilege. Do not set `GITHUB_TOKEN` on the same step if you want the App
+path to be used.
 
 ```yaml
 name: Update Changelog (App Auth)
@@ -345,6 +423,7 @@ jobs:
     permissions:
       contents: write # to push branch
       pull-requests: write # to open PR
+      issues: write # to apply labels
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -357,64 +436,34 @@ jobs:
           release-tag: ${{ github.event.release.tag_name }}
           release-name: ${{ github.event.release.tag_name }}
         env:
-          # Use App auth (do not set GITHUB_TOKEN to force App path)
           CHANGELOG_BOT_APP_ID: ${{ secrets.CHANGELOG_BOT_APP_ID }}
           CHANGELOG_BOT_APP_PRIVATE_KEY: ${{ secrets.CHANGELOG_BOT_APP_PRIVATE_KEY }}
-          # Optional: hardcode installation id; otherwise auto-detected
           # CHANGELOG_BOT_APP_INSTALLATION_ID: ${{ secrets.CHANGELOG_BOT_APP_INSTALLATION_ID }}
-          # Optional: GHES
           # CHANGELOG_BOT_API_BASE: https://ghe.example.com/api/v3
-          # Optional: AI keys
           # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-2. Running the CLI directly with a GitHub App
+You can also use App auth through the reusable workflow:
 
 ```yaml
-name: Update Changelog (App Auth)
-
-on:
-  release:
-    types: [published]
-
 jobs:
   changelog:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-
-      - run: |
-          npx @nyaomaru/changelog-bot@latest \
-            --release-tag ${{ github.event.release.tag_name }} \
-            --release-name ${{ github.event.release.tag_name }} \
-            --changelog-path CHANGELOG.md \
-            --provider openai
-        env:
-          REPO_FULL_NAME: ${{ github.repository }}
-          CHANGELOG_BOT_APP_ID: ${{ secrets.CHANGELOG_BOT_APP_ID }}
-          CHANGELOG_BOT_APP_PRIVATE_KEY: ${{ secrets.CHANGELOG_BOT_APP_PRIVATE_KEY }}
-          # CHANGELOG_BOT_APP_INSTALLATION_ID: ${{ secrets.CHANGELOG_BOT_APP_INSTALLATION_ID }}
-          # CHANGELOG_BOT_API_BASE: https://ghe.example.com/api/v3
-          # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    uses: nyaomaru/changelog-bot/.github/workflows/changelog.yaml@main
+    with:
+      release_tag: ${{ github.event.release.tag_name }}
+      release_name: ${{ github.event.release.tag_name }}
+    secrets:
+      CHANGELOG_BOT_APP_ID: ${{ secrets.CHANGELOG_BOT_APP_ID }}
+      CHANGELOG_BOT_APP_PRIVATE_KEY: ${{ secrets.CHANGELOG_BOT_APP_PRIVATE_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
 Notes
 
 - Paste the App private key into a repository/organization secret as a multiline PEM; secrets preserve newlines.
-- If you also provide `GITHUB_TOKEN`, PAT takes precedence and the run will use the PAT path.
-
-### Using a GitHub App instead of a PAT
-
-If you install `changelog-bot` as a GitHub App in your org, the PRs will be authored by the App’s account and you can scope permissions cleanly.
+- Single-line secrets with escaped `\n` are also accepted.
+- `CHANGELOG_BOT_APP_INSTALLATION_ID` is optional; the CLI auto-detects it from the repository.
+- `CHANGELOG_BOT_API_BASE` can point to a GHES REST API base, such as `https://ghe.example.com/api/v3`.
 
 Set the following in your workflow or environment (use aliases; no `GITHUB_` prefix required):
 
@@ -431,6 +480,19 @@ The CLI exchanges the App credentials for an installation access token at runtim
 - PR creation (Octokit)
 
 Token rotation: We mint a fresh installation token per CLI run. Tokens expire in ~1 hour; no manual rotation required.
+
+## Troubleshooting
+
+- `Resource not accessible by integration`: add `contents: write`, `pull-requests: write`, and `issues: write`; verify the workflow is not running with a read-only token from an untrusted fork.
+- `GITHUB_TOKEN is required to create PR`: non-dry-run mode needs `GITHUB_TOKEN`, a PAT, or GitHub App credentials. Dry-run mode does not create a PR.
+- GitHub App JWT or private key errors: use `CHANGELOG_BOT_APP_ID` and `CHANGELOG_BOT_APP_PRIVATE_KEY`, keep the PEM unencrypted, and preserve newlines or use escaped `\n`.
+- Missing release notes or PR titles: use `actions/checkout` with `fetch-depth: 0`, pass `release-body`, and provide GitHub auth for private repositories.
+- AI key missing: the CLI falls back by default. Set the matching provider key, use `require-provider: 'true'` to fail instead, or use `no-ai: 'true'` intentionally.
+- Provider API/schema failure: keep fallback behavior, or set `fail-on-llm-error: 'true'` when a deterministic failure is better than heuristic output.
+- Package version is unexpectedly blocked: check `minimum-package-age-days`. The default is `0`; positive values enable the pnpm package age guard.
+- No PR appears in dry-run: expected. Dry-run prints the proposed changelog and diagnostics only.
+- Duplicate version heading: the changelog already contains that release. Use a different `release-name` or edit the existing section intentionally.
+- Push or PR targets the wrong branch: set `base-branch` / `base_branch` to the branch that should receive the changelog PR.
 
 ## Local development setup
 
@@ -480,7 +542,7 @@ npx @nyaomaru/changelog-bot --help
 - During `v0`, breaking changes may occur as we stabilize flags and output. We avoid breaks when possible and document changes in the changelog.
 - To pin versions:
   - Action: use a major tag (`uses: nyaomaru/changelog-bot@v0`) or a specific ref (e.g., `@v0.1.2`).
-  - Action + CLI pin: set `npm-version` input (e.g., `npm-version: 0.1.2`). By default, the action blocks versions published less than 2 days ago unless you override `minimum-package-age-days`.
+  - Action + CLI pin: set `npm-version` input (e.g., `npm-version: 0.1.2`). Set `minimum-package-age-days` to a positive value when you want pnpm to block newly published package versions.
   - npx: `npx @nyaomaru/changelog-bot@0.1.2 ...`.
 - From `v1` onward, we follow SemVer: no breaking changes without a major version bump.
 
