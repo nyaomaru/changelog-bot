@@ -117,6 +117,40 @@ describe('lib/pr.createPR', () => {
     expect(addLabels).not.toHaveBeenCalled();
   });
 
+  test('continues when labels cannot be applied', async () => {
+    const warnSpy = jestGlobal
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    addLabels.mockRejectedValueOnce(new Error('Resource not accessible'));
+
+    try {
+      const prNum = await createPR({
+        owner: 'o',
+        repo: 'r',
+        baseBranch: 'main',
+        branchName: 'feat/x',
+        title: 'title',
+        body: '',
+        labels: ['changelog'],
+        token: 't',
+        changelogEntry: 'CHANGELOG.md',
+      });
+
+      expect(prNum).toBe(42);
+      expect(addLabels).toHaveBeenCalledWith({
+        owner: 'o',
+        repo: 'r',
+        issue_number: 42,
+        labels: ['changelog'],
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Warning: Failed to apply PR labels: Resource not accessible',
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   test('passes titles and changelog paths without shell escaping', async () => {
     await createPR({
       owner: 'o',

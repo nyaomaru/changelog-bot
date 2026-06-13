@@ -122,12 +122,18 @@ export async function createPR(params: CreatePRParams) {
 
   if (labels?.length) {
     // WHY: Labels are managed via the issues API; PRs are issues under the hood.
-    await octokit.rest.issues.addLabels({
-      owner,
-      repo,
-      issue_number: pullRequest.data.number,
-      labels,
-    });
+    // Missing `issues: write` should not make changelog PR creation fail.
+    try {
+      await octokit.rest.issues.addLabels({
+        owner,
+        repo,
+        issue_number: pullRequest.data.number,
+        labels,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`Warning: Failed to apply PR labels: ${message}`);
+    }
   }
   return pullRequest.data.number;
 }

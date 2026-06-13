@@ -211,7 +211,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      issues: write
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -262,7 +261,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      issues: write
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -318,6 +316,9 @@ private repository.
 jobs:
   changelog:
     uses: nyaomaru/changelog-bot/.github/workflows/changelog.yaml@main
+    permissions:
+      contents: write
+      pull-requests: write
     with:
       changelog_path: CHANGELOG.md
       # config_path: .github/changelog-bot.json
@@ -392,13 +393,13 @@ Workflow permissions for `GITHUB_TOKEN`:
 
 - `contents: write` to commit and push the changelog branch.
 - `pull-requests: write` to open the PR.
-- `issues: write` to apply default labels to the PR.
+- `issues: write` is optional; without it, the PR is still created but labels are skipped with a warning.
 
 Fine-grained PAT or GitHub App permissions:
 
 - Repository contents: read and write.
 - Pull requests: read and write.
-- Issues: read and write, required for labels.
+- Issues: read and write, optional for labels.
 - Metadata: read, included by GitHub Apps.
 
 Set `REPO_FULL_NAME` manually only when running the CLI directly outside GitHub
@@ -423,7 +424,7 @@ jobs:
     permissions:
       contents: write # to push branch
       pull-requests: write # to open PR
-      issues: write # to apply labels
+      # issues: write # optional, applies labels
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -449,6 +450,9 @@ You can also use App auth through the reusable workflow:
 jobs:
   changelog:
     uses: nyaomaru/changelog-bot/.github/workflows/changelog.yaml@main
+    permissions:
+      contents: write
+      pull-requests: write
     with:
       release_tag: ${{ github.event.release.tag_name }}
       release_name: ${{ github.event.release.tag_name }}
@@ -483,7 +487,8 @@ Token rotation: We mint a fresh installation token per CLI run. Tokens expire in
 
 ## Troubleshooting
 
-- `Resource not accessible by integration`: add `contents: write`, `pull-requests: write`, and `issues: write`; verify the workflow is not running with a read-only token from an untrusted fork.
+- `Resource not accessible by integration`: add `contents: write` and `pull-requests: write`; for reusable workflows, set these on the calling job because caller permissions cap the nested workflow. Add `issues: write` only if labels must be applied.
+- Label application warning: add `issues: write` to the workflow job or GitHub App/PAT if labels are required. Without it, changelog-bot still creates the PR.
 - `GITHUB_TOKEN is required to create PR`: non-dry-run mode needs `GITHUB_TOKEN`, a PAT, or GitHub App credentials. Dry-run mode does not create a PR.
 - GitHub App JWT or private key errors: use `CHANGELOG_BOT_APP_ID` and `CHANGELOG_BOT_APP_PRIVATE_KEY`, keep the PEM unencrypted, and preserve newlines or use escaped `\n`.
 - Missing release notes or PR titles: use `actions/checkout` with `fetch-depth: 0`, pass `release-body`, and provide GitHub auth for private repositories.
