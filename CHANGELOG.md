@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.0] - 2026-06-13
+
+### Added
+
+- add reliability controls by @nyaomaru in [#131](https://github.com/nyaomaru/changelog-bot/pull/131)
+
+### Changed
+
+- polish GitHub Action docs and workflow inputs by @nyaomaru in [#132](https://github.com/nyaomaru/changelog-bot/pull/132)
+
+### Chore
+
+- 0.4.2 by [bot] by @github-actions in [#130](https://github.com/nyaomaru/changelog-bot/pull/130)
+- Release: 0.5.0 by [bot] by @github-actions in [#133](https://github.com/nyaomaru/changelog-bot/pull/133)
+
+### What's new 🚀
+
+- Reliability controls are now first-class in both the CLI and GitHub Action: require a configured provider key, fail on provider/API errors, or force deterministic no-AI output when release automation needs stricter behavior.
+- Dry-runs can emit a machine-readable provider report, making CI previews easier to inspect and automate.
+- GitHub Action documentation now includes the full Action input / CLI flag mapping, reusable workflow coverage, GitHub App and PAT permission guidance, workflow examples, and troubleshooting notes.
+
+#### Sample implementation
+
+```yaml
+- uses: nyaomaru/changelog-bot@v0
+  with:
+    release-tag: ${{ github.event.release.tag_name }}
+    release-name: ${{ github.event.release.tag_name }}
+    dry-run-json-report: 'true'
+    fail-on-llm-error: 'true'
+    require-provider: 'true'
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.5.0
+
+[v0.5.0]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.5.0
+
 ## [v0.4.2] - 2026-06-07
 
 ### Fixed
