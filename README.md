@@ -7,6 +7,7 @@
 </p>
 
 Releases should feel exciting, not tedious.
+
 `@nyaomaru/changelog-bot` 🤖 turns your Git history and release notes into a polished changelog entry (and optional PR) in a single run. Drop it into CI, run it locally, or hand it to your release captain—either way, you ship with a crisp changelog and zero copy-paste fatigue.
 
 ## Why changelog-bot?
@@ -190,9 +191,10 @@ Bring your own keys and tokens as needed—`changelog-bot` only asks for what it
 
 ## GitHub Actions integration
 
-The published composite action installs the CLI with `pnpm dlx`, checks out the
-repository root, and forwards action inputs to CLI flags. Pin `uses:` to a tag
-or commit for repeatable CI.
+The published composite action installs the CLI with `pnpm dlx` and forwards
+action inputs to CLI flags. The caller must check out the repository first,
+preferably with `fetch-depth: 0` so tag and history lookups work. Pin `uses:` to
+a tag or commit for repeatable CI.
 
 ### Release published workflow
 
