@@ -194,14 +194,14 @@ The published composite action installs the CLI with `pnpm dlx`, checks out the
 repository root, and forwards action inputs to CLI flags. Pin `uses:` to a tag
 or commit for repeatable CI.
 
-### Release created workflow
+### Release published workflow
 
 ```yaml
 name: Update Changelog
 
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   changelog:
@@ -229,8 +229,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Use `types: [published]` instead if your release notes are finalized only after
-publication.
+`published` is the safest default for GitHub UI release flows because it also
+runs when a draft release is published. Use `types: [created]` only when your
+process creates non-draft releases directly and you want the changelog PR opened
+before publication.
 
 ### Manual dispatch workflow
 
