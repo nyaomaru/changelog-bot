@@ -211,7 +211,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      issues: write
+      # issues: write # optional, applies labels
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -262,7 +262,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      issues: write
+      # issues: write # optional, applies labels
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -314,10 +314,17 @@ private repository.
 
 ### Reusable workflow
 
+Use the reusable workflow when several repositories should share the same
+changelog job. The calling job still declares the token permissions it wants to
+hand over.
+
 ```yaml
 jobs:
   changelog:
     uses: nyaomaru/changelog-bot/.github/workflows/changelog.yaml@main
+    permissions:
+      contents: write
+      pull-requests: write
     with:
       changelog_path: CHANGELOG.md
       # config_path: .github/changelog-bot.json
@@ -375,9 +382,10 @@ Outputs: None.
 
 The action installs `@nyaomaru/changelog-bot` with `pnpm dlx`. By default,
 `minimum-package-age-days` is `0`, which disables pnpm's `minimumReleaseAge`
-guard. Set it to a positive integer, such as `'2'`, to block package versions
-published less than that many days ago. The action forwards the value through
-pnpm's runtime config flag, `--config.minimum-release-age=...`.
+guard. Most projects can leave that alone; set it to a positive integer, such as
+`'2'`, when you want CI to wait before installing a newly published package
+version. The action forwards the value through pnpm's runtime config flag,
+`--config.minimum-release-age=...`.
 
 If you run the CLI directly with `npx`, this action-level guard does not apply.
 Use `pnpm dlx` with `minimumReleaseAge`, or pin an exact version yourself if you
@@ -385,21 +393,25 @@ want the same protection.
 
 ### Authentication and permissions
 
-For non-dry-run PR creation, provide either `GITHUB_TOKEN`/PAT or GitHub App
-credentials. `GITHUB_TOKEN` takes precedence when both are present.
+For non-dry-run PR creation, give changelog-bot a token that can push a branch
+and open a PR. The default `GITHUB_TOKEN` works well for most repositories; a
+PAT or GitHub App is useful when you want a branded bot identity or extra scope
+control. If both `GITHUB_TOKEN` and App credentials are present, `GITHUB_TOKEN`
+wins.
 
-Workflow permissions for `GITHUB_TOKEN`:
+Minimum workflow permissions:
 
 - `contents: write` to commit and push the changelog branch.
 - `pull-requests: write` to open the PR.
-- `issues: write` to apply default labels to the PR.
+- `issues: write` is optional for labels. Without it, the PR is still created and changelog-bot prints a warning.
 
-Fine-grained PAT or GitHub App permissions:
+Reusable workflow note: the shared workflow keeps its internal `GITHUB_TOKEN`
+scope to `contents` and `pull-requests`. If labels are important there, pass a
+PAT or GitHub App token with Issues write access as `REPO_TOKEN`.
 
-- Repository contents: read and write.
-- Pull requests: read and write.
-- Issues: read and write, required for labels.
-- Metadata: read, included by GitHub Apps.
+Fine-grained PATs and GitHub Apps need repository Contents and Pull requests
+read/write access. Add Issues read/write only when labels should be applied.
+Metadata read is included by GitHub Apps.
 
 Set `REPO_FULL_NAME` manually only when running the CLI directly outside GitHub
 Actions. The composite action sets it from `github.repository`.
@@ -407,8 +419,8 @@ Actions. The composite action sets it from `github.repository`.
 ### GitHub App authentication
 
 Use a GitHub App when PRs should be authored by the App account and scoped to
-least privilege. Do not set `GITHUB_TOKEN` on the same step if you want the App
-path to be used.
+least privilege. Keep `GITHUB_TOKEN` off the same step if you want the App path
+to be used.
 
 ```yaml
 name: Update Changelog (App Auth)
@@ -423,7 +435,7 @@ jobs:
     permissions:
       contents: write # to push branch
       pull-requests: write # to open PR
-      issues: write # to apply labels
+      # issues: write # optional, applies labels
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -443,47 +455,27 @@ jobs:
           # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
-You can also use App auth through the reusable workflow:
+For the reusable workflow, pass the same App secrets instead of `REPO_TOKEN`:
 
 ```yaml
-jobs:
-  changelog:
-    uses: nyaomaru/changelog-bot/.github/workflows/changelog.yaml@main
-    with:
-      release_tag: ${{ github.event.release.tag_name }}
-      release_name: ${{ github.event.release.tag_name }}
-    secrets:
-      CHANGELOG_BOT_APP_ID: ${{ secrets.CHANGELOG_BOT_APP_ID }}
-      CHANGELOG_BOT_APP_PRIVATE_KEY: ${{ secrets.CHANGELOG_BOT_APP_PRIVATE_KEY }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+secrets:
+  CHANGELOG_BOT_APP_ID: ${{ secrets.CHANGELOG_BOT_APP_ID }}
+  CHANGELOG_BOT_APP_PRIVATE_KEY: ${{ secrets.CHANGELOG_BOT_APP_PRIVATE_KEY }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
 Notes
 
 - Paste the App private key into a repository/organization secret as a multiline PEM; secrets preserve newlines.
 - Single-line secrets with escaped `\n` are also accepted.
-- `CHANGELOG_BOT_APP_INSTALLATION_ID` is optional; the CLI auto-detects it from the repository.
+- `CHANGELOG_BOT_APP_INSTALLATION_ID` is optional; changelog-bot auto-detects it from the repository.
 - `CHANGELOG_BOT_API_BASE` can point to a GHES REST API base, such as `https://ghe.example.com/api/v3`.
-
-Set the following in your workflow or environment (use aliases; no `GITHUB_` prefix required):
-
-```sh
-export CHANGELOG_BOT_APP_ID=123456
-export CHANGELOG_BOT_APP_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-# Optional: hardcode installation id; otherwise we auto-detect from the repo
-# export CHANGELOG_BOT_APP_INSTALLATION_ID=987654
-```
-
-The CLI exchanges the App credentials for an installation access token at runtime and uses it for:
-
-- GitHub REST calls (PR lookups, release notes fetch)
-- PR creation (Octokit)
-
-Token rotation: We mint a fresh installation token per CLI run. Tokens expire in ~1 hour; no manual rotation required.
+- Installation tokens are minted per run and expire in about 1 hour, so there is no long-lived token to rotate.
 
 ## Troubleshooting
 
-- `Resource not accessible by integration`: add `contents: write`, `pull-requests: write`, and `issues: write`; verify the workflow is not running with a read-only token from an untrusted fork.
+- `Resource not accessible by integration`: add `contents: write` and `pull-requests: write` to the job. For reusable workflows, add them on the calling job.
+- Label warning: the PR was created, but labels were skipped. Add `issues: write` for direct Action/CLI runs, or pass a PAT/GitHub App token with Issues write access to the reusable workflow.
 - `GITHUB_TOKEN is required to create PR`: non-dry-run mode needs `GITHUB_TOKEN`, a PAT, or GitHub App credentials. Dry-run mode does not create a PR.
 - GitHub App JWT or private key errors: use `CHANGELOG_BOT_APP_ID` and `CHANGELOG_BOT_APP_PRIVATE_KEY`, keep the PEM unencrypted, and preserve newlines or use escaped `\n`.
 - Missing release notes or PR titles: use `actions/checkout` with `fetch-depth: 0`, pass `release-body`, and provide GitHub auth for private repositories.
