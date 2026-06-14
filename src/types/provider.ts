@@ -1,5 +1,6 @@
 import type { LLMInput, LLMOutput, ProviderName } from '@/types/llm.js';
 import type { CategoryMap } from '@/types/changelog.js';
+import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 
 /** Capability flags for a provider implementation. */
 export type ProviderCapabilities = {
@@ -41,4 +42,6 @@ export interface Provider extends ProviderInfo {
     titles: string[],
     options?: ClassifyTitlesOptions,
   ): Promise<CategoryMap>;
+  /** Extract concise WHY notes from preprocessed PR description candidates. */
+  extractWhyNotes(input: WhyExtractionInput): Promise<WhyExtractionOutput>;
 }

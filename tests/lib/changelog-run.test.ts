@@ -19,6 +19,11 @@ const cli = {
   failOnLlmError: false,
   requireProvider: false,
   noAi: false,
+  why: false,
+  whyMaxPrs: 30,
+  whyMaxCharsPerPr: 800,
+  whyConfidence: 'medium',
+  whyLabel: 'Why',
 };
 
 const appConfig = {
@@ -44,6 +49,7 @@ const provider = {
   },
   generate: jest.fn(),
   classifyTitles: jest.fn(),
+  extractWhyNotes: jest.fn(),
 };
 
 describe('executeChangelogRun', () => {

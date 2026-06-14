@@ -62,6 +62,21 @@ inputs:
   no-ai:
     description: "If 'true', skip all provider calls and use deterministic output"
     required: false
+  why:
+    description: "If 'true', extract short WHY notes from PR descriptions"
+    required: false
+  why-max-prs:
+    description: 'Maximum number of PRs to inspect for WHY extraction'
+    required: false
+  why-max-chars-per-pr:
+    description: 'Maximum preprocessed candidate characters sent per PR for WHY extraction'
+    required: false
+  why-confidence:
+    description: 'Minimum provider confidence for WHY notes (low|medium|high)'
+    required: false
+  why-label:
+    description: 'Label used for rendered WHY notes'
+    required: false
 
 runs:
   using: 'composite'
@@ -106,6 +121,11 @@ runs:
         INPUT_FAIL_ON_LLM_ERROR: ${{ inputs['fail-on-llm-error'] }}
         INPUT_REQUIRE_PROVIDER: ${{ inputs['require-provider'] }}
         INPUT_NO_AI: ${{ inputs['no-ai'] }}
+        INPUT_WHY: ${{ inputs.why }}
+        INPUT_WHY_MAX_PRS: ${{ inputs['why-max-prs'] }}
+        INPUT_WHY_MAX_CHARS_PER_PR: ${{ inputs['why-max-chars-per-pr'] }}
+        INPUT_WHY_CONFIDENCE: ${{ inputs['why-confidence'] }}
+        INPUT_WHY_LABEL: ${{ inputs['why-label'] }}
       run: |
         set -euo pipefail
 
@@ -181,6 +201,23 @@ runs:
           CMD+=(--no-ai)
         elif [ "${INPUT_NO_AI:-}" = "false" ]; then
           CMD+=(--ai)
+        fi
+        if [ "${INPUT_WHY:-}" = "true" ]; then
+          CMD+=(--why)
+        elif [ "${INPUT_WHY:-}" = "false" ]; then
+          CMD+=(--no-why)
+        fi
+        if [ -n "${INPUT_WHY_MAX_PRS:-}" ]; then
+          CMD+=(--why-max-prs "${INPUT_WHY_MAX_PRS}")
+        fi
+        if [ -n "${INPUT_WHY_MAX_CHARS_PER_PR:-}" ]; then
+          CMD+=(--why-max-chars-per-pr "${INPUT_WHY_MAX_CHARS_PER_PR}")
+        fi
+        if [ -n "${INPUT_WHY_CONFIDENCE:-}" ]; then
+          CMD+=(--why-confidence "${INPUT_WHY_CONFIDENCE}")
+        fi
+        if [ -n "${INPUT_WHY_LABEL:-}" ]; then
+          CMD+=(--why-label "${INPUT_WHY_LABEL}")
         fi
 
         echo "+ ${CMD[@]}"

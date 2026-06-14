@@ -23,6 +23,11 @@ export const CliConfigFileSchema = z
     failOnLlmError: z.boolean().optional(),
     requireProvider: z.boolean().optional(),
     noAi: z.boolean().optional(),
+    why: z.boolean().optional(),
+    whyMaxPrs: z.number().int().nonnegative().optional(),
+    whyMaxCharsPerPr: z.number().int().positive().optional(),
+    whyConfidence: z.enum(['low', 'medium', 'high']).optional(),
+    whyLabel: z.string().min(1).optional(),
   })
   .strict();
 

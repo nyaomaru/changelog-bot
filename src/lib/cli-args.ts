@@ -51,6 +51,14 @@ export async function parseCliArgs(
     .option('fail-on-llm-error', { type: 'boolean' })
     .option('require-provider', { type: 'boolean' })
     .option('ai', { type: 'boolean' })
+    .option('why', { type: 'boolean' })
+    .option('why-max-prs', { type: 'number' })
+    .option('why-max-chars-per-pr', { type: 'number' })
+    .option('why-confidence', {
+      type: 'string',
+      choices: ['low', 'medium', 'high'] as const,
+    })
+    .option('why-label', { type: 'string' })
     .strict()
     .parse();
 
@@ -71,6 +79,11 @@ export async function parseCliArgs(
     failOnLlmError: parsed['fail-on-llm-error'],
     requireProvider: parsed['require-provider'],
     noAi: parsed.ai === undefined ? undefined : !parsed.ai,
+    why: parsed.why,
+    whyMaxPrs: parsed['why-max-prs'],
+    whyMaxCharsPerPr: parsed['why-max-chars-per-pr'],
+    whyConfidence: parsed['why-confidence'],
+    whyLabel: parsed['why-label'],
   });
 
   return CliOptionsSchema.parse({

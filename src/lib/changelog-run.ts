@@ -1,7 +1,11 @@
 import { gitMergedPRs, commitsInRange } from '@/lib/git.js';
 import { writeChangelog } from '@/lib/changelog.js';
 import { createPR } from '@/lib/pr.js';
-import { mapCommitsToPrs, fetchReleaseBody } from '@/lib/github.js';
+import {
+  fetchPRDetails,
+  mapCommitsToPrs,
+  fetchReleaseBody,
+} from '@/lib/github.js';
 import { ensureGithubTokenRequired } from '@/schema/env.js';
 import { getProviderRuntimeConfig } from '@/lib/app-config.js';
 import { providerFactory } from '@/utils/provider.js';
@@ -26,6 +30,7 @@ import {
 import { buildPrMapBySha, buildTitleToPr } from '@/utils/pr-mapping.js';
 import type { AppConfig } from '@/types/config.js';
 import type { CliOptions } from '@/schema/cli.js';
+import { runWhyExtraction } from '@/lib/why-extraction.js';
 
 /** Logger used by the CLI runner for user-visible output. */
 export type ChangelogRunLogger = (message: string) => void;
@@ -50,6 +55,8 @@ export type ChangelogRunDependencies = {
   mapCommitsToPrs: typeof mapCommitsToPrs;
   /** Fetch GitHub release notes when not passed by CLI. */
   fetchReleaseBody: typeof fetchReleaseBody;
+  /** Fetch GitHub PR title/body/author details. */
+  fetchPRDetails: typeof fetchPRDetails;
   /** Resolve inline and file-based changelog customization instructions. */
   resolveCustomInstructions: typeof resolveCustomInstructions;
   /** Build commit SHA -> PR number mappings. */
@@ -62,6 +69,8 @@ export type ChangelogRunDependencies = {
   buildChangelogLlmOutput: typeof buildChangelogLlmOutput;
   /** Sanitize and insert the generated changelog section. */
   finalizeChangelogUpdate: typeof finalizeChangelogUpdate;
+  /** Extract and apply WHY notes after the changelog section is generated. */
+  runWhyExtraction: typeof runWhyExtraction;
   /** Write changelog content to disk. */
   writeChangelog: typeof writeChangelog;
   /** Assert a GitHub token is available when PR creation needs it. */
@@ -80,12 +89,14 @@ const defaultDependencies: ChangelogRunDependencies = {
   resolveRunCredentials,
   mapCommitsToPrs,
   fetchReleaseBody,
+  fetchPRDetails,
   resolveCustomInstructions,
   buildPrMapBySha,
   buildTitleToPr,
   getProviderRuntimeConfig,
   buildChangelogLlmOutput,
   finalizeChangelogUpdate,
+  runWhyExtraction,
   writeChangelog,
   ensureGithubTokenRequired,
   createPR,
@@ -193,7 +204,7 @@ export async function executeChangelogRun(params: {
   });
   let llm = llmOutput.llm;
 
-  const finalizedUpdate = deps.finalizeChangelogUpdate({
+  let finalizedUpdate = deps.finalizeChangelogUpdate({
     owner,
     repo,
     version,
@@ -204,15 +215,41 @@ export async function executeChangelogRun(params: {
     titleToPr,
   });
   llm = finalizedUpdate.llm;
-  const updated = finalizedUpdate.updated;
+  let updated = finalizedUpdate.updated;
+  const whyOutput = await deps.runWhyExtraction({
+    cli,
+    llm,
+    provider,
+    hasProviderKey,
+    owner,
+    repo,
+    token,
+    githubApiBase: appConfig.github.apiBase,
+    fetchPRDetails: deps.fetchPRDetails,
+  });
+  if (whyOutput.llm !== llm) {
+    finalizedUpdate = deps.finalizeChangelogUpdate({
+      owner,
+      repo,
+      version,
+      prevRef,
+      releaseRef,
+      existing,
+      llm: whyOutput.llm,
+      titleToPr,
+    });
+    llm = finalizedUpdate.llm;
+    updated = finalizedUpdate.updated;
+  }
 
   if (cli.dryRun) {
     log('==== DRY RUN (no PR) ====');
     const diagnosticsInput = {
       providerName: provider.name,
       modelName: providerConfig.model,
-      aiUsed: llmOutput.aiUsed,
+      aiUsed: llmOutput.aiUsed || whyOutput.diagnostics.aiUsed,
       fallbackReasons: llmOutput.fallbackReasons,
+      why: whyOutput.diagnostics,
     };
     log(
       cli.dryRunJsonReport

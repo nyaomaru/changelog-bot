@@ -1,6 +1,7 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
 import type { ClassifyTitlesOptions, Provider } from '@/types/provider.js';
+import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
 import { postJson } from '@/utils/http.js';
@@ -8,6 +9,7 @@ import { ANTHROPIC_API, ANTHROPIC_VERSION } from '@/constants/anthropic.js';
 import {
   LLM_CLASSIFY_MAX_TOKENS,
   LLM_GENERATE_MAX_TOKENS,
+  LLM_WHY_MAX_TOKENS,
   LLM_TEMPERATURE_DEFAULT,
 } from '@/constants/prompt.js';
 import { PROVIDER_ANTHROPIC } from '@/constants/provider.js';
@@ -19,6 +21,12 @@ import {
 } from '@/providers/classification.js';
 import { isRecord, isString } from '@/utils/is.js';
 import type { CategoryMap } from '@/types/changelog.js';
+import {
+  buildWhyExtractionPrompt,
+  WHY_EXTRACTION_SYSTEM_PROMPT,
+  whyExtractionJsonSchema,
+} from '@/providers/why.js';
+import { WhyExtractionOutputSchema } from '@/schema/why.js';
 
 const SYSTEM_ANTHROPIC_CLASSIFY =
   'You are a changelog section classifier. Return JSON mapping each category to an array of titles. Use only the provided categories.';
@@ -157,5 +165,48 @@ export class AnthropicProvider implements Provider {
       if (options.throwOnError) throw err;
       return fallbackCategoryMap(titles);
     }
+  }
+
+  async extractWhyNotes(
+    input: WhyExtractionInput,
+  ): Promise<WhyExtractionOutput> {
+    if (!input.items.length) return { items: [] };
+
+    const payload = {
+      model: this.modelName,
+      max_tokens: LLM_WHY_MAX_TOKENS,
+      temperature: 0,
+      system: WHY_EXTRACTION_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: JSON.stringify(buildWhyExtractionPrompt(input)),
+        },
+      ],
+      tools: [
+        {
+          name: 'return_why_notes',
+          description: 'Return accepted WHY notes as JSON.',
+          input_schema: whyExtractionJsonSchema,
+        },
+      ],
+      tool_choice: { type: 'tool', name: 'return_why_notes' },
+    } as const;
+
+    const json = await postJson<unknown>(
+      ANTHROPIC_API,
+      payload,
+      {
+        'x-api-key': this.apiKey ?? '',
+        'anthropic-version': ANTHROPIC_VERSION,
+      },
+      'Anthropic WHY extraction error',
+    );
+    const text = extractAnthropicClassificationResponse(json) || '{"items":[]}';
+    const parsed = WhyExtractionOutputSchema.safeParse(JSON.parse(text));
+    if (!parsed.success) {
+      throw new Error('Anthropic WHY extraction output did not match schema');
+    }
+    return parsed.data;
   }
 }
