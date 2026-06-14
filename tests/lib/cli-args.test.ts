@@ -14,6 +14,12 @@ import {
   PROVIDER_GEMINI,
   PROVIDER_OPENAI,
 } from '@/constants/provider.js';
+import {
+  DEFAULT_WHY_CONFIDENCE,
+  DEFAULT_WHY_LABEL,
+  DEFAULT_WHY_MAX_CHARS_PER_PR,
+  DEFAULT_WHY_MAX_PRS,
+} from '@/constants/why.js';
 
 describe('cli-args', () => {
   test('parses defaults with minimal argv', async () => {
@@ -34,6 +40,11 @@ describe('cli-args', () => {
     expect(out.failOnLlmError).toBe(false);
     expect(out.requireProvider).toBe(false);
     expect(out.noAi).toBe(false);
+    expect(out.why).toBe(false);
+    expect(out.whyMaxPrs).toBe(DEFAULT_WHY_MAX_PRS);
+    expect(out.whyMaxCharsPerPr).toBe(DEFAULT_WHY_MAX_CHARS_PER_PR);
+    expect(out.whyConfidence).toBe(DEFAULT_WHY_CONFIDENCE);
+    expect(out.whyLabel).toBe(DEFAULT_WHY_LABEL);
   });
 
   test('parses explicit flags', async () => {
@@ -65,6 +76,15 @@ describe('cli-args', () => {
       '--fail-on-llm-error',
       '--require-provider',
       '--ai',
+      '--why',
+      '--why-max-prs',
+      '12',
+      '--why-max-chars-per-pr',
+      '600',
+      '--why-confidence',
+      'high',
+      '--why-label',
+      'Reason',
     ]);
 
     expect(out.repoPath).toBe('/tmp/repo');
@@ -82,6 +102,11 @@ describe('cli-args', () => {
     expect(out.failOnLlmError).toBe(true);
     expect(out.requireProvider).toBe(true);
     expect(out.noAi).toBe(false);
+    expect(out.why).toBe(true);
+    expect(out.whyMaxPrs).toBe(12);
+    expect(out.whyMaxCharsPerPr).toBe(600);
+    expect(out.whyConfidence).toBe('high');
+    expect(out.whyLabel).toBe('Reason');
   });
 
   test('parses --no-ai as deterministic mode', async () => {
@@ -112,6 +137,8 @@ describe('cli-args', () => {
           instructionsFile: '.github/changelog-instructions.md',
           dryRunJsonReport: true,
           noAi: true,
+          why: true,
+          whyLabel: 'Reason',
         }),
         'utf8',
       );
@@ -123,6 +150,8 @@ describe('cli-args', () => {
       expect(out.instructionsFile).toBe('.github/changelog-instructions.md');
       expect(out.dryRunJsonReport).toBe(true);
       expect(out.noAi).toBe(true);
+      expect(out.why).toBe(true);
+      expect(out.whyLabel).toBe('Reason');
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

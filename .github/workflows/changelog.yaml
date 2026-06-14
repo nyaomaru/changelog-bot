@@ -57,6 +57,21 @@ on:
       no_ai:
         required: false
         type: string
+      why:
+        required: false
+        type: string
+      why_max_prs:
+        required: false
+        type: string
+      why_max_chars_per_pr:
+        required: false
+        type: string
+      why_confidence:
+        required: false
+        type: string
+      why_label:
+        required: false
+        type: string
     secrets:
       REPO_TOKEN:
         required: false
@@ -103,6 +118,11 @@ jobs:
           fail-on-llm-error: ${{ inputs.fail_on_llm_error }}
           require-provider: ${{ inputs.require_provider }}
           no-ai: ${{ inputs.no_ai }}
+          why: ${{ inputs.why }}
+          why-max-prs: ${{ inputs.why_max_prs }}
+          why-max-chars-per-pr: ${{ inputs.why_max_chars_per_pr }}
+          why-confidence: ${{ inputs.why_confidence }}
+          why-label: ${{ inputs.why_label }}
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
           CHANGELOG_BOT_APP_ID: ${{ secrets.CHANGELOG_BOT_APP_ID }}

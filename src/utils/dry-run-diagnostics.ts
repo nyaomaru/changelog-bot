@@ -1,4 +1,5 @@
 import type { ProviderName } from '@/types/llm.js';
+import type { WhyDiagnostics } from '@/types/why.js';
 
 /** Inputs required to render dry-run execution diagnostics. */
 export type DryRunDiagnosticsInput = {
@@ -10,6 +11,8 @@ export type DryRunDiagnosticsInput = {
   aiUsed: boolean;
   /** Reasons explaining fallback behavior when provider usage was skipped or failed. */
   fallbackReasons: string[];
+  /** WHY extraction diagnostics when requested. */
+  why?: WhyDiagnostics;
 };
 
 /** Machine-readable dry-run report printed when requested by CLI flag. */
@@ -22,6 +25,8 @@ export type DryRunJsonReport = {
   aiUsed: boolean;
   /** Reasons explaining fallback behavior when provider usage was skipped or failed. */
   fallbackReasons: string[];
+  /** WHY extraction diagnostics when requested. */
+  why?: WhyDiagnostics;
 };
 
 /**
@@ -34,12 +39,28 @@ export function formatDryRunDiagnostics(input: DryRunDiagnosticsInput): string {
     ? input.fallbackReasons.join('; ')
     : 'none';
 
-  return [
+  const lines = [
     `Provider: ${input.providerName}`,
     `Model: ${input.modelName}`,
     `AI used: ${input.aiUsed ? 'true' : 'false'}`,
     `Fallback reasons: ${fallbackReasonText}`,
-  ].join('\n');
+  ];
+
+  if (input.why?.enabled) {
+    const whyFallbackReasonText = input.why.fallbackReasons.length
+      ? input.why.fallbackReasons.join('; ')
+      : 'none';
+    lines.push(
+      `WHY targets: ${input.why.targetsFound}`,
+      `WHY PR bodies fetched: ${input.why.prBodiesFetched}`,
+      `WHY skipped before fetch: ${input.why.skippedBeforeFetch}`,
+      `WHY skipped low trust: ${input.why.skippedLowTrust}`,
+      `WHY notes rendered: ${input.why.notesRendered}`,
+      `WHY fallback reasons: ${whyFallbackReasonText}`,
+    );
+  }
+
+  return lines.join('\n');
 }
 
 /**
@@ -53,6 +74,7 @@ export function formatDryRunJsonReport(input: DryRunDiagnosticsInput): string {
     model: input.modelName,
     aiUsed: input.aiUsed,
     fallbackReasons: input.fallbackReasons,
+    ...(input.why?.enabled ? { why: input.why } : {}),
   };
 
   return JSON.stringify(report, null, 2);

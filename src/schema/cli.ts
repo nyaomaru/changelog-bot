@@ -4,6 +4,12 @@ import {
   DEFAULT_CHANGELOG_FILE,
 } from '@/constants/git.js';
 import { PROVIDER_NAMES } from '@/constants/provider.js';
+import {
+  DEFAULT_WHY_CONFIDENCE,
+  DEFAULT_WHY_LABEL,
+  DEFAULT_WHY_MAX_CHARS_PER_PR,
+  DEFAULT_WHY_MAX_PRS,
+} from '@/constants/why.js';
 
 /**
  * Runtime validation for CLI options after yargs parsing.
@@ -26,6 +32,17 @@ export const CliOptionsSchema = z
     failOnLlmError: z.boolean().default(false),
     requireProvider: z.boolean().default(false),
     noAi: z.boolean().default(false),
+    why: z.boolean().default(false),
+    whyMaxPrs: z.number().int().nonnegative().default(DEFAULT_WHY_MAX_PRS),
+    whyMaxCharsPerPr: z
+      .number()
+      .int()
+      .positive()
+      .default(DEFAULT_WHY_MAX_CHARS_PER_PR),
+    whyConfidence: z
+      .enum(['low', 'medium', 'high'])
+      .default(DEFAULT_WHY_CONFIDENCE),
+    whyLabel: z.string().min(1).default(DEFAULT_WHY_LABEL),
   })
   .superRefine((options, context) => {
     if (options.noAi && options.requireProvider) {

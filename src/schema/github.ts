@@ -7,6 +7,9 @@ export const GitHubReleaseByTagSchema = z.object({
 });
 
 export const GitHubPRInfoSchema = z.object({
+  number: z.number().optional(),
+  title: z.string().optional(),
+  body: z.string().nullable().optional(),
   user: z
     .object({
       login: z.string().optional(),

@@ -1,6 +1,7 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
 import type { ClassifyTitlesOptions, Provider } from '@/types/provider.js';
+import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
 import { postJson } from '@/utils/http.js';
@@ -8,6 +9,7 @@ import { OPENAI_CHAT_API, OPENAI_RESPONSES_API } from '@/constants/openai.js';
 import {
   LLM_CLASSIFY_MAX_TOKENS,
   LLM_GENERATE_MAX_TOKENS,
+  LLM_WHY_MAX_TOKENS,
   LLM_TEMPERATURE_DEFAULT,
   LLM_REASONING_EFFORT,
 } from '@/constants/prompt.js';
@@ -20,6 +22,11 @@ import {
   parseCategoryMap,
 } from '@/providers/classification.js';
 import type { CategoryMap } from '@/types/changelog.js';
+import {
+  buildWhyExtractionPrompt,
+  parseWhyExtractionOutput,
+  WHY_EXTRACTION_SYSTEM_PROMPT,
+} from '@/providers/why.js';
 
 /** Subset of the OpenAI Responses API response payload we rely on. */
 type OpenAIResponse = {
@@ -143,5 +150,33 @@ export class OpenAIProvider implements Provider {
       if (options.throwOnError) throw err;
       return fallbackCategoryMap(titles);
     }
+  }
+
+  async extractWhyNotes(
+    input: WhyExtractionInput,
+  ): Promise<WhyExtractionOutput> {
+    if (!input.items.length) return { items: [] };
+
+    const payload = {
+      model: this.modelName,
+      max_tokens: LLM_WHY_MAX_TOKENS,
+      temperature: 0,
+      messages: [
+        { role: 'system', content: WHY_EXTRACTION_SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: JSON.stringify(buildWhyExtractionPrompt(input)),
+        },
+      ],
+      response_format: { type: 'json_object' },
+    } as const;
+
+    const json = await postJson<unknown>(
+      OPENAI_CHAT_API,
+      payload,
+      { Authorization: `Bearer ${this.apiKey ?? ''}` },
+      'OpenAI WHY extraction error',
+    );
+    return parseWhyExtractionOutput(extractOpenAiClassificationResponse(json));
   }
 }

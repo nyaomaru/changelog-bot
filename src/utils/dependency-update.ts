@@ -7,6 +7,8 @@ const DEP_SCOPE_RE = /\bdeps(?:-dev|-prod)?\b|\bdependencies?\b/i;
 const DEP_BOT_RE = /\brenovate\b|\bdependabot\b|\bdeps?bot\b/i;
 const DEP_ACTION_RE = /\b(bump|upgrade|update|pin|refresh|lockfile)\b/i;
 const DEP_VERSION_RE = /\bto\s+v?\d+(?:\.\d+){0,3}\b/i;
+const DEPENDABOT_BUMP_RE =
+  /^bump\s+[@\w./-]+\s+from\s+v?\d+(?:\.\d+){0,3}\s+to\s+v?\d+(?:\.\d+){0,3}\b/i;
 
 /**
  * Detect whether a title represents a dependency-only update.
@@ -34,6 +36,7 @@ export function isDependencyUpdateTitle(rawTitle: string): boolean {
 
   if (hasDepPlural && hasAction) return true;
   if (hasDepSingular && hasAction && hasVersionHint) return true;
+  if (DEPENDABOT_BUMP_RE.test(core)) return true;
 
   return false;
 }

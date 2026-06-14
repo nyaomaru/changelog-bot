@@ -20,6 +20,7 @@ describe('isDependencyUpdateTitle', () => {
     expect(
       isDependencyUpdateTitle('chore: bump dependency lodash from 4 to 5'),
     ).toBe(true);
+    expect(isDependencyUpdateTitle('Bump vite from 5.0.0 to 5.1.0')).toBe(true);
   });
 
   test('ignores non-dependency updates without version hints', () => {

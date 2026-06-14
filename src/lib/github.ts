@@ -1,4 +1,4 @@
-import type { PullRef } from '@/types/github.js';
+import type { PullRef, PullRequestDetails } from '@/types/github.js';
 import {
   GitHubReleaseByTagSchema,
   GitHubPRInfoSchema,
@@ -77,6 +77,40 @@ export async function fetchPRInfo(
     const parsed = GitHubPRInfoSchema.safeParse(data);
     if (!parsed.success) return null;
     return {
+      author: parsed.data.user?.login,
+      url: parsed.data.html_url,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch PR title, body, author, and URL by PR number.
+ * Returns null if the PR is not accessible or parsing fails.
+ * @param owner Repository owner or org.
+ * @param repo Repository name.
+ * @param number PR number.
+ * @param token Optional GitHub token.
+ * @param apiBase GitHub API base URL.
+ * @returns Normalized PR details, or null when unavailable.
+ */
+export async function fetchPRDetails(
+  owner: string,
+  repo: string,
+  number: number,
+  token?: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
+): Promise<PullRequestDetails | null> {
+  const endpoint = `${apiBase}/repos/${owner}/${repo}/pulls/${number}`;
+  try {
+    const data = await ghGet<unknown>(endpoint, token);
+    const parsed = GitHubPRInfoSchema.safeParse(data);
+    if (!parsed.success) return null;
+    return {
+      number: parsed.data.number ?? number,
+      title: parsed.data.title ?? '',
+      body: parsed.data.body ?? '',
       author: parsed.data.user?.login,
       url: parsed.data.html_url,
     };
