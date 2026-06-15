@@ -34,6 +34,42 @@ describe('why-targets', () => {
     expect(result.skippedBeforeFetch).toBe(1);
   });
 
+  test('prefers pull request links over earlier issue references', () => {
+    const markdown = [
+      '### Fixed',
+      '',
+      '- Fix #123 lookup before fetching in [#456](https://github.com/octo/repo/pull/456)',
+      '',
+    ].join('\n');
+
+    const result = extractWhyTargets(markdown);
+
+    expect(result.targets).toEqual([
+      expect.objectContaining({
+        prNumber: 456,
+        sectionTitle: 'Fixed',
+      }),
+    ]);
+  });
+
+  test('prefers known PR suffixes over earlier plain issue references', () => {
+    const markdown = [
+      '### Fixed',
+      '',
+      '- Fix #123 lookup before fetching in #456',
+      '',
+    ].join('\n');
+
+    const result = extractWhyTargets(markdown);
+
+    expect(result.targets).toEqual([
+      expect.objectContaining({
+        prNumber: 456,
+        sectionTitle: 'Fixed',
+      }),
+    ]);
+  });
+
   test('applies WHY notes under matching top-level bullets', () => {
     const markdown = [
       '### Fixed',
@@ -58,6 +94,33 @@ describe('why-targets', () => {
 
     expect(updated).toContain(
       '  - Why: Draft releases publish later and need the same changelog path.',
+    );
+  });
+
+  test('applies WHY notes to pull request links instead of earlier issue references', () => {
+    const markdown = [
+      '### Fixed',
+      '',
+      '- Fix #123 lookup before fetching in [#456](https://github.com/octo/repo/pull/456)',
+      '',
+    ].join('\n');
+    const note: WhyNote = {
+      prNumber: 456,
+      why: 'The fetch must use the PR that supplied the changelog item.',
+      confidence: 'high',
+      sectionTitle: 'Fixed',
+      trustScore: 9,
+      trustBucket: 'high',
+    };
+
+    const updated = applyWhyNotesToSection(
+      markdown,
+      new Map([[456, note]]),
+      'Why',
+    );
+
+    expect(updated).toContain(
+      '  - Why: The fetch must use the PR that supplied the changelog item.',
     );
   });
 

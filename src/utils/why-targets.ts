@@ -6,7 +6,10 @@ import {
 } from '@/utils/markdown-sections.js';
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
 
-const PR_NUMBER_RE = /(?:\[#(?<linked>\d+)\]\([^)]+\)|#(?<plain>\d+))/;
+const PULL_URL_PR_NUMBER_RE = /\bhttps?:\/\/[^\s)]+\/pull\/(?<prNumber>\d+)\b/i;
+const PR_SUFFIX_RE =
+  /\bin\s+(?:\[#(?<linked>\d+)\]\([^)]+\)|#(?<plain>\d+)\b)\s*$/i;
+const PLAIN_PR_NUMBER_RE = /(?:\[#(?<linked>\d+)\]\([^)]+\)|#(?<plain>\d+))/;
 const AUTHOR_RE = /\sby\s@(?<author>[\w-]+(?:\[bot\])?)/i;
 const BOT_AUTHOR_RE = /(?:\[bot\]|bot$|renovate|dependabot)/i;
 
@@ -24,8 +27,21 @@ function cleanItemText(line: string): string {
 }
 
 function extractPrNumber(line: string): number | null {
-  const match = PR_NUMBER_RE.exec(line);
-  const rawNumber = match?.groups?.linked ?? match?.groups?.plain;
+  const pullUrlMatch = PULL_URL_PR_NUMBER_RE.exec(line);
+  const pullUrlPrNumber = parsePrNumber(pullUrlMatch?.groups?.prNumber);
+  if (pullUrlPrNumber) return pullUrlPrNumber;
+
+  const suffixMatch = PR_SUFFIX_RE.exec(line);
+  const suffixPrNumber = parsePrNumber(
+    suffixMatch?.groups?.linked ?? suffixMatch?.groups?.plain,
+  );
+  if (suffixPrNumber) return suffixPrNumber;
+
+  const match = PLAIN_PR_NUMBER_RE.exec(line);
+  return parsePrNumber(match?.groups?.linked ?? match?.groups?.plain);
+}
+
+function parsePrNumber(rawNumber: string | undefined): number | null {
   if (!rawNumber) return null;
   const prNumber = Number.parseInt(rawNumber, 10);
   return Number.isSafeInteger(prNumber) ? prNumber : null;
