@@ -72,7 +72,11 @@ describe('runWhyExtraction', () => {
           '- Restore draft release handling [#12](https://github.com/octo/repo/pull/12) by @alice',
         ].join('\n'),
         pr_title: 'docs(changelog): 1.2.3',
-        pr_body: 'Generated changelog.',
+        pr_body: [
+          'Generated changelog.',
+          '',
+          'Note: Generated without LLM. Reason: provider unavailable.',
+        ].join('\n'),
       },
       provider: selectedProvider,
       hasProviderKey: true,
@@ -94,6 +98,7 @@ describe('runWhyExtraction', () => {
       '  - Why: Draft releases publish later and need the same changelog path.',
     );
     expect(result.llm.pr_body).toContain('### WHY preview');
+    expect(result.llm.pr_body).not.toContain('Generated without LLM');
     expect(result.diagnostics.notesRendered).toBe(1);
     expect(result.diagnostics.aiUsed).toBe(true);
   });
@@ -110,7 +115,11 @@ describe('runWhyExtraction', () => {
         new_section_markdown:
           '### Fixed\n\n- Restore draft release handling [#12](https://github.com/octo/repo/pull/12)',
         pr_title: 'docs(changelog): 1.2.3',
-        pr_body: 'Generated changelog.',
+        pr_body: [
+          'Generated changelog.',
+          '',
+          'Note: Generated without LLM. Reason: provider unavailable.',
+        ].join('\n'),
       },
       provider: selectedProvider,
       hasProviderKey: true,
@@ -131,6 +140,7 @@ describe('runWhyExtraction', () => {
       'WHY extraction skipped: provider unavailable',
     );
     expect(result.diagnostics.aiUsed).toBe(false);
+    expect(result.llm.pr_body).toContain('Generated without LLM');
   });
 
   test('requires high confidence for weakly structured non-English candidates', async () => {
@@ -151,7 +161,11 @@ describe('runWhyExtraction', () => {
         new_section_markdown:
           '### Fixed\n\n- Restore draft release handling [#12](https://github.com/octo/repo/pull/12)',
         pr_title: 'docs(changelog): 1.2.3',
-        pr_body: 'Generated changelog.',
+        pr_body: [
+          'Generated changelog.',
+          '',
+          'Note: Generated without LLM.',
+        ].join('\n'),
       },
       provider: selectedProvider,
       hasProviderKey: true,
@@ -170,5 +184,6 @@ describe('runWhyExtraction', () => {
     expect(result.diagnostics.aiUsed).toBe(true);
     expect(result.diagnostics.notesRendered).toBe(0);
     expect(result.llm.new_section_markdown).not.toContain('  - Why:');
+    expect(result.llm.pr_body).not.toContain('Generated without LLM');
   });
 });

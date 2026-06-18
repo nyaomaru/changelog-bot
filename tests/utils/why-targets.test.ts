@@ -85,6 +85,21 @@ describe('why-targets', () => {
     ]);
   });
 
+  test('skips prose references when no PR-specific target is present', () => {
+    const markdown = [
+      '### Fixed',
+      '',
+      '- Fix regression from #123 for a change merged by PR #456',
+      '- Preserve behavior described in [#789](https://github.com/octo/repo/issues/789)',
+      '',
+    ].join('\n');
+
+    const result = extractWhyTargets(markdown);
+
+    expect(result.targets).toEqual([]);
+    expect(result.skippedBeforeFetch).toBe(2);
+  });
+
   test('applies WHY notes under matching top-level bullets', () => {
     const markdown = [
       '### Fixed',

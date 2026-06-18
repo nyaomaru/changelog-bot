@@ -37,6 +37,20 @@ export function appendFallbackNote(
   return `${prBody}${reasonNote}`;
 }
 
+/**
+ * Remove the generated no-LLM note after a later model call succeeds.
+ * @param prBody Pull request body that may end with a fallback note.
+ * @returns Pull request body without the stale generated note.
+ */
+export function removeFallbackNote(prBody: string): string {
+  return prBody
+    .replace(
+      /\n{2}Note: Generated without LLM\.(?: Reason: [\s\S]*\.)?\s*$/,
+      '',
+    )
+    .trim();
+}
+
 export function resolvePrFromTitles(
   titleToPr: TitleToPrMap,
   titles: Array<string | undefined>,

@@ -17,6 +17,7 @@ import {
   applyWhyNotesToSection,
   extractWhyTargets,
 } from '@/utils/why-targets.js';
+import { removeFallbackNote } from '@/utils/llm-output-common.js';
 
 type RunWhyExtractionParams = {
   /** Parsed CLI options controlling WHY extraction. */
@@ -197,6 +198,13 @@ export async function runWhyExtraction(
     return { llm, diagnostics };
   }
 
+  // WHY: A successful WHY request means the final output did use an LLM,
+  // even when confidence filtering later rejects every returned note.
+  const llmAfterAiUse: LLMOutput = {
+    ...llm,
+    pr_body: removeFallbackNote(llm.pr_body),
+  };
+
   const itemsByPr = new Map(
     boundedItems.map((item) => [item.prNumber, item] as const),
   );
@@ -231,7 +239,7 @@ export async function runWhyExtraction(
     diagnostics.fallbackReasons.push(
       'WHY extraction skipped: provider returned no trusted notes',
     );
-    return { llm, diagnostics };
+    return { llm: llmAfterAiUse, diagnostics };
   }
 
   const notesByPr = new Map(
@@ -240,13 +248,17 @@ export async function runWhyExtraction(
   diagnostics.notesRendered = acceptedNotes.length;
   return {
     llm: {
-      ...llm,
+      ...llmAfterAiUse,
       new_section_markdown: applyWhyNotesToSection(
-        llm.new_section_markdown,
+        llmAfterAiUse.new_section_markdown,
         notesByPr,
         cli.whyLabel,
       ),
-      pr_body: appendWhyPreview(llm.pr_body, acceptedNotes, cli.whyLabel),
+      pr_body: appendWhyPreview(
+        llmAfterAiUse.pr_body,
+        acceptedNotes,
+        cli.whyLabel,
+      ),
     },
     diagnostics,
   };
