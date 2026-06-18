@@ -70,6 +70,21 @@ describe('why-targets', () => {
     ]);
   });
 
+  test('prefers parenthesized fallback PR suffixes over earlier issue references', () => {
+    const markdown = ['### Fixed', '', '- Fix #45 lookup (#123)', ''].join(
+      '\n',
+    );
+
+    const result = extractWhyTargets(markdown);
+
+    expect(result.targets).toEqual([
+      expect.objectContaining({
+        prNumber: 123,
+        sectionTitle: 'Fixed',
+      }),
+    ]);
+  });
+
   test('applies WHY notes under matching top-level bullets', () => {
     const markdown = [
       '### Fixed',
@@ -121,6 +136,30 @@ describe('why-targets', () => {
 
     expect(updated).toContain(
       '  - Why: The fetch must use the PR that supplied the changelog item.',
+    );
+  });
+
+  test('applies WHY notes to parenthesized fallback PR suffixes', () => {
+    const markdown = ['### Fixed', '', '- Fix #45 lookup (#123)', ''].join(
+      '\n',
+    );
+    const note: WhyNote = {
+      prNumber: 123,
+      why: 'The fallback suffix identifies the pull request for the change.',
+      confidence: 'high',
+      sectionTitle: 'Fixed',
+      trustScore: 9,
+      trustBucket: 'high',
+    };
+
+    const updated = applyWhyNotesToSection(
+      markdown,
+      new Map([[123, note]]),
+      'Why',
+    );
+
+    expect(updated).toContain(
+      '  - Why: The fallback suffix identifies the pull request for the change.',
     );
   });
 

@@ -8,7 +8,7 @@ import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
 
 const PULL_URL_PR_NUMBER_RE = /\bhttps?:\/\/[^\s)]+\/pull\/(?<prNumber>\d+)\b/i;
 const PR_SUFFIX_RE =
-  /\bin\s+(?:\[#(?<linked>\d+)\]\([^)]+\)|#(?<plain>\d+)\b)\s*$/i;
+  /(?:\bin\s+(?:\[#(?<linked>\d+)\]\([^)]+\)|#(?<plain>\d+)\b)|\(#(?<parenthesized>\d+)\))\s*$/i;
 const PLAIN_PR_NUMBER_RE = /(?:\[#(?<linked>\d+)\]\([^)]+\)|#(?<plain>\d+))/;
 const AUTHOR_RE = /\sby\s@(?<author>[\w-]+(?:\[bot\])?)/i;
 const BOT_AUTHOR_RE = /(?:\[bot\]|bot$|renovate|dependabot)/i;
@@ -33,7 +33,9 @@ function extractPrNumber(line: string): number | null {
 
   const suffixMatch = PR_SUFFIX_RE.exec(line);
   const suffixPrNumber = parsePrNumber(
-    suffixMatch?.groups?.linked ?? suffixMatch?.groups?.plain,
+    suffixMatch?.groups?.linked ??
+      suffixMatch?.groups?.plain ??
+      suffixMatch?.groups?.parenthesized,
   );
   if (suffixPrNumber) return suffixPrNumber;
 
