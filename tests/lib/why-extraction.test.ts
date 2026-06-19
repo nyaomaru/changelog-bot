@@ -186,4 +186,38 @@ describe('runWhyExtraction', () => {
     expect(result.llm.new_section_markdown).not.toContain('  - Why:');
     expect(result.llm.pr_body).not.toContain('Generated without LLM');
   });
+
+  test('preserves the LLM output reference when successful extraction changes nothing', async () => {
+    const selectedProvider = provider();
+    jest.mocked(selectedProvider.extractWhyNotes).mockResolvedValue({
+      items: [],
+    });
+    const llm = {
+      new_section_markdown:
+        '### Fixed\n\n- Restore draft release handling [#12](https://github.com/octo/repo/pull/12)',
+      pr_title: 'docs(changelog): 1.2.3',
+      pr_body: 'Generated changelog.',
+    };
+
+    const result = await runWhyExtraction({
+      cli,
+      llm,
+      provider: selectedProvider,
+      hasProviderKey: true,
+      owner: 'octo',
+      repo: 'repo',
+      token: 'token',
+      githubApiBase: 'https://api.github.com',
+      fetchPRDetails: jest.fn(async () => ({
+        number: 12,
+        title: 'Restore draft release handling',
+        body: '## Why\nBecause draft releases can be published later and need coverage.',
+        author: 'alice',
+      })),
+    });
+
+    expect(result.diagnostics.aiUsed).toBe(true);
+    expect(result.diagnostics.notesRendered).toBe(0);
+    expect(result.llm).toBe(llm);
+  });
 });

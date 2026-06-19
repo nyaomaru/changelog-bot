@@ -3,6 +3,10 @@ import {
   WHY_MIN_MODEL_TRUST_SCORE,
   WHY_RAW_BODY_SCAN_LIMIT,
 } from '@/constants/why.js';
+import {
+  WHY_SECTION_ALIASES,
+  type WhyCanonicalSectionName,
+} from '@/constants/why-section-aliases.js';
 import type { PullRequestDetails } from '@/types/github.js';
 import type {
   WhyExtractionItem,
@@ -11,100 +15,12 @@ import type {
 } from '@/types/why.js';
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
 
-const TARGET_SECTION_ALIASES = new Map<string, string>([
-  ['why', 'why'],
-  ['reason', 'reason'],
-  ['because', 'because'],
-  ['motivation', 'motivation'],
-  ['context', 'context'],
-  ['background', 'background'],
-  ['problem', 'problem'],
-  ['fix', 'fix'],
-  ['rationale', 'rationale'],
-  ['summary', 'summary'],
-  ['description', 'description'],
-  ['por que', 'why'],
-  ['porque', 'why'],
-  ['razon', 'reason'],
-  ['motivo', 'reason'],
-  ['antecedentes', 'background'],
-  ['problema', 'problem'],
-  ['solucion', 'fix'],
-  ['correccion', 'fix'],
-  ['arreglo', 'fix'],
-  ['resumen', 'summary'],
-  ['descripcion', 'description'],
-  ['pourquoi', 'why'],
-  ['raison', 'reason'],
-  ['contexte', 'context'],
-  ['historique', 'background'],
-  ['probleme', 'problem'],
-  ['correction', 'fix'],
-  ['resume', 'summary'],
-  ['warum', 'why'],
-  ['grund', 'reason'],
-  ['begrundung', 'reason'],
-  ['kontext', 'context'],
-  ['hintergrund', 'background'],
-  ['korrektur', 'fix'],
-  ['fehlerbehebung', 'fix'],
-  ['zusammenfassung', 'summary'],
-  ['beschreibung', 'description'],
-  ['razao', 'reason'],
-  ['historico', 'background'],
-  ['correcao', 'fix'],
-  ['resumo', 'summary'],
-  ['descricao', 'description'],
-  ['perche', 'why'],
-  ['ragione', 'reason'],
-  ['contesto', 'context'],
-  ['sfondo', 'background'],
-  ['correzione', 'fix'],
-  ['riepilogo', 'summary'],
-  ['descrizione', 'description'],
-  ['waarom', 'why'],
-  ['reden', 'reason'],
-  ['achtergrond', 'background'],
-  ['probleem', 'problem'],
-  ['oplossing', 'fix'],
-  ['samenvatting', 'summary'],
-  ['beschrijving', 'description'],
-  ['理由', 'reason'],
-  ['背景', 'background'],
-  ['目的', 'motivation'],
-  ['課題', 'problem'],
-  ['問題', 'problem'],
-  ['修正', 'fix'],
-  ['原因', 'reason'],
-  ['動機', 'motivation'],
-  ['动机', 'motivation'],
-  ['问题', 'problem'],
-  ['修复', 'fix'],
-  ['摘要', 'summary'],
-  ['描述', 'description'],
-  ['이유', 'reason'],
-  ['배경', 'background'],
-  ['목적', 'motivation'],
-  ['문제', 'problem'],
-  ['수정', 'fix'],
-  ['요약', 'summary'],
-  ['설명', 'description'],
-  ['почему', 'why'],
-  ['причина', 'reason'],
-  ['контекст', 'context'],
-  ['предыстория', 'background'],
-  ['проблема', 'problem'],
-  ['исправление', 'fix'],
-  ['резюме', 'summary'],
-  ['описание', 'description'],
-]);
-
-const TARGET_SECTION_LABEL_PATTERN = Array.from(TARGET_SECTION_ALIASES.keys())
+const TARGET_SECTION_LABEL_PATTERN = Array.from(WHY_SECTION_ALIASES.keys())
   .sort((left, right) => right.length - left.length)
   .map(escapeRegExp)
   .join('|');
 
-const STRONG_CANONICAL_SECTION_NAMES = new Set([
+const STRONG_CANONICAL_SECTION_NAMES = new Set<WhyCanonicalSectionName>([
   'why',
   'reason',
   'because',
@@ -140,7 +56,7 @@ type PreprocessPrBodyResult = {
 
 type ExtractedSections = {
   /** Extracted text snippets from target sections. */
-  sections: Array<{ name: string; text: string }>;
+  sections: Array<{ name: WhyCanonicalSectionName; text: string }>;
   /** Whether any target section was found. */
   hasTargetSection: boolean;
 };
@@ -167,8 +83,10 @@ function normalizeHeadingName(value: string): string {
     .toLowerCase();
 }
 
-function canonicalTargetSectionName(value: string): string | undefined {
-  return TARGET_SECTION_ALIASES.get(normalizeHeadingName(value));
+function canonicalTargetSectionName(
+  value: string,
+): WhyCanonicalSectionName | undefined {
+  return WHY_SECTION_ALIASES.get(normalizeHeadingName(value));
 }
 
 function escapeRegExp(value: string): string {
@@ -179,7 +97,7 @@ function extractTargetSections(body: string): ExtractedSections {
   const headingMatches = Array.from(
     body.matchAll(/^(?<marker>#{1,6})\s+(?<title>.+?)\s*#*\s*$/gm),
   );
-  const sections: Array<{ name: string; text: string }> = [];
+  const sections: Array<{ name: WhyCanonicalSectionName; text: string }> = [];
   for (const [matchIndex, match] of headingMatches.entries()) {
     const rawTitle = match.groups?.title ?? '';
     const name = canonicalTargetSectionName(rawTitle);
@@ -213,7 +131,7 @@ function extractTargetSections(body: string): ExtractedSections {
 }
 
 function toCandidateSnippets(
-  sections: Array<{ name: string; text: string }>,
+  sections: Array<{ name: WhyCanonicalSectionName; text: string }>,
   body: string,
   maxCharsPerPr: number,
 ): string[] {
@@ -260,7 +178,7 @@ function trustBucketForScore(score: number): WhyTrustBucket {
 }
 
 function scoreCandidateMaterial(
-  sections: Array<{ name: string; text: string }>,
+  sections: Array<{ name: WhyCanonicalSectionName; text: string }>,
   candidates: string[],
   body: string,
 ): number {
@@ -288,7 +206,7 @@ function scoreCandidateMaterial(
 }
 
 function hasStrongStructuralSignal(
-  sections: Array<{ name: string; text: string }>,
+  sections: Array<{ name: WhyCanonicalSectionName; text: string }>,
 ): boolean {
   return sections.some((section) =>
     STRONG_CANONICAL_SECTION_NAMES.has(section.name),

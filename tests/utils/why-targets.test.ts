@@ -47,6 +47,7 @@ describe('why-targets', () => {
     expect(result.targets).toEqual([
       expect.objectContaining({
         prNumber: 456,
+        itemText: 'Fix #123 lookup before fetching',
         sectionTitle: 'Fixed',
       }),
     ]);
@@ -65,6 +66,7 @@ describe('why-targets', () => {
     expect(result.targets).toEqual([
       expect.objectContaining({
         prNumber: 456,
+        itemText: 'Fix #123 lookup before fetching',
         sectionTitle: 'Fixed',
       }),
     ]);
@@ -80,6 +82,7 @@ describe('why-targets', () => {
     expect(result.targets).toEqual([
       expect.objectContaining({
         prNumber: 123,
+        itemText: 'Fix #45 lookup',
         sectionTitle: 'Fixed',
       }),
     ]);
