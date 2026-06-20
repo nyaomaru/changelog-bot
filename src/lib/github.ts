@@ -143,6 +143,8 @@ export async function prsForCommit(
   return pullRequests.map((pr) => ({
     number: pr.number,
     title: pr.title,
+    author: pr.user?.login,
+    url: pr.html_url,
   }));
 }
 

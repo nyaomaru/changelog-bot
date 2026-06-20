@@ -1,5 +1,9 @@
 import { fetchPRInfo } from '@/lib/github.js';
-import { parseReleaseNotes, buildSectionFromRelease } from '@/utils/release.js';
+import {
+  buildReleaseItemsFromPullRequests,
+  parseReleaseNotes,
+  buildSectionFromRelease,
+} from '@/utils/release.js';
 import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
 import { buildTitlesForClassification } from '@/utils/classify-pre.js';
 import { fallbackCategoryMap } from '@/providers/classification.js';
@@ -94,11 +98,21 @@ export async function buildOutputFromReleaseNotes(
   } = params;
 
   const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
+  let usedPullRequestMetadata = false;
+  if (!parsedRelease.items.length && !parsedRelease.sections?.length) {
+    parsedRelease.items = buildReleaseItemsFromPullRequests(
+      params.commitList,
+      params.pullRequestsBySha ?? {},
+    );
+    usedPullRequestMetadata = parsedRelease.items.length > 0;
+  }
   const hasAdditionalSections = Boolean(parsedRelease.sections?.length);
   if (!parsedRelease.items.length && !hasAdditionalSections) return null;
 
   fallbackReasons.push(
-    'Used GitHub Release Notes as the source (no model call)',
+    usedPullRequestMetadata
+      ? 'Used GitHub pull request metadata as the source (no generation model call)'
+      : 'Used GitHub Release Notes as the source (no model call)',
   );
   let aiUsed = false;
 

@@ -9,6 +9,8 @@ import { stripConventionalPrefix } from '@/utils/title-normalize.js';
 import { FULL_CHANGELOG_RE } from '@/constants/release.js';
 import { BULLET_PREFIX_RE } from '@/constants/markdown.js';
 import { buildTitleLookup, findTitleMatch } from '@/utils/title-lookup.js';
+import type { CommitLite } from '@/types/commit.js';
+import type { PullRef } from '@/types/github.js';
 
 const MIN_MARKDOWN_ATX_HEADING_LEVEL = 1;
 const RELEASE_SECTION_HEADING_LEVEL = 2;
@@ -398,6 +400,41 @@ export function parseReleaseNotes(
   const parsed = ParsedReleaseSchema.safeParse(candidate);
   // Return the validated shape when possible; otherwise, return the candidate (best-effort).
   return parsed.success ? parsed.data : candidate;
+}
+
+/**
+ * Build release items from authoritative commit-to-PR associations.
+ * WHY: `HEAD` has no GitHub release body yet, but its commits may already
+ * belong to an open PR whose title, author, and URL form the stable parent
+ * changelog item. Partial mappings are rejected to avoid dropping changes.
+ * @param commits Commits included in the release range.
+ * @param pullRequestsBySha Pull request metadata keyed by commit SHA.
+ * @returns Deduplicated PR-level items, or an empty array for incomplete input.
+ */
+export function buildReleaseItemsFromPullRequests(
+  commits: readonly CommitLite[],
+  pullRequestsBySha: Readonly<Record<string, readonly PullRef[]>>,
+): ReleaseItem[] {
+  if (commits.length === 0) return [];
+
+  const itemsByPrNumber = new Map<number, ReleaseItem>();
+  for (const commit of commits) {
+    const pullRequest = pullRequestsBySha[commit.sha]?.find((candidate) =>
+      candidate.title?.trim(),
+    );
+    if (!pullRequest?.title) return [];
+    if (itemsByPrNumber.has(pullRequest.number)) continue;
+
+    itemsByPrNumber.set(pullRequest.number, {
+      title: stripConventionalPrefix(pullRequest.title),
+      rawTitle: pullRequest.title,
+      author: pullRequest.author,
+      pr: pullRequest.number,
+      url: pullRequest.url,
+    });
+  }
+
+  return [...itemsByPrNumber.values()];
 }
 
 /**

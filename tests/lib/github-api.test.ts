@@ -73,15 +73,33 @@ describe('lib/github API helpers', () => {
     expect(bad).toBeNull();
   });
 
-  test('prsForCommit maps number/title from response array', async () => {
+  test('prsForCommit maps PR metadata from response array', async () => {
     getJsonMock.mockResolvedValueOnce([
-      { number: 10, title: 'Add' },
+      {
+        number: 10,
+        title: 'Add',
+        user: { login: 'alice' },
+        html_url: 'https://github.com/o/r/pull/10',
+      },
       { number: 11 },
     ]);
 
     const list = await prsForCommit('o', 'r', 'abc', 't');
 
-    expect(list).toEqual([{ number: 10, title: 'Add' }, { number: 11 }]);
+    expect(list).toEqual([
+      {
+        number: 10,
+        title: 'Add',
+        author: 'alice',
+        url: 'https://github.com/o/r/pull/10',
+      },
+      {
+        number: 11,
+        title: undefined,
+        author: undefined,
+        url: undefined,
+      },
+    ]);
   });
 
   test('mapCommitsToPrs aggregates per-sha and handles failures', async () => {

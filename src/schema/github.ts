@@ -21,6 +21,12 @@ export const GitHubPRInfoSchema = z.object({
 export const GitHubCommitPullsItemSchema = z.object({
   number: z.number(),
   title: z.string().optional(),
+  user: z
+    .object({
+      login: z.string().optional(),
+    })
+    .optional(),
+  html_url: z.string().optional(),
 });
 
 export const GitHubCommitPullsArraySchema = z.array(

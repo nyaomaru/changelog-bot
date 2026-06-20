@@ -4,6 +4,10 @@ export type PullRef = {
   number: number;
   /** Optional pull request title for display. */
   title?: string;
+  /** Optional pull request author for attribution. */
+  author?: string;
+  /** Optional pull request URL for linking. */
+  url?: string;
 };
 
 // Minimal shapes for GitHub API responses we consume
@@ -51,6 +55,13 @@ export type GitHubCommitPullsItem = {
   number: number;
   /** Optional pull request title for reference. */
   title?: string;
+  /** Optional pull request author. */
+  user?: {
+    /** GitHub login/username for the PR author. */
+    login?: string;
+  };
+  /** Optional HTML URL of the pull request. */
+  html_url?: string;
 };
 
 /**

@@ -2,6 +2,7 @@ import type { ProviderRuntimeConfig } from '@/types/config.js';
 import type { CommitLite } from '@/types/commit.js';
 import type { LLMOutput } from '@/types/llm.js';
 import type { Provider } from '@/types/provider.js';
+import type { PullRef } from '@/types/github.js';
 
 /** Mapping from normalized title to pull request number. */
 export type TitleToPrMap = Record<string, number>;
@@ -37,6 +38,8 @@ export type BuildChangelogLlmOutputParams = {
   prs: string;
   /** Pull request numbers keyed by commit SHA. */
   prMapBySha: PrNumbersBySha;
+  /** Pull request metadata keyed by commit SHA. */
+  pullRequestsBySha?: Record<string, PullRef[]>;
   /** Pull request numbers keyed by normalized title. */
   titleToPr: TitleToPrMap;
   /** Provider used for full changelog generation. */
