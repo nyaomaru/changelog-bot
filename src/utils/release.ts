@@ -410,13 +410,11 @@ export function parseReleaseNotes(
  * is dropped while a branch is ahead of its remote pull request.
  * @param commits Commits included in the release range.
  * @param pullRequestsBySha Pull request metadata keyed by commit SHA.
- * @param options Controls rendering of commit-level details.
  * @returns PR-level and unmapped commit items, or an empty array when no PR metadata exists.
  */
 export function buildReleaseItemsFromPullRequests(
   commits: readonly CommitLite[],
   pullRequestsBySha: Readonly<Record<string, readonly PullRef[]>>,
-  options: { includeCommitDetails?: boolean } = {},
 ): ReleaseItem[] {
   if (commits.length === 0) return [];
 
@@ -444,19 +442,9 @@ export function buildReleaseItemsFromPullRequests(
         author: pullRequest.author,
         pr: pullRequest.number,
         url: pullRequest.url,
-        ...(options.includeCommitDetails ? { details: [] } : {}),
       };
       itemsByPrNumber.set(pullRequest.number, item);
       items.push(item);
-    }
-
-    if (!options.includeCommitDetails) continue;
-    const detail = stripConventionalPrefix(commit.subject);
-    if (
-      detail.toLowerCase() !== parentTitle.toLowerCase() &&
-      !item.details?.includes(detail)
-    ) {
-      item.details?.push(detail);
     }
   }
 
@@ -518,7 +506,6 @@ export function buildSectionFromRelease(params: {
     lines.push(`### ${section}`, '');
     for (const item of entries) {
       lines.push(formatBullet(item));
-      for (const detail of item.details ?? []) lines.push(`  - ${detail}`);
     }
     lines.push('');
   }

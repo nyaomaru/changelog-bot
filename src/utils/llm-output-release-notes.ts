@@ -103,7 +103,6 @@ export async function buildOutputFromReleaseNotes(
     parsedRelease.items = buildReleaseItemsFromPullRequests(
       params.commitList,
       params.pullRequestsBySha ?? {},
-      { includeCommitDetails: params.includePullRequestCommitDetails },
     );
     usedPullRequestMetadata = parsedRelease.items.length > 0;
   }

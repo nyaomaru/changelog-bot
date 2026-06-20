@@ -10,8 +10,6 @@ export type ReleaseItem = {
   pr?: number;
   /** Link to the pull request. */
   url?: string;
-  /** Commit-level change summaries rendered below the parent PR item. */
-  details?: string[];
 };
 
 /** Additional sections surfaced from release notes. */

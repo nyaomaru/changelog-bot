@@ -212,7 +212,6 @@ export async function executeChangelogRun(params: {
     prs,
     prMapBySha,
     pullRequestsBySha: apiPrMap,
-    includePullRequestCommitDetails: cli.why,
     titleToPr,
     provider,
     providerConfig,

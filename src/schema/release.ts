@@ -8,7 +8,6 @@ export const ReleaseItemSchema = z.object({
   author: z.string().optional(),
   pr: z.number().optional(),
   url: z.string().url().optional(),
-  details: z.array(z.string()).optional(),
 });
 
 export const ReleaseSectionSchema = z.object({
