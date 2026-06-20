@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.0] - 2026-06-20
+
+### Added
+
+- add opt-in WHY extraction by @nyaomaru in [#138](https://github.com/nyaomaru/changelog-bot/pull/138)
+
+### Docs
+
+- 0.5.1 by [bot] by @github-actions in [#139](https://github.com/nyaomaru/changelog-bot/pull/139)
+
+### Chore
+
+- Release: 0.6.0 by [bot] by @github-actions in [#140](https://github.com/nyaomaru/changelog-bot/pull/140)
+
+### What's new 🚀
+
+Opt-in WHY extraction adds concise reasoning beneath PR-linked changelog entries.
+
+```md
+- Add opt-in WHY extraction by @nyaomaru in [#138](...)
+  - Why: Make release notes clearer by explaining why the change was needed.
+```
+
+WHY notes are generated only when the PR description contains sufficiently clear evidence. Unclear, low-confidence, automated, and external-repository PR entries are skipped.
+
+#### Sample implementation
+
+CLI:
+
+```sh
+changelog-bot \
+  --release-tag HEAD \
+  --release-name 0.5.2 \
+  --provider openai \
+  --why \
+  --why-confidence medium \
+  --why-label Why
+```
+
+GitHub Action:
+
+```yaml
+- uses: nyaomaru/changelog-bot@v0
+  with:
+    release-tag: ${{ github.event.release.tag_name }}
+    release-name: ${{ github.event.release.tag_name }}
+    why: 'true'
+    why-confidence: medium
+    why-label: Why
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+Configuration file:
+
+```json
+{
+  "why": true,
+  "whyConfidence": "medium",
+  "whyLabel": "Why",
+  "whyMaxPrs": 30,
+  "whyMaxCharsPerPr": 800
+}
+```
+
+WHY extraction is disabled by default. It supports OpenAI, Anthropic, and Gemini.
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.0
+
+[v0.6.0]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.0
+
 ## [v0.5.1] - 2026-06-13
 
 ### Fixed
