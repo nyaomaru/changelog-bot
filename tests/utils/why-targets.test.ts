@@ -53,6 +53,25 @@ describe('why-targets', () => {
     ]);
   });
 
+  test('prefers the owning PR suffix over earlier upstream pull URLs', () => {
+    const markdown = [
+      '### Fixed',
+      '',
+      '- Fix upstream https://github.com/foo/bar/pull/123 in [#456](https://github.com/octo/repo/pull/456)',
+      '',
+    ].join('\n');
+
+    const result = extractWhyTargets(markdown);
+
+    expect(result.targets).toEqual([
+      expect.objectContaining({
+        prNumber: 456,
+        itemText: 'Fix upstream https://github.com/foo/bar/pull/123',
+        sectionTitle: 'Fixed',
+      }),
+    ]);
+  });
+
   test('prefers known PR suffixes over earlier plain issue references', () => {
     const markdown = [
       '### Fixed',
@@ -154,6 +173,33 @@ describe('why-targets', () => {
 
     expect(updated).toContain(
       '  - Why: The fetch must use the PR that supplied the changelog item.',
+    );
+  });
+
+  test('applies WHY notes to the owning suffix instead of an upstream pull URL', () => {
+    const markdown = [
+      '### Fixed',
+      '',
+      '- Fix upstream https://github.com/foo/bar/pull/123 in [#456](https://github.com/octo/repo/pull/456)',
+      '',
+    ].join('\n');
+    const note: WhyNote = {
+      prNumber: 456,
+      why: 'The local PR owns this changelog item.',
+      confidence: 'high',
+      sectionTitle: 'Fixed',
+      trustScore: 9,
+      trustBucket: 'high',
+    };
+
+    const updated = applyWhyNotesToSection(
+      markdown,
+      new Map([[456, note]]),
+      'Why',
+    );
+
+    expect(updated).toContain(
+      '  - Why: The local PR owns this changelog item.',
     );
   });
 
