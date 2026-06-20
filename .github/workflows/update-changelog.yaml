@@ -17,6 +17,9 @@ jobs:
       provider: openai
       release_tag: ${{ github.event.release.tag_name }}
       release_body: ${{ github.event.release.body }}
+      why: 'true'
+      why_confidence: medium
+      why_label: Why
       dry_run: 'false'
     secrets:
       REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
