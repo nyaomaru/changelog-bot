@@ -46,6 +46,23 @@ describe('why-preprocess', () => {
     );
   });
 
+  test.each([
+    ['## Why?', 'Because draft releases need the publish event.'],
+    [
+      '## ¿Por qué?',
+      'Porque las versiones draft necesitan el evento de publicación.',
+    ],
+  ])('recognizes punctuated why heading %s', (heading, rationale) => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({ body: [heading, '', rationale].join('\n') }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
+    expect(result.item?.candidates).toContain(rationale);
+  });
+
   test('skips large bodies without target sections before provider input', () => {
     const result = preprocessWhyPrBody(
       target,

@@ -79,6 +79,8 @@ function normalizeHeadingName(value: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[*_`~]/g, '')
     .replace(/[:：].*$/, '')
+    .replace(/\p{P}+/gu, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
 }
