@@ -42,24 +42,29 @@ Using it in CI? Jump to [GitHub Actions integration](#github-actions-integration
 
 ### Options
 
-| Option                  | Description                                           | Default                                |
-| ----------------------- | ----------------------------------------------------- | -------------------------------------- |
-| `--repo-path`           | Path to repository root                               | `.`                                    |
-| `--config`              | Path to JSON config file                              | `changelog-bot.config.json` if present |
-| `--changelog-path`      | Path to CHANGELOG file                                | `CHANGELOG.md`                         |
-| `--base-branch`         | Base branch for PR                                    | `main`                                 |
-| `--provider`            | LLM provider (`openai`, `anthropic`, or `gemini`)     | `openai`                               |
-| `--release-tag`         | Git ref (tag or HEAD) to generate release for         | latest tag or HEAD                     |
-| `--release-name`        | Display name for version (without `v`)                | derived from tag                       |
-| `--release-body`        | Additional release notes body                         | `""`                                   |
-| `--language`            | Language for generated changelog prose                | `en`                                   |
-| `--instructions`        | Additional changelog writing/grouping instructions    | unset                                  |
-| `--instructions-file`   | Path to a file with additional instructions           | unset                                  |
-| `--dry-run`             | Print updated CHANGELOG to stdout, don’t write file   | `false`                                |
-| `--dry-run-json-report` | Print dry-run provider diagnostics as JSON            | `false`                                |
-| `--fail-on-llm-error`   | Fail instead of falling back when provider calls fail | `false`                                |
-| `--require-provider`    | Fail when the selected provider API key is missing    | `false`                                |
-| `--no-ai`               | Skip all provider calls and use deterministic output  | `false`                                |
+| Option                   | Description                                           | Default                                |
+| ------------------------ | ----------------------------------------------------- | -------------------------------------- |
+| `--repo-path`            | Path to repository root                               | `.`                                    |
+| `--config`               | Path to JSON config file                              | `changelog-bot.config.json` if present |
+| `--changelog-path`       | Path to CHANGELOG file                                | `CHANGELOG.md`                         |
+| `--base-branch`          | Base branch for PR                                    | `main`                                 |
+| `--provider`             | LLM provider (`openai`, `anthropic`, or `gemini`)     | `openai`                               |
+| `--release-tag`          | Git ref (tag or HEAD) to generate release for         | latest tag or HEAD                     |
+| `--release-name`         | Display name for version (without `v`)                | derived from tag                       |
+| `--release-body`         | Additional release notes body                         | `""`                                   |
+| `--language`             | Language for generated changelog prose                | `en`                                   |
+| `--instructions`         | Additional changelog writing/grouping instructions    | unset                                  |
+| `--instructions-file`    | Path to a file with additional instructions           | unset                                  |
+| `--dry-run`              | Print updated CHANGELOG to stdout, don’t write file   | `false`                                |
+| `--dry-run-json-report`  | Print dry-run provider diagnostics as JSON            | `false`                                |
+| `--fail-on-llm-error`    | Fail instead of falling back when provider calls fail | `false`                                |
+| `--require-provider`     | Fail when the selected provider API key is missing    | `false`                                |
+| `--no-ai`                | Skip all provider calls and use deterministic output  | `false`                                |
+| `--why`                  | Extract short WHY notes from PR descriptions          | `false`                                |
+| `--why-max-prs`          | Maximum PRs to inspect for WHY extraction             | `30`                                   |
+| `--why-max-chars-per-pr` | Maximum candidate characters sent per PR              | `800`                                  |
+| `--why-confidence`       | Minimum WHY confidence (`low`, `medium`, `high`)      | `medium`                               |
+| `--why-label`            | Label rendered before WHY notes                       | `Why`                                  |
 
 ## Examples
 
@@ -103,6 +108,34 @@ Example PR body suffix:
 ```
 Note: Generated without LLM. Reason: Missing API key for provider: openai.
 ```
+
+### Extract WHY notes from PR descriptions
+
+WHY extraction is off by default because it reads PR descriptions and makes an
+extra provider call. Enable it when you want each high-signal changelog item to
+include a short reason for the change:
+
+```sh
+pnpm dlx @nyaomaru/changelog-bot \
+  --release-tag HEAD \
+  --release-name 1.2.3 \
+  --why \
+  --why-label Reason
+```
+
+WHY notes are only considered for `Added`, `Changed`, `Fixed`, and `Breaking`
+items. Maintenance, dependency, docs, and chore items are skipped. If a PR
+description does not clearly explain the reason, or the local trust score and
+provider confidence do not agree, changelog-bot writes no WHY note for that
+item. With `--fail-on-llm-error`, provider failures fail the run; otherwise the
+main changelog still proceeds and WHY extraction is skipped with a diagnostic
+reason.
+
+The preprocessor recognizes common reason/context section headings in English,
+Spanish, French, German, Portuguese, Italian, Dutch, Japanese, Chinese, Korean,
+and Russian. This is a heading-alias list, not a hard language limit: compact PR
+descriptions in other languages can still reach provider judgment, and missing
+or unclear evidence is still omitted rather than guessed.
 
 ### Force a specific model (example: gpt-4o-mini)
 
@@ -154,7 +187,8 @@ Config files use camelCase keys matching the CLI options:
 `repoPath`, `changelogPath`, `baseBranch`, `provider`, `releaseTag`,
 `releaseName`, `releaseBody`, `language`, `instructions`,
 `instructionsFile`, `dryRun`, `dryRunJsonReport`, `failOnLlmError`,
-`requireProvider`, and `noAi`. Unknown keys are rejected so typos fail fast.
+`requireProvider`, `noAi`, `why`, `whyMaxPrs`, `whyMaxCharsPerPr`,
+`whyConfidence`, and `whyLabel`. Unknown keys are rejected so typos fail fast.
 
 ### From source (local checkout)
 
@@ -308,9 +342,10 @@ jobs:
           no-ai: 'true'
 ```
 
-Dry-runs do not write `CHANGELOG.md`, push a branch, or create a PR, so they do
-not need `GITHUB_TOKEN` unless you want authenticated GitHub API lookups for a
-private repository.
+Dry-runs do not write `CHANGELOG.md`, push a branch, or create a PR. They do
+not need `GITHUB_TOKEN` for public repositories. Private repositories and
+authenticated GitHub API lookups still require GitHub credentials. Set a token
+for reliable WHY extraction because anonymous GitHub API quotas are limited.
 
 ### Reusable workflow
 
@@ -342,6 +377,8 @@ jobs:
       # fail_on_llm_error: 'true'
       # require_provider: 'true'
       # no_ai: 'true'
+      # why: 'true'
+      # why_label: Reason
     secrets:
       REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -373,6 +410,11 @@ action values are forwarded as CLI flags and override config-file values.
 | Fail on provider errors | `--fail-on-llm-error` / `--no-fail-on-llm-error`     | `fail-on-llm-error`        | `fail_on_llm_error`        | `failOnLlmError`, default `false`                           |
 | Require provider key    | `--require-provider` / `--no-require-provider`       | `require-provider`         | `require_provider`         | `requireProvider`, default `false`                          |
 | Deterministic mode      | `--no-ai` / `--ai`                                   | `no-ai`                    | `no_ai`                    | `noAi`, default `false`                                     |
+| WHY extraction          | `--why` / `--no-why`                                 | `why`                      | `why`                      | `why`, default `false`                                      |
+| WHY PR limit            | `--why-max-prs`                                      | `why-max-prs`              | `why_max_prs`              | `whyMaxPrs`, default `30`                                   |
+| WHY chars per PR        | `--why-max-chars-per-pr`                             | `why-max-chars-per-pr`     | `why_max_chars_per_pr`     | `whyMaxCharsPerPr`, default `800`                           |
+| WHY confidence          | `--why-confidence`                                   | `why-confidence`           | `why_confidence`           | `whyConfidence`, default `medium`                           |
+| WHY label               | `--why-label`                                        | `why-label`                | `why_label`                | `whyLabel`, default `Why`                                   |
 | CLI package version     | none                                                 | `npm-version`              | `npm_version`              | Action-only, default `latest`                               |
 | Package age guard       | none                                                 | `minimum-package-age-days` | `minimum_package_age_days` | Action-only, default `0`                                    |
 
@@ -481,6 +523,7 @@ Notes
 - Missing release notes or PR titles: use `actions/checkout` with `fetch-depth: 0`, pass `release-body`, and provide GitHub auth for private repositories.
 - AI key missing: the CLI falls back by default. Set the matching provider key, use `require-provider: 'true'` to fail instead, or use `no-ai: 'true'` intentionally.
 - Provider API/schema failure: keep fallback behavior, or set `fail-on-llm-error: 'true'` when a deterministic failure is better than heuristic output.
+- WHY notes are missing: expected when `why` is not enabled, `no-ai` is enabled, no provider key is available, a private PR cannot be read without GitHub credentials, the PR is automatic maintenance, or the PR description does not clearly state a trusted reason.
 - Package version is unexpectedly blocked: check `minimum-package-age-days`. The default is `0`; positive values enable the pnpm package age guard.
 - No PR appears in dry-run: expected. Dry-run prints the proposed changelog and diagnostics only.
 - Duplicate version heading: the changelog already contains that release. Use a different `release-name` or edit the existing section intentionally.

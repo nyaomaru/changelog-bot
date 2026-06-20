@@ -62,6 +62,60 @@ export function tryRun(args: readonly string[], cwd?: string): string | null {
 export function tryDetectLatestTag(cwd?: string): string | null {
   return tryRun(['describe', '--tags', '--abbrev=0'], cwd);
 }
+
+/**
+ * Read the currently checked-out branch name.
+ * @param cwd Optional repository working directory.
+ * @returns Branch name, or null for detached HEAD and lookup failures.
+ */
+export function currentBranch(cwd?: string): string | null {
+  return tryRun(['branch', '--show-current'], cwd) || null;
+}
+
+/**
+ * Match a branch head SHA to a GitHub pull ref listing.
+ * @param pullRefsOutput Output from listing GitHub pull head refs on the remote.
+ * @param headSha Remote branch head commit SHA.
+ * @returns Matching pull request number, or null when no pull ref matches.
+ */
+export function findPullRequestNumberByHeadSha(
+  pullRefsOutput: string,
+  headSha: string,
+): number | null {
+  for (const line of pullRefsOutput.split('\n')) {
+    const [candidateSha, reference] = line.trim().split(/\s+/);
+    if (candidateSha !== headSha) continue;
+    const match = /^refs\/pull\/(?<prNumber>\d+)\/head$/.exec(reference ?? '');
+    if (!match?.groups?.prNumber) continue;
+    return Number.parseInt(match.groups.prNumber, 10);
+  }
+  return null;
+}
+
+/**
+ * Resolve the current branch's GitHub PR number without using the REST API.
+ * WHY: Anonymous API quotas are small; pull refs remain available through the
+ * existing git remote and provide a deterministic fallback for public repos.
+ * @param branch Current local branch name.
+ * @param cwd Optional repository working directory.
+ * @returns Pull request number, or null when the remote refs cannot identify it.
+ */
+export function tryFindPullRequestNumberForBranch(
+  branch: string,
+  cwd?: string,
+): number | null {
+  const remoteHeadSha = tryRun(
+    ['rev-parse', `refs/remotes/origin/${branch}`],
+    cwd,
+  );
+  if (!remoteHeadSha) return null;
+  const pullRefsOutput = tryRun(
+    ['ls-remote', 'origin', 'refs/pull/*/head'],
+    cwd,
+  );
+  if (!pullRefsOutput) return null;
+  return findPullRequestNumberByHeadSha(pullRefsOutput, remoteHeadSha);
+}
 /** Detect the previous tag relative to the given tag. */
 export function tryDetectPrevTag(
   currentTag: string,

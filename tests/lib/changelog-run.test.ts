@@ -19,6 +19,11 @@ const cli = {
   failOnLlmError: false,
   requireProvider: false,
   noAi: false,
+  why: false,
+  whyMaxPrs: 30,
+  whyMaxCharsPerPr: 800,
+  whyConfidence: 'medium',
+  whyLabel: 'Why',
 };
 
 const appConfig = {
@@ -44,9 +49,94 @@ const provider = {
   },
   generate: jest.fn(),
   classifyTitles: jest.fn(),
+  extractWhyNotes: jest.fn(),
 };
 
 describe('executeChangelogRun', () => {
+  test('uses current branch PR metadata for HEAD releases', async () => {
+    const log = jest.fn();
+    const branchPullRequest = {
+      number: 138,
+      title: 'feat: add opt-in WHY extraction',
+      author: 'nyaomaru',
+      url: 'https://github.com/nyaomaru/changelog-bot/pull/138',
+    };
+    const buildChangelogLlmOutput = jest.fn(async () => ({
+      llm: {
+        new_section_markdown: 'generated section',
+        pr_title: 'docs(changelog): test',
+        pr_body: 'body',
+      },
+      aiUsed: false,
+      fallbackReasons: [],
+    }));
+    const deps = {
+      providerFactory: jest.fn(() => provider),
+      getRepoFullName: jest.fn(() => 'octo/repo'),
+      resolveReleasePlan: jest.fn(() => ({
+        owner: 'octo',
+        repo: 'repo',
+        repoPath: '.',
+        changelogPath: 'CHANGELOG.md',
+        releaseRef: 'HEAD',
+        version: '1.2.3',
+        prevRef: 'v1.2.2',
+        date: '2026-06-20',
+      })),
+      gitMergedPRs: jest.fn(() => ''),
+      commitsInRange: jest.fn(() => [
+        { sha: 'abcdef1234567890', subject: 'feat: add WHY extraction' },
+      ]),
+      currentBranch: jest.fn(() => 'feature/why-extraction'),
+      prepareExistingChangelog: jest.fn(() => 'existing changelog'),
+      resolveRunCredentials: jest.fn(async () => ({
+        token: undefined,
+        hasProviderKey: false,
+      })),
+      fetchPullRequestsForBranch: jest.fn(async () => [branchPullRequest]),
+      mapCommitsToPrs: jest.fn(async () => ({})),
+      fetchReleaseBody: jest.fn(async () => ''),
+      resolveCustomInstructions: jest.fn(() => undefined),
+      buildPrMapBySha: jest.fn(() => ({ abcdef1234567890: [138] })),
+      buildTitleToPr: jest.fn(() => ({ 'add WHY extraction': 138 })),
+      getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
+      buildChangelogLlmOutput,
+      finalizeChangelogUpdate: jest.fn(({ llm }) => ({
+        llm,
+        updated: 'updated changelog',
+      })),
+      runWhyExtraction: jest.fn(async ({ llm }) => ({
+        llm,
+        diagnostics: {
+          enabled: true,
+          aiUsed: false,
+          targetsFound: 0,
+          prBodiesFetched: 0,
+          skippedBeforeFetch: 0,
+          skippedLowTrust: 0,
+          notesRendered: 0,
+          fallbackReasons: [],
+        },
+      })),
+    };
+
+    await executeChangelogRun({
+      cli: { ...cli, releaseTag: 'HEAD', language: 'en' },
+      appConfig,
+      log,
+      deps,
+    });
+
+    expect(deps.mapCommitsToPrs).not.toHaveBeenCalled();
+    expect(buildChangelogLlmOutput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pullRequestsBySha: {
+          abcdef1234567890: [branchPullRequest],
+        },
+      }),
+    );
+  });
+
   test('dry-run orchestrates changelog generation without writing or creating a PR', async () => {
     const log = jest.fn();
     const deps = {
@@ -71,7 +161,7 @@ describe('executeChangelogRun', () => {
         token: undefined,
         hasProviderKey: false,
       })),
-      mapCommitsToPrs: jest.fn(),
+      mapCommitsToPrs: jest.fn(async () => ({})),
       fetchReleaseBody: jest.fn(),
       resolveCustomInstructions: jest.fn(() => 'combined instructions'),
       buildPrMapBySha: jest.fn(() => ({ abcdef1234567890: [123] })),
@@ -106,7 +196,13 @@ describe('executeChangelogRun', () => {
     await executeChangelogRun({ cli, appConfig, log, deps });
 
     expect(deps.fetchReleaseBody).not.toHaveBeenCalled();
-    expect(deps.mapCommitsToPrs).not.toHaveBeenCalled();
+    expect(deps.mapCommitsToPrs).toHaveBeenCalledWith(
+      'octo',
+      'repo',
+      ['abcdef1234567890'],
+      undefined,
+      'https://api.github.com',
+    );
     expect(deps.writeChangelog).not.toHaveBeenCalled();
     expect(deps.createPR).not.toHaveBeenCalled();
     expect(deps.buildChangelogLlmOutput).toHaveBeenCalledWith(
@@ -158,7 +254,7 @@ describe('executeChangelogRun', () => {
         token: undefined,
         hasProviderKey: false,
       })),
-      mapCommitsToPrs: jest.fn(),
+      mapCommitsToPrs: jest.fn(async () => ({})),
       fetchReleaseBody: jest.fn(),
       resolveCustomInstructions: jest.fn(() => undefined),
       buildPrMapBySha: jest.fn(() => ({})),

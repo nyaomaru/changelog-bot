@@ -1,6 +1,9 @@
 // @ts-nocheck
 import { test, expect } from '@jest/globals';
-import { extractPrRefsFromText } from '@/lib/git.js';
+import {
+  extractPrRefsFromText,
+  findPullRequestNumberByHeadSha,
+} from '@/lib/git.js';
 
 test('extracts PR numbers and dedupes', () => {
   const text = [
@@ -20,4 +23,18 @@ test('returns empty when no matches', () => {
   const nums = extractPrRefsFromText(text);
 
   expect(nums.length).toBe(0);
+});
+
+test('matches a remote branch head to a GitHub pull ref', () => {
+  const output = [
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/pull/137/head',
+    'dc475bc234d283e98cb1b46609c576d2f3430cb2\trefs/pull/138/head',
+  ].join('\n');
+
+  expect(
+    findPullRequestNumberByHeadSha(
+      output,
+      'dc475bc234d283e98cb1b46609c576d2f3430cb2',
+    ),
+  ).toBe(138);
 });

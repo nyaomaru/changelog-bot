@@ -73,7 +73,7 @@ export function attachPrNumbers(
 
   const lines = md.split('\n');
   const updated = lines.map((line) => {
-    if (!isBulletLine(line)) return line;
+    if (!isBulletLine(line) || !/^[-*]\s+/.test(line)) return line;
     if (hasInlinePrReference(line)) return line;
 
     const bulletParts = splitBulletLine(line);

@@ -1,4 +1,4 @@
-import type { PullRef } from '@/types/github.js';
+import type { PullRef, PullRequestDetails } from '@/types/github.js';
 import {
   GitHubReleaseByTagSchema,
   GitHubPRInfoSchema,
@@ -86,19 +86,86 @@ export async function fetchPRInfo(
 }
 
 /**
+ * Fetch PR title, body, author, and URL by PR number.
+ * Returns null if the PR is not accessible or parsing fails.
+ * @param owner Repository owner or org.
+ * @param repo Repository name.
+ * @param number PR number.
+ * @param token Optional GitHub token.
+ * @param apiBase GitHub API base URL.
+ * @returns Normalized PR details, or null when unavailable.
+ */
+export async function fetchPRDetails(
+  owner: string,
+  repo: string,
+  number: number,
+  token?: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
+): Promise<PullRequestDetails | null> {
+  const endpoint = `${apiBase}/repos/${owner}/${repo}/pulls/${number}`;
+  try {
+    const data = await ghGet<unknown>(endpoint, token);
+    const parsed = GitHubPRInfoSchema.safeParse(data);
+    if (!parsed.success) return null;
+    return {
+      number: parsed.data.number ?? number,
+      title: parsed.data.title ?? '',
+      body: parsed.data.body ?? '',
+      author: parsed.data.user?.login,
+      url: parsed.data.html_url,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch open pull requests whose head matches a repository branch.
+ * @param owner Repository owner or organization.
+ * @param repo Repository name.
+ * @param branch Local branch name used as the pull request head.
+ * @param token Optional GitHub token for private repositories and higher limits.
+ * @param apiBase GitHub API base URL.
+ * @returns Matching pull request metadata, or an empty array on failure.
+ */
+export async function fetchPullRequestsForBranch(
+  owner: string,
+  repo: string,
+  branch: string,
+  token?: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
+): Promise<PullRef[]> {
+  const head = encodeURIComponent(`${owner}:${branch}`);
+  const endpoint = `${apiBase}/repos/${owner}/${repo}/pulls?state=open&head=${head}&per_page=10`;
+  try {
+    const data = await ghGet<unknown>(endpoint, token);
+    const parsed = GitHubCommitPullsArraySchema.safeParse(data);
+    if (!parsed.success) return [];
+    return parsed.data.map((pullRequest) => ({
+      number: pullRequest.number,
+      title: pullRequest.title,
+      author: pullRequest.user?.login,
+      url: pullRequest.html_url,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * For squash/rebase merges: list PRs associated with a commit.
  * Uses the GitHub endpoint that back-references PRs from a commit SHA.
  * @param owner Repository owner or org.
  * @param repo Repository name.
  * @param sha Commit SHA to inspect.
- * @param token GitHub token (required by the endpoint for cross-repo parity).
+ * @param token Optional GitHub token for private repositories and higher limits.
  * @returns Array of PullRef containing PR number and title.
  */
 export async function prsForCommit(
   owner: string,
   repo: string,
   sha: string,
-  token: string,
+  token?: string,
   apiBase: string = GITHUB_API_BASE_DEFAULT,
 ): Promise<PullRef[]> {
   // GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls
@@ -109,6 +176,8 @@ export async function prsForCommit(
   return pullRequests.map((pr) => ({
     number: pr.number,
     title: pr.title,
+    author: pr.user?.login,
+    url: pr.html_url,
   }));
 }
 
@@ -119,14 +188,14 @@ export async function prsForCommit(
  * @param owner Repository owner or org.
  * @param repo Repository name.
  * @param shas List of commit SHAs.
- * @param token GitHub token to authorize requests.
+ * @param token Optional GitHub token for private repositories and higher limits.
  * @returns Map of commit SHA to associated PR refs (number and title).
  */
 export async function mapCommitsToPrs(
   owner: string,
   repo: string,
   shas: string[],
-  token: string,
+  token?: string,
   apiBase: string = GITHUB_API_BASE_DEFAULT,
 ): Promise<Record<string, PullRef[]>> {
   const commitToPullRefs: Record<string, PullRef[]> = {};

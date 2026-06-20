@@ -1,8 +1,73 @@
 // @ts-nocheck
 import { test, expect, describe } from '@jest/globals';
-import { parseReleaseNotes, buildSectionFromRelease } from '@/utils/release.js';
+import {
+  buildReleaseItemsFromPullRequests,
+  parseReleaseNotes,
+  buildSectionFromRelease,
+} from '@/utils/release.js';
 
 describe('release utils', () => {
+  test('builds one parent release item for commits in the same pull request', () => {
+    const items = buildReleaseItemsFromPullRequests(
+      [
+        { sha: 'abc', subject: 'feat: add opt-in WHY extraction' },
+        { sha: 'def', subject: 'fix: recognize punctuated WHY headings' },
+      ],
+      {
+        abc: [
+          {
+            number: 138,
+            title: 'feat: add opt-in WHY extraction',
+            author: 'nyaomaru',
+            url: 'https://github.com/nyaomaru/changelog-bot/pull/138',
+          },
+        ],
+        def: [
+          {
+            number: 138,
+            title: 'feat: add opt-in WHY extraction',
+            author: 'nyaomaru',
+            url: 'https://github.com/nyaomaru/changelog-bot/pull/138',
+          },
+        ],
+      },
+    );
+
+    expect(items).toEqual([
+      {
+        title: 'add opt-in WHY extraction',
+        rawTitle: 'feat: add opt-in WHY extraction',
+        author: 'nyaomaru',
+        pr: 138,
+        url: 'https://github.com/nyaomaru/changelog-bot/pull/138',
+      },
+    ]);
+  });
+
+  test('keeps unmapped local commits alongside pull request items', () => {
+    const items = buildReleaseItemsFromPullRequests(
+      [
+        { sha: 'abc', subject: 'feat: add opt-in WHY extraction' },
+        { sha: 'def', subject: 'fix: recognize punctuated WHY headings' },
+      ],
+      {
+        abc: [{ number: 138, title: 'feat: add opt-in WHY extraction' }],
+      },
+    );
+
+    expect(items).toEqual([
+      {
+        title: 'add opt-in WHY extraction',
+        rawTitle: 'feat: add opt-in WHY extraction',
+        pr: 138,
+      },
+      {
+        title: 'recognize punctuated WHY headings',
+        rawTitle: 'fix: recognize punctuated WHY headings',
+      },
+    ]);
+  });
+
   test('parseReleaseNotes extracts items and full changelog', () => {
     const body = [
       '# Some Release',

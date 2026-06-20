@@ -9,6 +9,8 @@ import { stripConventionalPrefix } from '@/utils/title-normalize.js';
 import { FULL_CHANGELOG_RE } from '@/constants/release.js';
 import { BULLET_PREFIX_RE } from '@/constants/markdown.js';
 import { buildTitleLookup, findTitleMatch } from '@/utils/title-lookup.js';
+import type { CommitLite } from '@/types/commit.js';
+import type { PullRef } from '@/types/github.js';
 
 const MIN_MARKDOWN_ATX_HEADING_LEVEL = 1;
 const RELEASE_SECTION_HEADING_LEVEL = 2;
@@ -401,6 +403,55 @@ export function parseReleaseNotes(
 }
 
 /**
+ * Build release items from authoritative commit-to-PR associations.
+ * WHY: `HEAD` has no GitHub release body yet, but its commits may already
+ * belong to an open PR whose title, author, and URL form the stable parent
+ * changelog item. Unmapped local commits remain standalone items so no change
+ * is dropped while a branch is ahead of its remote pull request.
+ * @param commits Commits included in the release range.
+ * @param pullRequestsBySha Pull request metadata keyed by commit SHA.
+ * @returns PR-level and unmapped commit items, or an empty array when no PR metadata exists.
+ */
+export function buildReleaseItemsFromPullRequests(
+  commits: readonly CommitLite[],
+  pullRequestsBySha: Readonly<Record<string, readonly PullRef[]>>,
+): ReleaseItem[] {
+  if (commits.length === 0) return [];
+
+  const items: ReleaseItem[] = [];
+  const itemsByPrNumber = new Map<number, ReleaseItem>();
+  let foundPullRequest = false;
+  for (const commit of commits) {
+    const pullRequest = pullRequestsBySha[commit.sha]?.find((candidate) =>
+      candidate.title?.trim(),
+    );
+    if (!pullRequest?.title) {
+      items.push({
+        title: stripConventionalPrefix(commit.subject),
+        rawTitle: commit.subject,
+      });
+      continue;
+    }
+    foundPullRequest = true;
+    const parentTitle = stripConventionalPrefix(pullRequest.title);
+    let item = itemsByPrNumber.get(pullRequest.number);
+    if (!item) {
+      item = {
+        title: parentTitle,
+        rawTitle: pullRequest.title,
+        author: pullRequest.author,
+        pr: pullRequest.number,
+        url: pullRequest.url,
+      };
+      itemsByPrNumber.set(pullRequest.number, item);
+      items.push(item);
+    }
+  }
+
+  return foundPullRequest ? items : [];
+}
+
+/**
  * Build a categorized changelog section from parsed release items and category mapping.
  * @param params Version/date, parsed items, mapping of categories->titles, and optional full changelog link.
  * @returns Markdown section string.
@@ -453,7 +504,9 @@ export function buildSectionFromRelease(params: {
     if (!entries.length) continue;
 
     lines.push(`### ${section}`, '');
-    for (const item of entries) lines.push(formatBullet(item));
+    for (const item of entries) {
+      lines.push(formatBullet(item));
+    }
     lines.push('');
   }
 

@@ -4,6 +4,10 @@ export type PullRef = {
   number: number;
   /** Optional pull request title for display. */
   title?: string;
+  /** Optional pull request author for attribution. */
+  author?: string;
+  /** Optional pull request URL for linking. */
+  url?: string;
 };
 
 // Minimal shapes for GitHub API responses we consume
@@ -16,6 +20,12 @@ export type GitHubReleaseByTagResponse = {
 
 /** Subset of PR response fields we care about when enriching changelog entries. */
 export type GitHubPRInfoResponse = {
+  /** Numeric PR identifier. */
+  number?: number;
+  /** Pull request title. */
+  title?: string;
+  /** Pull request description markdown. */
+  body?: string | null;
   /** Author object containing the PR creator login. */
   user?: {
     /** GitHub login/username for the PR author. */
@@ -25,12 +35,33 @@ export type GitHubPRInfoResponse = {
   html_url?: string;
 };
 
+/** Normalized pull request details used by WHY extraction. */
+export type PullRequestDetails = {
+  /** Numeric PR identifier. */
+  number: number;
+  /** Pull request title. */
+  title: string;
+  /** Pull request description markdown. */
+  body: string;
+  /** GitHub login/username for the PR author. */
+  author?: string;
+  /** HTML URL of the pull request. */
+  url?: string;
+};
+
 /** Item returned when listing PRs associated with a commit. */
 export type GitHubCommitPullsItem = {
   /** Numeric PR identifier. */
   number: number;
   /** Optional pull request title for reference. */
   title?: string;
+  /** Optional pull request author. */
+  user?: {
+    /** GitHub login/username for the PR author. */
+    login?: string;
+  };
+  /** Optional HTML URL of the pull request. */
+  html_url?: string;
 };
 
 /**
