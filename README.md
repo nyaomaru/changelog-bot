@@ -344,7 +344,8 @@ jobs:
 
 Dry-runs do not write `CHANGELOG.md`, push a branch, or create a PR. They do
 not need `GITHUB_TOKEN` for public repositories. Private repositories and
-authenticated GitHub API lookups still require GitHub credentials.
+authenticated GitHub API lookups still require GitHub credentials. Set a token
+for reliable WHY extraction because anonymous GitHub API quotas are limited.
 
 ### Reusable workflow
 

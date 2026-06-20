@@ -1,4 +1,9 @@
-import { currentBranch, gitMergedPRs, commitsInRange } from '@/lib/git.js';
+import {
+  currentBranch,
+  gitMergedPRs,
+  commitsInRange,
+  tryFindPullRequestNumberForBranch,
+} from '@/lib/git.js';
 import { writeChangelog } from '@/lib/changelog.js';
 import { createPR } from '@/lib/pr.js';
 import {
@@ -50,6 +55,8 @@ export type ChangelogRunDependencies = {
   commitsInRange: typeof commitsInRange;
   /** Read the currently checked-out branch name. */
   currentBranch: typeof currentBranch;
+  /** Resolve a branch PR number from remote git refs. */
+  tryFindPullRequestNumberForBranch: typeof tryFindPullRequestNumberForBranch;
   /** Read and normalize the existing changelog. */
   prepareExistingChangelog: typeof prepareExistingChangelog;
   /** Resolve GitHub auth and provider-key availability. */
@@ -91,6 +98,7 @@ const defaultDependencies: ChangelogRunDependencies = {
   gitMergedPRs,
   commitsInRange,
   currentBranch,
+  tryFindPullRequestNumberForBranch,
   prepareExistingChangelog,
   resolveRunCredentials,
   mapCommitsToPrs,
@@ -158,9 +166,27 @@ export async function executeChangelogRun(params: {
         appConfig.github.apiBase,
       )
     : [];
-  const apiPrMap = branchPullRequests.length
+  const remotePrNumber =
+    branchName && branchPullRequests.length === 0
+      ? deps.tryFindPullRequestNumberForBranch(branchName, repoPath)
+      : null;
+  const oldestCommit = commitList[commitList.length - 1];
+  const remotePullRequest =
+    remotePrNumber && oldestCommit
+      ? {
+          number: remotePrNumber,
+          title: oldestCommit.subject,
+          url: `https://github.com/${owner}/${repo}/pull/${remotePrNumber}`,
+        }
+      : null;
+  const authoritativePullRequests = branchPullRequests.length
+    ? branchPullRequests
+    : remotePullRequest
+      ? [remotePullRequest]
+      : [];
+  const apiPrMap = authoritativePullRequests.length
     ? Object.fromEntries(
-        commitShas.map((commitSha) => [commitSha, branchPullRequests]),
+        commitShas.map((commitSha) => [commitSha, authoritativePullRequests]),
       )
     : await deps.mapCommitsToPrs(
         owner,
