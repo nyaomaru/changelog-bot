@@ -125,14 +125,14 @@ export async function fetchPRDetails(
  * @param owner Repository owner or org.
  * @param repo Repository name.
  * @param sha Commit SHA to inspect.
- * @param token GitHub token (required by the endpoint for cross-repo parity).
+ * @param token Optional GitHub token for private repositories and higher limits.
  * @returns Array of PullRef containing PR number and title.
  */
 export async function prsForCommit(
   owner: string,
   repo: string,
   sha: string,
-  token: string,
+  token?: string,
   apiBase: string = GITHUB_API_BASE_DEFAULT,
 ): Promise<PullRef[]> {
   // GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls
@@ -155,14 +155,14 @@ export async function prsForCommit(
  * @param owner Repository owner or org.
  * @param repo Repository name.
  * @param shas List of commit SHAs.
- * @param token GitHub token to authorize requests.
+ * @param token Optional GitHub token for private repositories and higher limits.
  * @returns Map of commit SHA to associated PR refs (number and title).
  */
 export async function mapCommitsToPrs(
   owner: string,
   repo: string,
   shas: string[],
-  token: string,
+  token?: string,
   apiBase: string = GITHUB_API_BASE_DEFAULT,
 ): Promise<Record<string, PullRef[]>> {
   const commitToPullRefs: Record<string, PullRef[]> = {};

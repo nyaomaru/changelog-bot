@@ -77,7 +77,7 @@ describe('executeChangelogRun', () => {
         token: undefined,
         hasProviderKey: false,
       })),
-      mapCommitsToPrs: jest.fn(),
+      mapCommitsToPrs: jest.fn(async () => ({})),
       fetchReleaseBody: jest.fn(),
       resolveCustomInstructions: jest.fn(() => 'combined instructions'),
       buildPrMapBySha: jest.fn(() => ({ abcdef1234567890: [123] })),
@@ -112,7 +112,13 @@ describe('executeChangelogRun', () => {
     await executeChangelogRun({ cli, appConfig, log, deps });
 
     expect(deps.fetchReleaseBody).not.toHaveBeenCalled();
-    expect(deps.mapCommitsToPrs).not.toHaveBeenCalled();
+    expect(deps.mapCommitsToPrs).toHaveBeenCalledWith(
+      'octo',
+      'repo',
+      ['abcdef1234567890'],
+      undefined,
+      'https://api.github.com',
+    );
     expect(deps.writeChangelog).not.toHaveBeenCalled();
     expect(deps.createPR).not.toHaveBeenCalled();
     expect(deps.buildChangelogLlmOutput).toHaveBeenCalledWith(
@@ -164,7 +170,7 @@ describe('executeChangelogRun', () => {
         token: undefined,
         hasProviderKey: false,
       })),
-      mapCommitsToPrs: jest.fn(),
+      mapCommitsToPrs: jest.fn(async () => ({})),
       fetchReleaseBody: jest.fn(),
       resolveCustomInstructions: jest.fn(() => undefined),
       buildPrMapBySha: jest.fn(() => ({})),

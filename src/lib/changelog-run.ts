@@ -134,22 +134,19 @@ export async function executeChangelogRun(params: {
   const commitList = deps.commitsInRange(prevRef, releaseRef, repoPath);
   const commitShas = commitList.map((commit) => commit.sha);
 
-  let apiPrMap: Record<string, { number: number }[]> = {};
   const { token, hasProviderKey } = await deps.resolveRunCredentials(
     provider.name,
     owner,
     repo,
     appConfig,
   );
-  if (token) {
-    apiPrMap = await deps.mapCommitsToPrs(
-      owner,
-      repo,
-      commitShas,
-      token,
-      appConfig.github.apiBase,
-    );
-  }
+  const apiPrMap = await deps.mapCommitsToPrs(
+    owner,
+    repo,
+    commitShas,
+    token,
+    appConfig.github.apiBase,
+  );
 
   let releaseBody = cli.releaseBody || '';
   if (!releaseBody && cli.releaseTag) {
@@ -193,6 +190,7 @@ export async function executeChangelogRun(params: {
     prs,
     prMapBySha,
     pullRequestsBySha: apiPrMap,
+    includePullRequestCommitDetails: cli.why,
     titleToPr,
     provider,
     providerConfig,

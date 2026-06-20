@@ -31,6 +31,7 @@ describe('release utils', () => {
           },
         ],
       },
+      { includeCommitDetails: true },
     );
 
     expect(items).toEqual([
@@ -40,11 +41,40 @@ describe('release utils', () => {
         author: 'nyaomaru',
         pr: 138,
         url: 'https://github.com/nyaomaru/changelog-bot/pull/138',
+        details: ['recognize punctuated WHY headings'],
       },
     ]);
   });
 
-  test('rejects partial commit-to-PR mappings', () => {
+  test('renders commit details below their parent pull request item', () => {
+    const section = buildSectionFromRelease({
+      version: '0.5.2-why-check',
+      date: '2026-06-20',
+      items: [
+        {
+          title: 'add opt-in WHY extraction',
+          author: 'nyaomaru',
+          pr: 138,
+          url: 'https://github.com/nyaomaru/changelog-bot/pull/138',
+          details: [
+            'recognize punctuated WHY headings',
+            'prefer owning PR metadata over upstream links',
+          ],
+        },
+      ],
+      categories: { Added: ['add opt-in WHY extraction'] },
+    });
+
+    expect(section).toContain(
+      [
+        '- add opt-in WHY extraction by @nyaomaru in [#138](https://github.com/nyaomaru/changelog-bot/pull/138)',
+        '  - recognize punctuated WHY headings',
+        '  - prefer owning PR metadata over upstream links',
+      ].join('\n'),
+    );
+  });
+
+  test('keeps unmapped local commits alongside pull request items', () => {
     const items = buildReleaseItemsFromPullRequests(
       [
         { sha: 'abc', subject: 'feat: add opt-in WHY extraction' },
@@ -55,7 +85,17 @@ describe('release utils', () => {
       },
     );
 
-    expect(items).toEqual([]);
+    expect(items).toEqual([
+      {
+        title: 'add opt-in WHY extraction',
+        rawTitle: 'feat: add opt-in WHY extraction',
+        pr: 138,
+      },
+      {
+        title: 'recognize punctuated WHY headings',
+        rawTitle: 'fix: recognize punctuated WHY headings',
+      },
+    ]);
   });
 
   test('parseReleaseNotes extracts items and full changelog', () => {

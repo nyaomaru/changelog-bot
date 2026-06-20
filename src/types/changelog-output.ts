@@ -40,6 +40,8 @@ export type BuildChangelogLlmOutputParams = {
   prMapBySha: PrNumbersBySha;
   /** Pull request metadata keyed by commit SHA. */
   pullRequestsBySha?: Record<string, PullRef[]>;
+  /** Render commit summaries below their parent pull request items. */
+  includePullRequestCommitDetails?: boolean;
   /** Pull request numbers keyed by normalized title. */
   titleToPr: TitleToPrMap;
   /** Provider used for full changelog generation. */

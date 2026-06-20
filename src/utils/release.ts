@@ -406,35 +406,61 @@ export function parseReleaseNotes(
  * Build release items from authoritative commit-to-PR associations.
  * WHY: `HEAD` has no GitHub release body yet, but its commits may already
  * belong to an open PR whose title, author, and URL form the stable parent
- * changelog item. Partial mappings are rejected to avoid dropping changes.
+ * changelog item. Unmapped local commits remain standalone items so no change
+ * is dropped while a branch is ahead of its remote pull request.
  * @param commits Commits included in the release range.
  * @param pullRequestsBySha Pull request metadata keyed by commit SHA.
- * @returns Deduplicated PR-level items, or an empty array for incomplete input.
+ * @param options Controls rendering of commit-level details.
+ * @returns PR-level and unmapped commit items, or an empty array when no PR metadata exists.
  */
 export function buildReleaseItemsFromPullRequests(
   commits: readonly CommitLite[],
   pullRequestsBySha: Readonly<Record<string, readonly PullRef[]>>,
+  options: { includeCommitDetails?: boolean } = {},
 ): ReleaseItem[] {
   if (commits.length === 0) return [];
 
+  const items: ReleaseItem[] = [];
   const itemsByPrNumber = new Map<number, ReleaseItem>();
+  let foundPullRequest = false;
   for (const commit of commits) {
     const pullRequest = pullRequestsBySha[commit.sha]?.find((candidate) =>
       candidate.title?.trim(),
     );
-    if (!pullRequest?.title) return [];
-    if (itemsByPrNumber.has(pullRequest.number)) continue;
+    if (!pullRequest?.title) {
+      items.push({
+        title: stripConventionalPrefix(commit.subject),
+        rawTitle: commit.subject,
+      });
+      continue;
+    }
+    foundPullRequest = true;
+    const parentTitle = stripConventionalPrefix(pullRequest.title);
+    let item = itemsByPrNumber.get(pullRequest.number);
+    if (!item) {
+      item = {
+        title: parentTitle,
+        rawTitle: pullRequest.title,
+        author: pullRequest.author,
+        pr: pullRequest.number,
+        url: pullRequest.url,
+        ...(options.includeCommitDetails ? { details: [] } : {}),
+      };
+      itemsByPrNumber.set(pullRequest.number, item);
+      items.push(item);
+    }
 
-    itemsByPrNumber.set(pullRequest.number, {
-      title: stripConventionalPrefix(pullRequest.title),
-      rawTitle: pullRequest.title,
-      author: pullRequest.author,
-      pr: pullRequest.number,
-      url: pullRequest.url,
-    });
+    if (!options.includeCommitDetails) continue;
+    const detail = stripConventionalPrefix(commit.subject);
+    if (
+      detail.toLowerCase() !== parentTitle.toLowerCase() &&
+      !item.details?.includes(detail)
+    ) {
+      item.details?.push(detail);
+    }
   }
 
-  return [...itemsByPrNumber.values()];
+  return foundPullRequest ? items : [];
 }
 
 /**
@@ -490,7 +516,10 @@ export function buildSectionFromRelease(params: {
     if (!entries.length) continue;
 
     lines.push(`### ${section}`, '');
-    for (const item of entries) lines.push(formatBullet(item));
+    for (const item of entries) {
+      lines.push(formatBullet(item));
+      for (const detail of item.details ?? []) lines.push(`  - ${detail}`);
+    }
     lines.push('');
   }
 
