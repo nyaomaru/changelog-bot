@@ -1,8 +1,9 @@
-import { gitMergedPRs, commitsInRange } from '@/lib/git.js';
+import { currentBranch, gitMergedPRs, commitsInRange } from '@/lib/git.js';
 import { writeChangelog } from '@/lib/changelog.js';
 import { createPR } from '@/lib/pr.js';
 import {
   fetchPRDetails,
+  fetchPullRequestsForBranch,
   mapCommitsToPrs,
   fetchReleaseBody,
 } from '@/lib/github.js';
@@ -47,6 +48,8 @@ export type ChangelogRunDependencies = {
   gitMergedPRs: typeof gitMergedPRs;
   /** Read commits in the release range. */
   commitsInRange: typeof commitsInRange;
+  /** Read the currently checked-out branch name. */
+  currentBranch: typeof currentBranch;
   /** Read and normalize the existing changelog. */
   prepareExistingChangelog: typeof prepareExistingChangelog;
   /** Resolve GitHub auth and provider-key availability. */
@@ -57,6 +60,8 @@ export type ChangelogRunDependencies = {
   fetchReleaseBody: typeof fetchReleaseBody;
   /** Fetch GitHub PR title/body/author details. */
   fetchPRDetails: typeof fetchPRDetails;
+  /** Fetch the open pull request associated with the current branch. */
+  fetchPullRequestsForBranch: typeof fetchPullRequestsForBranch;
   /** Resolve inline and file-based changelog customization instructions. */
   resolveCustomInstructions: typeof resolveCustomInstructions;
   /** Build commit SHA -> PR number mappings. */
@@ -85,11 +90,13 @@ const defaultDependencies: ChangelogRunDependencies = {
   resolveReleasePlan,
   gitMergedPRs,
   commitsInRange,
+  currentBranch,
   prepareExistingChangelog,
   resolveRunCredentials,
   mapCommitsToPrs,
   fetchReleaseBody,
   fetchPRDetails,
+  fetchPullRequestsForBranch,
   resolveCustomInstructions,
   buildPrMapBySha,
   buildTitleToPr,
@@ -140,13 +147,28 @@ export async function executeChangelogRun(params: {
     repo,
     appConfig,
   );
-  const apiPrMap = await deps.mapCommitsToPrs(
-    owner,
-    repo,
-    commitShas,
-    token,
-    appConfig.github.apiBase,
-  );
+  const branchName =
+    releaseRef === 'HEAD' ? deps.currentBranch(repoPath) : null;
+  const branchPullRequests = branchName
+    ? await deps.fetchPullRequestsForBranch(
+        owner,
+        repo,
+        branchName,
+        token,
+        appConfig.github.apiBase,
+      )
+    : [];
+  const apiPrMap = branchPullRequests.length
+    ? Object.fromEntries(
+        commitShas.map((commitSha) => [commitSha, branchPullRequests]),
+      )
+    : await deps.mapCommitsToPrs(
+        owner,
+        repo,
+        commitShas,
+        token,
+        appConfig.github.apiBase,
+      );
 
   let releaseBody = cli.releaseBody || '';
   if (!releaseBody && cli.releaseTag) {

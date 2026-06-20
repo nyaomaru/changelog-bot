@@ -343,8 +343,8 @@ jobs:
 ```
 
 Dry-runs do not write `CHANGELOG.md`, push a branch, or create a PR. They do
-not need `GITHUB_TOKEN` unless you enable WHY extraction or want authenticated
-GitHub API lookups for a private repository.
+not need `GITHUB_TOKEN` for public repositories. Private repositories and
+authenticated GitHub API lookups still require GitHub credentials.
 
 ### Reusable workflow
 
@@ -522,7 +522,7 @@ Notes
 - Missing release notes or PR titles: use `actions/checkout` with `fetch-depth: 0`, pass `release-body`, and provide GitHub auth for private repositories.
 - AI key missing: the CLI falls back by default. Set the matching provider key, use `require-provider: 'true'` to fail instead, or use `no-ai: 'true'` intentionally.
 - Provider API/schema failure: keep fallback behavior, or set `fail-on-llm-error: 'true'` when a deterministic failure is better than heuristic output.
-- WHY notes are missing: expected when `why` is not enabled, `no-ai` is enabled, no provider key or GitHub token is available, the PR is automatic maintenance, or the PR description does not clearly state a trusted reason.
+- WHY notes are missing: expected when `why` is not enabled, `no-ai` is enabled, no provider key is available, a private PR cannot be read without GitHub credentials, the PR is automatic maintenance, or the PR description does not clearly state a trusted reason.
 - Package version is unexpectedly blocked: check `minimum-package-age-days`. The default is `0`; positive values enable the pnpm package age guard.
 - No PR appears in dry-run: expected. Dry-run prints the proposed changelog and diagnostics only.
 - Duplicate version heading: the changelog already contains that release. Use a different `release-name` or edit the existing section intentionally.

@@ -131,7 +131,7 @@ function appendWhyPreview(
 async function collectWhyExtractionItems(
   params: RunWhyExtractionParams,
   targets: readonly WhyTarget[],
-  token: string,
+  token?: string,
 ): Promise<WhyItemCollectionResult> {
   const result: WhyItemCollectionResult = {
     items: [],
@@ -236,12 +236,6 @@ export async function runWhyExtraction(
   if (!params.hasProviderKey) {
     diagnostics.fallbackReasons.push(
       `WHY extraction skipped: missing API key for ${params.provider.name}`,
-    );
-    return { llm, diagnostics };
-  }
-  if (!params.token) {
-    diagnostics.fallbackReasons.push(
-      'WHY extraction skipped: missing GitHub token for PR body fetches',
     );
     return { llm, diagnostics };
   }

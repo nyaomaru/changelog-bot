@@ -120,6 +120,39 @@ export async function fetchPRDetails(
 }
 
 /**
+ * Fetch open pull requests whose head matches a repository branch.
+ * @param owner Repository owner or organization.
+ * @param repo Repository name.
+ * @param branch Local branch name used as the pull request head.
+ * @param token Optional GitHub token for private repositories and higher limits.
+ * @param apiBase GitHub API base URL.
+ * @returns Matching pull request metadata, or an empty array on failure.
+ */
+export async function fetchPullRequestsForBranch(
+  owner: string,
+  repo: string,
+  branch: string,
+  token?: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
+): Promise<PullRef[]> {
+  const head = encodeURIComponent(`${owner}:${branch}`);
+  const endpoint = `${apiBase}/repos/${owner}/${repo}/pulls?state=open&head=${head}&per_page=10`;
+  try {
+    const data = await ghGet<unknown>(endpoint, token);
+    const parsed = GitHubCommitPullsArraySchema.safeParse(data);
+    if (!parsed.success) return [];
+    return parsed.data.map((pullRequest) => ({
+      number: pullRequest.number,
+      title: pullRequest.title,
+      author: pullRequest.user?.login,
+      url: pullRequest.html_url,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * For squash/rebase merges: list PRs associated with a commit.
  * Uses the GitHub endpoint that back-references PRs from a commit SHA.
  * @param owner Repository owner or org.

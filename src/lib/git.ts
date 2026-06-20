@@ -62,6 +62,15 @@ export function tryRun(args: readonly string[], cwd?: string): string | null {
 export function tryDetectLatestTag(cwd?: string): string | null {
   return tryRun(['describe', '--tags', '--abbrev=0'], cwd);
 }
+
+/**
+ * Read the currently checked-out branch name.
+ * @param cwd Optional repository working directory.
+ * @returns Branch name, or null for detached HEAD and lookup failures.
+ */
+export function currentBranch(cwd?: string): string | null {
+  return tryRun(['branch', '--show-current'], cwd) || null;
+}
 /** Detect the previous tag relative to the given tag. */
 export function tryDetectPrevTag(
   currentTag: string,
