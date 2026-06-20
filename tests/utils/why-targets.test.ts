@@ -2,9 +2,18 @@ import { describe, expect, test } from '@jest/globals';
 
 import type { WhyNote } from '@/types/why.js';
 import {
-  applyWhyNotesToSection,
-  extractWhyTargets,
+  applyWhyNotesToSection as applyWhyNotesToSectionForRepository,
+  extractWhyTargets as extractWhyTargetsForRepository,
 } from '@/utils/why-targets.js';
+
+const repository = { owner: 'octo', repo: 'repo' };
+const extractWhyTargets = (markdown: string) =>
+  extractWhyTargetsForRepository(markdown, repository);
+const applyWhyNotesToSection = (
+  markdown: string,
+  notes: ReadonlyMap<number, WhyNote>,
+  whyLabel: string,
+) => applyWhyNotesToSectionForRepository(markdown, notes, whyLabel, repository);
 
 describe('why-targets', () => {
   test('extracts eligible PRs and skips automatic maintenance before fetching', () => {
@@ -122,6 +131,21 @@ describe('why-targets', () => {
     expect(result.skippedBeforeFetch).toBe(2);
   });
 
+  test.each([
+    '- Sync behavior with https://github.com/foo/bar/pull/123',
+    '- Sync behavior in [#123](https://github.com/foo/bar/pull/123)',
+  ])(
+    'rejects an external pull URL without a current-repository suffix: %s',
+    (bullet) => {
+      const markdown = ['### Fixed', '', bullet, ''].join('\n');
+
+      const result = extractWhyTargets(markdown);
+
+      expect(result.targets).toEqual([]);
+      expect(result.skippedBeforeFetch).toBe(1);
+    },
+  );
+
   test('applies WHY notes under matching top-level bullets', () => {
     const markdown = [
       '### Fixed',
@@ -225,6 +249,31 @@ describe('why-targets', () => {
     expect(updated).toContain(
       '  - Why: The fallback suffix identifies the pull request for the change.',
     );
+  });
+
+  test('does not apply a WHY note to an external pull URL with the same number', () => {
+    const markdown = [
+      '### Fixed',
+      '',
+      '- Sync behavior with https://github.com/foo/bar/pull/123',
+      '',
+    ].join('\n');
+    const note: WhyNote = {
+      prNumber: 123,
+      why: 'This reason belongs to the current repository pull request.',
+      confidence: 'high',
+      sectionTitle: 'Fixed',
+      trustScore: 9,
+      trustBucket: 'high',
+    };
+
+    const updated = applyWhyNotesToSection(
+      markdown,
+      new Map([[123, note]]),
+      'Why',
+    );
+
+    expect(updated).toBe(markdown);
   });
 
   test('does not apply WHY notes to non-eligible sections with the same PR number', () => {

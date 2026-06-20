@@ -109,6 +109,20 @@ function normalizeWhyText(why: string): string {
     .slice(0, 180);
 }
 
+/**
+ * Resolve the pull-link hostname corresponding to a GitHub API base URL.
+ * @param apiBase GitHub.com or GHES API base URL.
+ * @returns Hostname used by repository pull request links.
+ */
+function githubWebHost(apiBase: string): string {
+  try {
+    const apiHost = new URL(apiBase).hostname;
+    return apiHost.toLowerCase() === 'api.github.com' ? 'github.com' : apiHost;
+  } catch {
+    return 'github.com';
+  }
+}
+
 function appendWhyPreview(
   prBody: string,
   notes: readonly WhyNote[],
@@ -244,7 +258,15 @@ export async function runWhyExtraction(
     return { llm, diagnostics };
   }
 
-  const extractedTargets = extractWhyTargets(llm.new_section_markdown);
+  const repository = {
+    owner: params.owner,
+    repo: params.repo,
+    host: githubWebHost(params.githubApiBase),
+  };
+  const extractedTargets = extractWhyTargets(
+    llm.new_section_markdown,
+    repository,
+  );
   diagnostics.targetsFound = extractedTargets.targets.length;
   diagnostics.skippedBeforeFetch = extractedTargets.skippedBeforeFetch;
   const targets = extractedTargets.targets.slice(0, cli.whyMaxPrs);
@@ -323,6 +345,7 @@ export async function runWhyExtraction(
         llmAfterAiUse.new_section_markdown,
         notesByPr,
         cli.whyLabel,
+        repository,
       ),
       pr_body: appendWhyPreview(
         llmAfterAiUse.pr_body,

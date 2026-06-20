@@ -7,13 +7,23 @@ import {
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
 
 const PULL_URL_PR_NUMBER_RE =
-  /\bhttps?:\/\/[^\s)]+\/pull\/(?<prNumber>\d+)\b/gi;
+  /\b(?<pullUrl>https?:\/\/[^\s)]+\/pull\/(?<prNumber>\d+)\b)/gi;
 const PULL_LINK_SUFFIX_RE =
-  /(?:\bin\s+)?\[#\d+\]\(https?:\/\/[^\s)]+\/pull\/(?<prNumber>\d+)\b[^)]*\)(?:\s+by\s+@[\w-]+(?:\[bot\])?)?\s*$/i;
+  /(?:\bin\s+)?\[#\d+\]\((?<pullUrl>https?:\/\/[^\s)]+\/pull\/(?<prNumber>\d+)\b[^)]*)\)(?:\s+by\s+@[\w-]+(?:\[bot\])?)?\s*$/i;
 const PR_SUFFIX_RE =
   /(?:\bin\s+#(?<plain>\d+)\b|\(#(?<parenthesized>\d+)\))\s*$/i;
 const AUTHOR_RE = /\sby\s@(?<author>[\w-]+(?:\[bot\])?)/i;
 const BOT_AUTHOR_RE = /(?:\[bot\]|bot$|renovate|dependabot)/i;
+
+/** Repository identity used to validate authoritative pull request links. */
+export type WhyRepository = {
+  /** Repository owner or organization. */
+  owner: string;
+  /** Repository name. */
+  repo: string;
+  /** Web hostname used by pull request links. */
+  host?: string;
+};
 
 type OwningPrReference = {
   /** Pull request number parsed from the authoritative reference. */
@@ -46,7 +56,33 @@ function cleanItemText(line: string, reference: OwningPrReference): string {
     .trim();
 }
 
-function extractOwningPrReference(line: string): OwningPrReference | null {
+function isCurrentRepositoryPullUrl(
+  pullUrl: string | undefined,
+  repository: WhyRepository,
+): boolean {
+  if (!pullUrl) return false;
+  try {
+    const parsedUrl = new URL(pullUrl);
+    const expectedHost = repository.host ?? 'github.com';
+    if (parsedUrl.hostname.toLowerCase() !== expectedHost.toLowerCase()) {
+      return false;
+    }
+    const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
+    return (
+      pathSegments[0]?.toLowerCase() === repository.owner.toLowerCase() &&
+      pathSegments[1]?.toLowerCase() === repository.repo.toLowerCase() &&
+      pathSegments[2]?.toLowerCase() === 'pull' &&
+      /^\d+$/.test(pathSegments[3] ?? '')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function extractOwningPrReference(
+  line: string,
+  repository: WhyRepository,
+): OwningPrReference | null {
   const suffixMatch = PR_SUFFIX_RE.exec(line);
   const suffixPrNumber = parsePrNumber(
     suffixMatch?.groups?.plain ?? suffixMatch?.groups?.parenthesized,
@@ -63,7 +99,11 @@ function extractOwningPrReference(line: string): OwningPrReference | null {
   const linkedSuffixPrNumber = parsePrNumber(
     linkedSuffixMatch?.groups?.prNumber,
   );
-  if (linkedSuffixMatch && linkedSuffixPrNumber) {
+  if (
+    linkedSuffixMatch &&
+    linkedSuffixPrNumber &&
+    isCurrentRepositoryPullUrl(linkedSuffixMatch.groups?.pullUrl, repository)
+  ) {
     return {
       prNumber: linkedSuffixPrNumber,
       startIndex: linkedSuffixMatch.index,
@@ -71,7 +111,11 @@ function extractOwningPrReference(line: string): OwningPrReference | null {
     };
   }
 
-  const pullUrlMatches = Array.from(line.matchAll(PULL_URL_PR_NUMBER_RE));
+  const pullUrlMatches = Array.from(
+    line.matchAll(PULL_URL_PR_NUMBER_RE),
+  ).filter((match) =>
+    isCurrentRepositoryPullUrl(match.groups?.pullUrl, repository),
+  );
   const lastPullUrlMatch = pullUrlMatches[pullUrlMatches.length - 1];
   const pullUrlPrNumber = parsePrNumber(lastPullUrlMatch?.groups?.prNumber);
   if (lastPullUrlMatch && pullUrlPrNumber) {
@@ -102,10 +146,14 @@ function extractAuthor(line: string): string | undefined {
  * WHY: PR identification and metadata removal must share the same accepted
  * forms so prose issue references remain part of the model context.
  * @param line Markdown bullet line.
+ * @param repository Repository whose pull requests are authoritative.
  * @returns Parsed bullet or null when no authoritative PR target exists.
  */
-function parseWhyBullet(line: string): ParsedWhyBullet | null {
-  const reference = extractOwningPrReference(line);
+function parseWhyBullet(
+  line: string,
+  repository: WhyRepository,
+): ParsedWhyBullet | null {
+  const reference = extractOwningPrReference(line, repository);
   if (!reference) return null;
   return {
     prNumber: reference.prNumber,
@@ -117,9 +165,13 @@ function parseWhyBullet(line: string): ParsedWhyBullet | null {
 /**
  * Extract PRs that can receive WHY notes from generated changelog markdown.
  * @param sectionMarkdown Generated release section markdown.
+ * @param repository Repository whose pull requests are authoritative.
  * @returns Eligible changelog PR targets after cheap pre-fetch filtering.
  */
-export function extractWhyTargets(sectionMarkdown: string): {
+export function extractWhyTargets(
+  sectionMarkdown: string,
+  repository: WhyRepository,
+): {
   targets: WhyTarget[];
   skippedBeforeFetch: number;
 } {
@@ -132,7 +184,7 @@ export function extractWhyTargets(sectionMarkdown: string): {
     if (!eligibleSectionTitles.has(section.name)) continue;
     for (const line of section.lines) {
       if (!/^[-*]\s+/.test(line)) continue;
-      const parsedBullet = parseWhyBullet(line);
+      const parsedBullet = parseWhyBullet(line, repository);
       if (!parsedBullet) {
         skippedBeforeFetch += 1;
         continue;
@@ -161,12 +213,14 @@ export function extractWhyTargets(sectionMarkdown: string): {
  * @param sectionMarkdown Generated release section markdown.
  * @param notes Accepted WHY notes keyed by PR number.
  * @param whyLabel User-visible WHY label.
+ * @param repository Repository whose pull requests are authoritative.
  * @returns Release section markdown with nested WHY bullets.
  */
 export function applyWhyNotesToSection(
   sectionMarkdown: string,
   notes: ReadonlyMap<number, WhyNote>,
   whyLabel: string,
+  repository: WhyRepository,
 ): string {
   if (notes.size === 0) return sectionMarkdown;
 
@@ -187,7 +241,7 @@ export function applyWhyNotesToSection(
       const line = section.lines[index] ?? '';
       outputLines.push(line);
       if (!/^[-*]\s+/.test(line)) continue;
-      const parsedBullet = parseWhyBullet(line);
+      const parsedBullet = parseWhyBullet(line, repository);
       if (!parsedBullet) continue;
       const note = notesBySectionAndPr.get(
         whyNoteKey(section.name, parsedBullet.prNumber),
