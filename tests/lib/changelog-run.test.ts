@@ -52,6 +52,35 @@ const provider = {
   extractWhyNotes: jest.fn(),
 };
 
+const unresolvedCustomization = {
+  instructions: undefined,
+  diagnostics: {
+    requested: false,
+    resolved: false,
+    sources: [],
+    chars: 0,
+    maxChars: 16000,
+    encoding: 'utf8',
+    truncated: false,
+    fileStatus: 'not_provided',
+  },
+};
+
+const resolvedCustomization = {
+  instructions: 'combined instructions',
+  diagnostics: {
+    requested: true,
+    resolved: true,
+    sources: ['inline', 'file'],
+    chars: 21,
+    maxChars: 16000,
+    encoding: 'utf8',
+    truncated: false,
+    fileStatus: 'loaded',
+    filePath: '.github/changelog-instructions.md',
+  },
+};
+
 describe('executeChangelogRun', () => {
   test('uses current branch PR metadata for HEAD releases', async () => {
     const log = jest.fn();
@@ -96,7 +125,9 @@ describe('executeChangelogRun', () => {
       fetchPullRequestsForBranch: jest.fn(async () => [branchPullRequest]),
       mapCommitsToPrs: jest.fn(async () => ({})),
       fetchReleaseBody: jest.fn(async () => ''),
-      resolveCustomInstructions: jest.fn(() => undefined),
+      resolveCustomInstructionsWithDiagnostics: jest.fn(
+        () => unresolvedCustomization,
+      ),
       buildPrMapBySha: jest.fn(() => ({ abcdef1234567890: [138] })),
       buildTitleToPr: jest.fn(() => ({ 'add WHY extraction': 138 })),
       getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
@@ -163,7 +194,9 @@ describe('executeChangelogRun', () => {
       })),
       mapCommitsToPrs: jest.fn(async () => ({})),
       fetchReleaseBody: jest.fn(),
-      resolveCustomInstructions: jest.fn(() => 'combined instructions'),
+      resolveCustomInstructionsWithDiagnostics: jest.fn(
+        () => resolvedCustomization,
+      ),
       buildPrMapBySha: jest.fn(() => ({ abcdef1234567890: [123] })),
       buildTitleToPr: jest.fn(() => ({ 'add CLI dry run': 123 })),
       getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
@@ -226,6 +259,9 @@ describe('executeChangelogRun', () => {
         'Model: mock-openai',
         'AI used: false',
         'Fallback reasons: none',
+        'Prompt customization: requested=true, applied=false, sources=inline+file, chars=21/16000, encoding=utf8',
+        'Prompt customization file: loaded (.github/changelog-instructions.md)',
+        'Prompt customization reason: not applied because provider API key is missing',
       ].join('\n'),
     );
     expect(log).toHaveBeenNthCalledWith(3, '');
@@ -256,7 +292,9 @@ describe('executeChangelogRun', () => {
       })),
       mapCommitsToPrs: jest.fn(async () => ({})),
       fetchReleaseBody: jest.fn(),
-      resolveCustomInstructions: jest.fn(() => undefined),
+      resolveCustomInstructionsWithDiagnostics: jest.fn(
+        () => unresolvedCustomization,
+      ),
       buildPrMapBySha: jest.fn(() => ({})),
       buildTitleToPr: jest.fn(() => ({})),
       getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
@@ -298,6 +336,11 @@ describe('executeChangelogRun', () => {
       model: 'mock-openai',
       aiUsed: false,
       fallbackReasons: ['AI disabled by --no-ai'],
+      promptCustomization: {
+        ...unresolvedCustomization.diagnostics,
+        applied: false,
+        reason: 'not requested',
+      },
     });
   });
 });

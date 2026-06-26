@@ -30,8 +30,23 @@ describe('formatDryRunDiagnostics', () => {
         modelName: 'gpt-4o-mini',
         aiUsed: false,
         fallbackReasons: ['Missing API key for provider: openai'],
+        promptCustomization: {
+          requested: true,
+          resolved: true,
+          applied: false,
+          reason: 'not applied because provider API key is missing',
+          sources: ['file'],
+          chars: 24,
+          maxChars: 16000,
+          encoding: 'utf8',
+          truncated: false,
+          fileStatus: 'loaded',
+          filePath: '.github/changelog-instructions.md',
+        },
       }),
-    ).toContain('Fallback reasons: Missing API key for provider: openai');
+    ).toContain(
+      'Prompt customization: requested=true, applied=false, sources=file, chars=24/16000, encoding=utf8',
+    );
   });
 
   test('renders machine-readable JSON report', () => {
@@ -42,6 +57,18 @@ describe('formatDryRunDiagnostics', () => {
           modelName: 'gpt-4o-mini',
           aiUsed: false,
           fallbackReasons: ['AI disabled by --no-ai'],
+          promptCustomization: {
+            requested: true,
+            resolved: true,
+            applied: false,
+            reason: 'not applied because --no-ai skips provider generation',
+            sources: ['inline'],
+            chars: 19,
+            maxChars: 16000,
+            encoding: 'utf8',
+            truncated: false,
+            fileStatus: 'not_provided',
+          },
         }),
       ),
     ).toEqual({
@@ -49,6 +76,18 @@ describe('formatDryRunDiagnostics', () => {
       model: 'gpt-4o-mini',
       aiUsed: false,
       fallbackReasons: ['AI disabled by --no-ai'],
+      promptCustomization: {
+        requested: true,
+        resolved: true,
+        applied: false,
+        reason: 'not applied because --no-ai skips provider generation',
+        sources: ['inline'],
+        chars: 19,
+        maxChars: 16000,
+        encoding: 'utf8',
+        truncated: false,
+        fileStatus: 'not_provided',
+      },
     });
   });
 });

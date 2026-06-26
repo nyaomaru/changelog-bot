@@ -23,7 +23,7 @@ import {
   resolveRunCredentials,
 } from '@/lib/release-context.js';
 import { finalizeChangelogUpdate } from '@/lib/changelog-update.js';
-import { resolveCustomInstructions } from '@/lib/customization.js';
+import { resolveCustomInstructionsWithDiagnostics } from '@/lib/customization.js';
 import {
   formatDryRunDiagnostics,
   formatDryRunJsonReport,
@@ -40,6 +40,40 @@ import { runWhyExtraction } from '@/lib/why-extraction.js';
 
 /** Logger used by the CLI runner for user-visible output. */
 export type ChangelogRunLogger = (message: string) => void;
+
+type PromptCustomizationReasonInput = {
+  /** Whether customization was passed by inline text or file path. */
+  requested: boolean;
+  /** Whether any usable customization text remained after resolution. */
+  resolved: boolean;
+  /** Whether provider calls were disabled for this run. */
+  noAi: boolean;
+  /** Whether the selected provider has a configured API key. */
+  hasProviderKey: boolean;
+  /** Whether changelog generation used a provider successfully. */
+  aiUsed: boolean;
+};
+
+/**
+ * Explain whether prompt customization affected the generated changelog.
+ * @param input Customization resolution and provider execution state.
+ * @returns Stable dry-run reason text.
+ */
+function getPromptCustomizationReason(
+  input: PromptCustomizationReasonInput,
+): string {
+  if (!input.requested) return 'not requested';
+  if (!input.resolved) return 'no usable instructions after normalization';
+  if (input.noAi)
+    return 'not applied because --no-ai skips provider generation';
+  if (!input.hasProviderKey) {
+    return 'not applied because provider API key is missing';
+  }
+  if (!input.aiUsed) {
+    return 'not applied because provider generation did not complete';
+  }
+  return 'applied to provider full generation';
+}
 
 /** Replaceable dependencies for testing the orchestration without shell/network I/O. */
 export type ChangelogRunDependencies = {
@@ -69,8 +103,8 @@ export type ChangelogRunDependencies = {
   fetchPRDetails: typeof fetchPRDetails;
   /** Fetch the open pull request associated with the current branch. */
   fetchPullRequestsForBranch: typeof fetchPullRequestsForBranch;
-  /** Resolve inline and file-based changelog customization instructions. */
-  resolveCustomInstructions: typeof resolveCustomInstructions;
+  /** Resolve changelog customization instructions with diagnostics. */
+  resolveCustomInstructionsWithDiagnostics: typeof resolveCustomInstructionsWithDiagnostics;
   /** Build commit SHA -> PR number mappings. */
   buildPrMapBySha: typeof buildPrMapBySha;
   /** Build normalized title -> PR number mappings. */
@@ -105,7 +139,7 @@ const defaultDependencies: ChangelogRunDependencies = {
   fetchReleaseBody,
   fetchPRDetails,
   fetchPullRequestsForBranch,
-  resolveCustomInstructions,
+  resolveCustomInstructionsWithDiagnostics,
   buildPrMapBySha,
   buildTitleToPr,
   getProviderRuntimeConfig,
@@ -214,11 +248,13 @@ export async function executeChangelogRun(params: {
     apiPrMap,
   });
   const titleToPr = deps.buildTitleToPr(commitList, prs, prMapBySha);
-  const customInstructions = deps.resolveCustomInstructions({
-    instructions: cli.instructions,
-    instructionsFile: cli.instructionsFile,
-    repoPath,
-  });
+  const customInstructionsResolution =
+    deps.resolveCustomInstructionsWithDiagnostics({
+      instructions: cli.instructions,
+      instructionsFile: cli.instructionsFile,
+      repoPath,
+    });
+  const customInstructions = customInstructionsResolution.instructions;
   const providerConfig = deps.getProviderRuntimeConfig(
     appConfig,
     provider.name,
@@ -295,6 +331,17 @@ export async function executeChangelogRun(params: {
       modelName: providerConfig.model,
       aiUsed: llmOutput.aiUsed || whyOutput.diagnostics.aiUsed,
       fallbackReasons: llmOutput.fallbackReasons,
+      promptCustomization: {
+        ...customInstructionsResolution.diagnostics,
+        applied: Boolean(customInstructions && llmOutput.aiUsed && !cli.noAi),
+        reason: getPromptCustomizationReason({
+          requested: customInstructionsResolution.diagnostics.requested,
+          resolved: customInstructionsResolution.diagnostics.resolved,
+          noAi: cli.noAi,
+          hasProviderKey,
+          aiUsed: llmOutput.aiUsed,
+        }),
+      },
       why: whyOutput.diagnostics,
     };
     log(
