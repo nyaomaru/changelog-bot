@@ -159,6 +159,15 @@ pnpm dlx @nyaomaru/changelog-bot \
 Custom instructions are additive: the bot still enforces its JSON schema,
 deduplication, and factuality rules.
 
+Instruction files are read as UTF-8. Inline and file instructions are combined
+with a blank line between them, then capped at 16,000 characters. Empty
+instruction files and unreadable instruction files are ignored. Dry-run
+diagnostics report whether prompt customization was requested, resolved, and
+actually applied. Customization only affects provider full generation; with
+`--no-ai`, missing provider keys, or provider generation fallback, the
+deterministic release-note/fallback output is produced without applying the
+custom instructions.
+
 ### Use a config file
 
 Create `changelog-bot.config.json` in the directory where you run the CLI:
