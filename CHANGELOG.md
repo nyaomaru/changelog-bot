@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.1] - 2026-06-27
+
+### Fixed
+
+- enable WHY extraction in release workflow by @nyaomaru in [#142](https://github.com/nyaomaru/changelog-bot/pull/142)
+- report prompt customization diagnostics by @nyaomaru in [#144](https://github.com/nyaomaru/changelog-bot/pull/144)
+
+### Changed
+
+- extract PR reference parsing by @nyaomaru in [#143](https://github.com/nyaomaru/changelog-bot/pull/143)
+
+### Docs
+
+- 0.6.0 by [bot] by @github-actions in [#141](https://github.com/nyaomaru/changelog-bot/pull/141)
+
+### Chore
+
+- Release: 0.6.1 by [bot] by @github-actions in [#145](https://github.com/nyaomaru/changelog-bot/pull/145)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.1
+
+[v0.6.1]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.1
+
 ## [v0.6.0] - 2026-06-20
 
 ### Added
