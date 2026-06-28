@@ -405,11 +405,13 @@ jobs:
       # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-### Action inputs and CLI flags
+### Public contract: CLI, Action, reusable workflow, and config
 
 Boolean action and reusable workflow inputs are strings: use `'true'` or
 `'false'`. Omitted CLI-backed inputs keep CLI/config-file defaults. Explicit
-action values are forwarded as CLI flags and override config-file values.
+action values are forwarded as CLI flags and override config-file values. During
+the v1.x series, option/input/config names, value types, defaults, and
+precedence are treated as the public compatibility contract.
 
 | Purpose                 | CLI flag                                             | Action input               | Reusable workflow input    | Config key / default                                        |
 | ----------------------- | ---------------------------------------------------- | -------------------------- | -------------------------- | ----------------------------------------------------------- |
