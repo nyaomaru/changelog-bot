@@ -82,7 +82,7 @@ pnpm dlx @nyaomaru/changelog-bot \
 Dry-runs print provider diagnostics before the generated changelog so you can
 confirm whether an LLM request was used or the run fell back. Add
 `--dry-run-json-report` to print that diagnostics block as JSON with `provider`,
-`model`, `aiUsed`, and `fallbackReasons`.
+`model`, `aiUsed`, `fallbackReasons`, and prompt customization diagnostics.
 
 ### Generate changelog for a tagged release
 
@@ -223,14 +223,24 @@ Bring your own keys and tokens as needed—`changelog-bot` only asks for what it
 
 ### Fallback behavior (when AI is unavailable)
 
-- Missing AI keys or API failure does not fail the run.
-- `--require-provider` makes missing provider keys fail the run.
-- `--fail-on-llm-error` makes provider generation/classification failures fail the run.
-- `--no-ai` skips provider generation and title classification entirely.
-- If GitHub Release Notes are provided for the tag, they are used as the source of truth.
-- Otherwise, a heuristic section is built from `git log` and merged PRs.
-- The PR body is annotated with: “Generated without LLM. Reason: …”.
-- Title classification uses the provider when available; without keys, all titles are grouped under `Chore` to remain deterministic.
+By default, changelog-bot prefers a completed changelog over a hard failure. Use
+the strict flags below when CI should fail instead of producing deterministic
+fallback output.
+
+| Condition                                | Default behavior                                                                                                                                                               | Strict behavior                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `--no-ai` is set                         | Skip provider generation, title classification, and WHY extraction. Use GitHub Release Notes or heuristic output.                                                              | Cannot be combined with `--require-provider`.                                 |
+| Selected provider key is missing         | Continue with GitHub Release Notes or heuristic output.                                                                                                                        | `--require-provider` fails before generation.                                 |
+| Provider generation fails                | Retry once with truncated inputs, then continue with heuristic output.                                                                                                         | `--fail-on-llm-error` fails the run.                                          |
+| Release Notes title classification fails | Use deterministic category fallback.                                                                                                                                           | `--fail-on-llm-error` fails the run.                                          |
+| WHY extraction provider call fails       | Continue without WHY notes and report the reason.                                                                                                                              | `--fail-on-llm-error` fails the run.                                          |
+| GitHub metadata enrichment fails         | Continue with available local git data.                                                                                                                                        | No v1 strict flag; provide GitHub auth and `fetch-depth: 0` for best results. |
+| GitHub Release Notes are available       | Use them as the source of truth. If language or custom instructions require provider generation and a provider key exists, full generation may use the release notes as input. | `--fail-on-llm-error` only affects provider/API/schema failures.              |
+| Prompt customization cannot be applied   | Continue and report `applied=false` with the reason in dry-run diagnostics.                                                                                                    | No failure mode in v1.                                                        |
+
+When AI is not used for changelog generation, the PR body is annotated with
+“Generated without LLM. Reason: …”. Title classification uses the provider when
+available; without keys, titles fall back to deterministic local categories.
 
 ## GitHub Actions integration
 
