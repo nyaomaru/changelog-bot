@@ -21,11 +21,20 @@ const TARGET_SECTION_LABEL_PATTERN = Array.from(WHY_SECTION_ALIASES.keys())
   .map(escapeRegExp)
   .join('|');
 const TARGET_SECTION_LABEL_ONLY_RE = new RegExp(
-  `^\\s*(?:[-*]\\s+)?(?:\\*\\*|__)?(?<name>${TARGET_SECTION_LABEL_PATTERN})\\s*[:：]?(?:\\*\\*|__)?\\s*$`,
+  `^\\s*(?:[-*]\\s+)?(?:\\*\\*|__)?(?<name>${TARGET_SECTION_LABEL_PATTERN})\\s*[?？]?(?:(?:\\*\\*|__)\\s*[:：]?|[:：]\\s*(?:\\*\\*|__)?)?\\s*$`,
   'iu',
 );
 const TEMPLATE_LABEL_RE =
   /^\s*(?:[-*]\s+)?(?:\*\*|__)?[\p{L}\p{N}][\p{L}\p{N}\s?/._-]{0,48}(?:\*\*|__)?\s*[:：]\s*$/u;
+const TEMPLATE_FIELD_LABELS = new Set([
+  'approach',
+  'implementation',
+  'notes',
+  'solution',
+  'test plan',
+  'testing',
+  'tests',
+]);
 
 const STRONG_CANONICAL_SECTION_NAMES = new Set<WhyCanonicalSectionName>([
   'why',
@@ -36,6 +45,10 @@ const STRONG_CANONICAL_SECTION_NAMES = new Set<WhyCanonicalSectionName>([
   'background',
   'problem',
   'rationale',
+]);
+const CONTAINER_CANONICAL_SECTION_NAMES = new Set<WhyCanonicalSectionName>([
+  'summary',
+  'description',
 ]);
 
 const RATIONALE_MARKER_RE =
@@ -111,6 +124,11 @@ function canonicalTargetSectionName(
   return WHY_SECTION_ALIASES.get(normalizeHeadingName(value));
 }
 
+function isTemplateFieldLabel(line: string): boolean {
+  if (!TEMPLATE_LABEL_RE.test(line)) return false;
+  return TEMPLATE_FIELD_LABELS.has(normalizeHeadingName(line));
+}
+
 function extractTargetLabelBlocks(body: string): ExtractedSection[] {
   const lines = body.split('\n');
   const sections: ExtractedSection[] = [];
@@ -128,17 +146,18 @@ function extractTargetLabelBlocks(body: string): ExtractedSection[] {
       contentIndex += 1
     ) {
       const contentLine = lines[contentIndex] ?? '';
-      const hasStartedContent = textLines.some((textLine) => textLine.trim());
       if (/^\s*#{1,6}\s+/.test(contentLine)) break;
-      if (hasStartedContent && TARGET_SECTION_LABEL_ONLY_RE.test(contentLine)) {
+      if (TARGET_SECTION_LABEL_ONLY_RE.test(contentLine)) {
         break;
       }
-      if (hasStartedContent && TEMPLATE_LABEL_RE.test(contentLine)) break;
+      if (isTemplateFieldLabel(contentLine)) break;
       textLines.push(contentLine);
     }
 
     const text = textLines.join('\n').trim();
-    if (text) sections.push({ name, text, source: 'label-block' });
+    if (hasUsableCandidateText(text)) {
+      sections.push({ name, text, source: 'label-block' });
+    }
   }
 
   return sections;
@@ -161,7 +180,21 @@ function extractTargetSections(body: string): ExtractedSections {
         ? body.length
         : headingMatches[matchIndex + 1].index;
     const text = body.slice(startIndex, endIndex).trim();
-    if (text) sections.push({ name, text, source: 'heading' });
+    if (!text) continue;
+
+    const nestedLabelSections = extractTargetLabelBlocks(text).filter(
+      (section) => hasUsableCandidateText(section.text),
+    );
+    if (
+      nestedLabelSections.length > 0 &&
+      CONTAINER_CANONICAL_SECTION_NAMES.has(name)
+    ) {
+      sections.push(...nestedLabelSections);
+      continue;
+    }
+
+    sections.push({ name, text, source: 'heading' });
+    sections.push(...nestedLabelSections);
   }
 
   if (sections.length > 0) {
@@ -180,7 +213,9 @@ function extractTargetSections(body: string): ExtractedSections {
   for (const match of body.matchAll(labelPattern)) {
     const name = canonicalTargetSectionName(match.groups?.name ?? '');
     const text = (match.groups?.text ?? '').trim();
-    if (name && text) sections.push({ name, text, source: 'inline-label' });
+    if (name && hasUsableCandidateText(text)) {
+      sections.push({ name, text, source: 'inline-label' });
+    }
   }
 
   return { sections, hasTargetSection: sections.length > 0 };
@@ -204,6 +239,16 @@ function isPlaceholderLine(line: string): boolean {
   return PLACEHOLDER_LINE_RE.test(normalizedLine);
 }
 
+function hasUsableCandidateText(text: string): boolean {
+  for (const rawLine of text.split('\n')) {
+    const line = cleanCandidateLine(rawLine);
+    if (!line) continue;
+    if (/^https?:\/\//i.test(line) || isPlaceholderLine(line)) continue;
+    if (line.replace(/\s+/g, ' ').trim().length >= 16) return true;
+  }
+  return false;
+}
+
 function toCandidateSnippets(
   sections: ExtractedSection[],
   body: string,
@@ -218,7 +263,7 @@ function toCandidateSnippets(
     for (const rawLine of text.split('\n')) {
       const line = cleanCandidateLine(rawLine);
       if (!line) continue;
-      if (cleanedLines.length > 0 && TEMPLATE_LABEL_RE.test(line)) break;
+      if (cleanedLines.length > 0 && isTemplateFieldLabel(line)) break;
       if (/^https?:\/\//i.test(line) || isPlaceholderLine(line)) continue;
       cleanedLines.push(line);
     }

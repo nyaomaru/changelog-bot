@@ -71,6 +71,159 @@ describe('why-preprocess', () => {
     );
   });
 
+  test('builds a trusted candidate from a bold why label with the colon outside', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '**Why**:',
+          '',
+          'Because draft releases can be published later, the changelog workflow must run when publication happens.',
+          '',
+          'Implementation:',
+          'Listen to the release published event.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
+    expect(result.item?.candidates.join('\n')).toContain(
+      'Because draft releases can be published later',
+    );
+    expect(result.item?.candidates.join('\n')).not.toContain(
+      'Listen to the release published event',
+    );
+  });
+
+  test('keeps colon-ended rationale intro lines under why labels', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '**Why:**',
+          '',
+          'Because of the following:',
+          '- draft releases can be published later',
+          '- release notes need to be generated at publication time',
+          '',
+          'Implementation:',
+          'Listen to release published events.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    const candidates = result.item?.candidates.join('\n') ?? '';
+
+    expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
+    expect(candidates).toContain('Because of the following:');
+    expect(candidates).toContain('draft releases can be published later');
+    expect(candidates).not.toContain('Listen to release published events');
+  });
+
+  test.each(['Why?', '**Why?**', 'Why is this change needed?'])(
+    'builds a trusted candidate from question-mark why label %s',
+    (label) => {
+      const result = preprocessWhyPrBody(
+        target,
+        details({
+          body: [
+            label,
+            '',
+            'Because draft releases can be published later, changelog generation must run at publication time.',
+            '',
+            'Implementation:',
+            'Listen to release published events.',
+          ].join('\n'),
+        }),
+        { maxCharsPerPr: 800 },
+      );
+
+      const candidates = result.item?.candidates.join('\n') ?? '';
+
+      expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
+      expect(candidates).toContain(
+        'Because draft releases can be published later',
+      );
+      expect(candidates).not.toContain('Listen to release published events');
+    },
+  );
+
+  test('keeps a nested why label after heading intro text', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '## Summary',
+          '',
+          'This updates the release workflow event handling.',
+          '',
+          '**Why:**',
+          '',
+          'Because draft releases can be published later, the changelog workflow must still run at publication time.',
+          '',
+          'Implementation:',
+          'Listen to release published events.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    const candidates = result.item?.candidates.join('\n') ?? '';
+
+    expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
+    expect(candidates).toContain(
+      'Because draft releases can be published later',
+    );
+    expect(candidates).not.toContain('release workflow event handling');
+    expect(candidates).not.toContain('Listen to release published events');
+  });
+
+  test('preserves parent why text when nested template labels are placeholders', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '## Why',
+          '',
+          'Because draft releases can be published later, changelog generation must run on publication.',
+          '',
+          'Problem:',
+          'N/A',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    const candidates = result.item?.candidates.join('\n') ?? '';
+
+    expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
+    expect(candidates).toContain(
+      'Because draft releases can be published later',
+    );
+    expect(candidates).not.toContain('N/A');
+  });
+
+  test('does not score placeholder why labels as structural trust', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '**Why:**',
+          'N/A',
+          '',
+          '**Summary:**',
+          'Fix release workflow so changelog generation runs reliably for publication.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item?.trustScore ?? 0).toBeLessThan(7);
+    expect(result.item?.candidates.join('\n') ?? '').not.toContain('N/A');
+  });
+
   test.each([
     ['## Why?', 'Because draft releases need the publish event.'],
     [
@@ -124,6 +277,28 @@ describe('why-preprocess', () => {
           '',
           '## Implementation',
           'None',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item).toBeUndefined();
+    expect(result.lowTrust).toBe(true);
+    expect(result.skippedReason).toContain('no usable WHY candidate');
+  });
+
+  test('does not use the next template field when a why label is empty', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '**Why:**',
+          '',
+          'Implementation:',
+          'Because this fixes the release event listener.',
+          '',
+          'Testing:',
+          'Verified manually.',
         ].join('\n'),
       }),
       { maxCharsPerPr: 800 },
