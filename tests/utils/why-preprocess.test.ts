@@ -46,8 +46,37 @@ describe('why-preprocess', () => {
     );
   });
 
+  test('builds a trusted candidate from a PR template why label block', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '**Why:**',
+          '',
+          'Because draft releases can be published later, the changelog workflow must run when publication happens.',
+          '',
+          'Implementation:',
+          'Listen to the release published event.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
+    expect(result.item?.candidates.join('\n')).toContain(
+      'Because draft releases can be published later',
+    );
+    expect(result.item?.candidates.join('\n')).not.toContain(
+      'Listen to the release published event',
+    );
+  });
+
   test.each([
     ['## Why?', 'Because draft releases need the publish event.'],
+    [
+      '## Why is this change needed?',
+      'Because release operators publish drafts later and need changelog coverage at that point.',
+    ],
     [
       '## ¿Por qué?',
       'Porque las versiones draft necesitan el evento de publicación.',
@@ -61,6 +90,48 @@ describe('why-preprocess', () => {
 
     expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
     expect(result.item?.candidates).toContain(rationale);
+  });
+
+  test('builds a trusted candidate from a collapsible summary section', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '<details>',
+          '<summary>Why</summary>',
+          '',
+          'Because release maintainers need the changelog update to happen when a draft is published.',
+          '</details>',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
+    expect(result.item?.candidates.join('\n')).toContain(
+      'Because release maintainers need the changelog update',
+    );
+  });
+
+  test('skips placeholder-only why sections before provider input', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '## Why',
+          '',
+          '_No response_',
+          '',
+          '## Implementation',
+          'None',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item).toBeUndefined();
+    expect(result.lowTrust).toBe(true);
+    expect(result.skippedReason).toContain('no usable WHY candidate');
   });
 
   test('skips large bodies without target sections before provider input', () => {
