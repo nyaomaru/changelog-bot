@@ -1,9 +1,16 @@
-// @ts-nocheck
 import { describe, expect, jest, test } from '@jest/globals';
-import { executeChangelogRun } from '@/lib/changelog-run.js';
+import {
+  executeChangelogRun,
+  type ChangelogRunDependencies,
+} from '@/lib/changelog-run.js';
 import { PROVIDER_OPENAI } from '@/constants/provider.js';
+import type { CliOptions } from '@/schema/cli.js';
+import type { AppConfig } from '@/types/config.js';
+import type { LLMOutput } from '@/types/llm.js';
+import type { Provider } from '@/types/provider.js';
+import type { CustomInstructionsResolution } from '@/lib/customization.js';
 
-const cli = {
+const cli: CliOptions = {
   repoPath: '.',
   changelogPath: 'CHANGELOG.md',
   baseBranch: 'main',
@@ -26,7 +33,7 @@ const cli = {
   whyLabel: 'Why',
 };
 
-const appConfig = {
+const appConfig: AppConfig = {
   github: {
     token: undefined,
     apiBase: 'https://api.github.com',
@@ -35,10 +42,11 @@ const appConfig = {
   providers: {
     openai: { apiKey: undefined, model: 'mock-openai' },
     anthropic: { apiKey: undefined, model: 'mock-anthropic' },
+    gemini: { apiKey: undefined, model: 'mock-gemini' },
   },
 };
 
-const provider = {
+const provider: Provider = {
   name: PROVIDER_OPENAI,
   modelName: 'mock-openai',
   supports: {
@@ -47,12 +55,16 @@ const provider = {
     reasoning: false,
     maxOutputTokens: 1000,
   },
-  generate: jest.fn(),
-  classifyTitles: jest.fn(),
-  extractWhyNotes: jest.fn(),
+  generate: async () => ({
+    new_section_markdown: 'generated section',
+    pr_title: 'docs(changelog): test',
+    pr_body: 'body',
+  }),
+  classifyTitles: async () => ({}),
+  extractWhyNotes: async () => ({ items: [] }),
 };
 
-const unresolvedCustomization = {
+const unresolvedCustomization: CustomInstructionsResolution = {
   instructions: undefined,
   diagnostics: {
     requested: false,
@@ -66,7 +78,7 @@ const unresolvedCustomization = {
   },
 };
 
-const resolvedCustomization = {
+const resolvedCustomization: CustomInstructionsResolution = {
   instructions: 'combined instructions',
   diagnostics: {
     requested: true,
@@ -81,16 +93,29 @@ const resolvedCustomization = {
   },
 };
 
+function createLlmOutput(overrides: Partial<LLMOutput> = {}): LLMOutput {
+  return {
+    new_section_markdown: 'generated section',
+    insert_after_anchor: '## [Unreleased]',
+    pr_title: 'docs(changelog): 1.2.3',
+    pr_body: 'body',
+    labels: ['changelog'],
+    ...overrides,
+  };
+}
+
 describe('executeChangelogRun', () => {
   test('uses current branch PR metadata for HEAD releases', async () => {
-    const log = jest.fn();
+    const log = jest.fn<(message: string) => void>();
     const branchPullRequest = {
       number: 138,
       title: 'feat: add opt-in WHY extraction',
       author: 'nyaomaru',
       url: 'https://github.com/nyaomaru/changelog-bot/pull/138',
     };
-    const buildChangelogLlmOutput = jest.fn(async () => ({
+    const buildChangelogLlmOutput = jest.fn<
+      ChangelogRunDependencies['buildChangelogLlmOutput']
+    >(async () => ({
       llm: {
         new_section_markdown: 'generated section',
         pr_title: 'docs(changelog): test',
@@ -99,7 +124,7 @@ describe('executeChangelogRun', () => {
       aiUsed: false,
       fallbackReasons: [],
     }));
-    const deps = {
+    const deps: Partial<ChangelogRunDependencies> = {
       providerFactory: jest.fn(() => provider),
       getRepoFullName: jest.fn(() => 'octo/repo'),
       resolveReleasePlan: jest.fn(() => ({
@@ -125,30 +150,34 @@ describe('executeChangelogRun', () => {
       fetchPullRequestsForBranch: jest.fn(async () => [branchPullRequest]),
       mapCommitsToPrs: jest.fn(async () => ({})),
       fetchReleaseBody: jest.fn(async () => ''),
-      resolveCustomInstructionsWithDiagnostics: jest.fn(
-        () => unresolvedCustomization,
-      ),
+      resolveCustomInstructionsWithDiagnostics: jest.fn<
+        ChangelogRunDependencies['resolveCustomInstructionsWithDiagnostics']
+      >(() => unresolvedCustomization),
       buildPrMapBySha: jest.fn(() => ({ abcdef1234567890: [138] })),
       buildTitleToPr: jest.fn(() => ({ 'add WHY extraction': 138 })),
       getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
       buildChangelogLlmOutput,
-      finalizeChangelogUpdate: jest.fn(({ llm }) => ({
-        llm,
+      finalizeChangelogUpdate: jest.fn<
+        ChangelogRunDependencies['finalizeChangelogUpdate']
+      >((params) => ({
+        llm: params.llm,
         updated: 'updated changelog',
       })),
-      runWhyExtraction: jest.fn(async ({ llm }) => ({
-        llm,
-        diagnostics: {
-          enabled: true,
-          aiUsed: false,
-          targetsFound: 0,
-          prBodiesFetched: 0,
-          skippedBeforeFetch: 0,
-          skippedLowTrust: 0,
-          notesRendered: 0,
-          fallbackReasons: [],
-        },
-      })),
+      runWhyExtraction: jest.fn<ChangelogRunDependencies['runWhyExtraction']>(
+        async (params) => ({
+          llm: params.llm,
+          diagnostics: {
+            enabled: true,
+            aiUsed: false,
+            targetsFound: 0,
+            prBodiesFetched: 0,
+            skippedBeforeFetch: 0,
+            skippedLowTrust: 0,
+            notesRendered: 0,
+            fallbackReasons: [],
+          },
+        }),
+      ),
     };
 
     await executeChangelogRun({
@@ -169,8 +198,8 @@ describe('executeChangelogRun', () => {
   });
 
   test('dry-run orchestrates changelog generation without writing or creating a PR', async () => {
-    const log = jest.fn();
-    const deps = {
+    const log = jest.fn<(message: string) => void>();
+    const deps: Partial<ChangelogRunDependencies> = {
       providerFactory: jest.fn(() => provider),
       getRepoFullName: jest.fn(() => 'octo/repo'),
       resolveReleasePlan: jest.fn(() => ({
@@ -193,37 +222,31 @@ describe('executeChangelogRun', () => {
         hasProviderKey: false,
       })),
       mapCommitsToPrs: jest.fn(async () => ({})),
-      fetchReleaseBody: jest.fn(),
-      resolveCustomInstructionsWithDiagnostics: jest.fn(
-        () => resolvedCustomization,
+      fetchReleaseBody: jest.fn<ChangelogRunDependencies['fetchReleaseBody']>(
+        async () => '',
       ),
+      resolveCustomInstructionsWithDiagnostics: jest.fn<
+        ChangelogRunDependencies['resolveCustomInstructionsWithDiagnostics']
+      >(() => resolvedCustomization),
       buildPrMapBySha: jest.fn(() => ({ abcdef1234567890: [123] })),
       buildTitleToPr: jest.fn(() => ({ 'add CLI dry run': 123 })),
       getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
-      buildChangelogLlmOutput: jest.fn(async () => ({
-        llm: {
-          new_section_markdown: 'generated section',
-          insert_after_anchor: '## [Unreleased]',
-          pr_title: 'docs(changelog): 1.2.3',
-          pr_body: 'body',
-          labels: ['changelog'],
-        },
+      buildChangelogLlmOutput: jest.fn<
+        ChangelogRunDependencies['buildChangelogLlmOutput']
+      >(async () => ({
+        llm: createLlmOutput(),
         aiUsed: false,
         fallbackReasons: [],
       })),
-      finalizeChangelogUpdate: jest.fn(() => ({
-        llm: {
-          new_section_markdown: 'generated section',
-          insert_after_anchor: '## [Unreleased]',
-          pr_title: 'docs(changelog): 1.2.3',
-          pr_body: 'body',
-          labels: ['changelog'],
-        },
+      finalizeChangelogUpdate: jest.fn<
+        ChangelogRunDependencies['finalizeChangelogUpdate']
+      >(() => ({
+        llm: createLlmOutput(),
         updated: 'updated changelog',
       })),
       writeChangelog: jest.fn(),
       ensureGithubTokenRequired: jest.fn(),
-      createPR: jest.fn(),
+      createPR: jest.fn<ChangelogRunDependencies['createPR']>(async () => 1),
     };
 
     await executeChangelogRun({ cli, appConfig, log, deps });
@@ -269,8 +292,8 @@ describe('executeChangelogRun', () => {
   });
 
   test('dry-run can print provider diagnostics as JSON report', async () => {
-    const log = jest.fn();
-    const deps = {
+    const log = jest.fn<(message: string) => void>();
+    const deps: Partial<ChangelogRunDependencies> = {
       providerFactory: jest.fn(() => provider),
       getRepoFullName: jest.fn(() => 'octo/repo'),
       resolveReleasePlan: jest.fn(() => ({
@@ -291,37 +314,31 @@ describe('executeChangelogRun', () => {
         hasProviderKey: false,
       })),
       mapCommitsToPrs: jest.fn(async () => ({})),
-      fetchReleaseBody: jest.fn(),
-      resolveCustomInstructionsWithDiagnostics: jest.fn(
-        () => unresolvedCustomization,
+      fetchReleaseBody: jest.fn<ChangelogRunDependencies['fetchReleaseBody']>(
+        async () => '',
       ),
+      resolveCustomInstructionsWithDiagnostics: jest.fn<
+        ChangelogRunDependencies['resolveCustomInstructionsWithDiagnostics']
+      >(() => unresolvedCustomization),
       buildPrMapBySha: jest.fn(() => ({})),
       buildTitleToPr: jest.fn(() => ({})),
       getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
-      buildChangelogLlmOutput: jest.fn(async () => ({
-        llm: {
-          new_section_markdown: 'generated section',
-          insert_after_anchor: '## [Unreleased]',
-          pr_title: 'docs(changelog): 1.2.3',
-          pr_body: 'body',
-          labels: ['changelog'],
-        },
+      buildChangelogLlmOutput: jest.fn<
+        ChangelogRunDependencies['buildChangelogLlmOutput']
+      >(async () => ({
+        llm: createLlmOutput(),
         aiUsed: false,
         fallbackReasons: ['AI disabled by --no-ai'],
       })),
-      finalizeChangelogUpdate: jest.fn(() => ({
-        llm: {
-          new_section_markdown: 'generated section',
-          insert_after_anchor: '## [Unreleased]',
-          pr_title: 'docs(changelog): 1.2.3',
-          pr_body: 'body',
-          labels: ['changelog'],
-        },
+      finalizeChangelogUpdate: jest.fn<
+        ChangelogRunDependencies['finalizeChangelogUpdate']
+      >(() => ({
+        llm: createLlmOutput(),
         updated: 'updated changelog',
       })),
       writeChangelog: jest.fn(),
       ensureGithubTokenRequired: jest.fn(),
-      createPR: jest.fn(),
+      createPR: jest.fn<ChangelogRunDependencies['createPR']>(async () => 1),
     };
 
     await executeChangelogRun({

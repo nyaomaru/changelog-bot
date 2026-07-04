@@ -5,6 +5,8 @@ import { runWhyExtraction } from '@/lib/why-extraction.js';
 import type { CliOptions } from '@/schema/cli.js';
 import type { Provider } from '@/types/provider.js';
 
+type FetchPRDetails = typeof import('@/lib/github.js').fetchPRDetails;
+
 const cli: CliOptions = {
   repoPath: '.',
   changelogPath: 'CHANGELOG.md',
@@ -34,14 +36,18 @@ function provider(): Provider {
       reasoning: false,
       maxOutputTokens: 1000,
     },
-    generate: jest.fn(),
-    classifyTitles: jest.fn(),
-    extractWhyNotes: jest.fn(async () => ({
+    generate: jest.fn<Provider['generate']>(async () => ({
+      new_section_markdown: 'generated section',
+      pr_title: 'docs(changelog): 1.2.3',
+      pr_body: 'body',
+    })),
+    classifyTitles: jest.fn<Provider['classifyTitles']>(async () => ({})),
+    extractWhyNotes: jest.fn<Provider['extractWhyNotes']>(async () => ({
       items: [
         {
           prNumber: 12,
           why: 'Draft releases publish later and need the same changelog path.',
-          confidence: 'high',
+          confidence: 'high' as const,
         },
       ],
     })),
@@ -51,7 +57,7 @@ function provider(): Provider {
 describe('runWhyExtraction', () => {
   test('fetches trusted PR bodies and renders accepted WHY notes', async () => {
     const selectedProvider = provider();
-    const fetchPRDetails = jest.fn(async () => ({
+    const fetchPRDetails = jest.fn<FetchPRDetails>(async () => ({
       number: 12,
       title: 'Restore draft release handling',
       body: [
@@ -127,7 +133,7 @@ describe('runWhyExtraction', () => {
       repo: 'repo',
       token: 'token',
       githubApiBase: 'https://api.github.com',
-      fetchPRDetails: jest.fn(async () => ({
+      fetchPRDetails: jest.fn<FetchPRDetails>(async () => ({
         number: 12,
         title: 'Restore draft release handling',
         body: '## Why\nBecause draft releases can be published later and need coverage.',
@@ -173,7 +179,7 @@ describe('runWhyExtraction', () => {
       repo: 'repo',
       token: 'token',
       githubApiBase: 'https://api.github.com',
-      fetchPRDetails: jest.fn(async () => ({
+      fetchPRDetails: jest.fn<FetchPRDetails>(async () => ({
         number: 12,
         title: 'Restore draft release handling',
         body: 'ドラフトリリースを後から公開する運用でも、公開時に変更履歴 PR を作れるようにするため。利用者がリリース後に変更内容を確認できるようにする。',
@@ -208,7 +214,7 @@ describe('runWhyExtraction', () => {
       repo: 'repo',
       token: 'token',
       githubApiBase: 'https://api.github.com',
-      fetchPRDetails: jest.fn(async () => ({
+      fetchPRDetails: jest.fn<FetchPRDetails>(async () => ({
         number: 12,
         title: 'Restore draft release handling',
         body: '## Why\nBecause draft releases can be published later and need coverage.',
