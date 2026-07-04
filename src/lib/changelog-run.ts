@@ -156,14 +156,23 @@ const defaultDependencies: ChangelogRunDependencies = {
 };
 
 type ResolvePullRequestsByShaParams = {
+  /** Replaceable workflow dependencies for git/GitHub lookups. */
   deps: ChangelogRunDependencies;
+  /** Repository owner or organization. */
   owner: string;
+  /** Repository name. */
   repo: string;
+  /** Release ref selected for this run. */
   releaseRef: string;
+  /** Local repository path used for git commands. */
   repoPath: string;
+  /** GitHub API token, when available. */
   token?: string;
+  /** GitHub or GHES API base URL. */
   githubApiBase: string;
+  /** Commits included in the release range. */
   commitList: CommitLite[];
+  /** Commit SHAs included in the release range. */
   commitShas: string[];
 };
 
@@ -218,11 +227,17 @@ async function resolvePullRequestsBySha({
 }
 
 async function resolveReleaseBody(params: {
+  /** Parsed CLI options. */
   cli: CliOptions;
+  /** Replaceable workflow dependencies for GitHub lookups. */
   deps: ChangelogRunDependencies;
+  /** Repository owner or organization. */
   owner: string;
+  /** Repository name. */
   repo: string;
+  /** GitHub API token, when available. */
   token?: string;
+  /** GitHub or GHES API base URL. */
   githubApiBase: string;
 }): Promise<string> {
   if (params.cli.releaseBody) return params.cli.releaseBody;
@@ -238,18 +253,29 @@ async function resolveReleaseBody(params: {
 }
 
 function writeDryRunOutput(params: {
+  /** Parsed CLI options. */
   cli: CliOptions;
+  /** Logger used for user-visible output. */
   log: ChangelogRunLogger;
+  /** Selected provider name. */
   providerName: ProviderName;
+  /** Selected model name. */
   modelName: string;
+  /** Whether changelog generation used a provider successfully. */
   changelogAiUsed: boolean;
+  /** Changelog-generation fallback reasons. */
   fallbackReasons: string[];
+  /** Resolved prompt customization and diagnostics. */
   customInstructionsResolution: ReturnType<
     typeof resolveCustomInstructionsWithDiagnostics
   >;
+  /** Usable prompt customization text, if any. */
   customInstructions?: string;
+  /** Whether the selected provider has a configured API key. */
   hasProviderKey: boolean;
+  /** WHY extraction diagnostics. */
   whyDiagnostics: WhyDiagnostics;
+  /** Changelog content produced by the run. */
   updated: string;
 }): void {
   const {
