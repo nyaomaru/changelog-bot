@@ -37,6 +37,10 @@ import { buildPrMapBySha, buildTitleToPr } from '@/utils/pr-mapping.js';
 import type { AppConfig } from '@/types/config.js';
 import type { CliOptions } from '@/schema/cli.js';
 import { runWhyExtraction } from '@/lib/why-extraction.js';
+import type { CommitLite } from '@/types/commit.js';
+import type { PullRef } from '@/types/github.js';
+import type { ProviderName } from '@/types/llm.js';
+import type { WhyDiagnostics } from '@/types/why.js';
 
 /** Logger used by the CLI runner for user-visible output. */
 export type ChangelogRunLogger = (message: string) => void;
@@ -151,6 +155,171 @@ const defaultDependencies: ChangelogRunDependencies = {
   createPR,
 };
 
+type ResolvePullRequestsByShaParams = {
+  /** Replaceable workflow dependencies for git/GitHub lookups. */
+  deps: ChangelogRunDependencies;
+  /** Repository owner or organization. */
+  owner: string;
+  /** Repository name. */
+  repo: string;
+  /** Release ref selected for this run. */
+  releaseRef: string;
+  /** Local repository path used for git commands. */
+  repoPath: string;
+  /** GitHub API token, when available. */
+  token?: string;
+  /** GitHub or GHES API base URL. */
+  githubApiBase: string;
+  /** Commits included in the release range. */
+  commitList: CommitLite[];
+  /** Commit SHAs included in the release range. */
+  commitShas: string[];
+};
+
+async function resolvePullRequestsBySha({
+  deps,
+  owner,
+  repo,
+  releaseRef,
+  repoPath,
+  token,
+  githubApiBase,
+  commitList,
+  commitShas,
+}: ResolvePullRequestsByShaParams): Promise<Record<string, PullRef[]>> {
+  const branchName =
+    releaseRef === 'HEAD' ? deps.currentBranch(repoPath) : null;
+  const branchPullRequests = branchName
+    ? await deps.fetchPullRequestsForBranch(
+        owner,
+        repo,
+        branchName,
+        token,
+        githubApiBase,
+      )
+    : [];
+  const remotePrNumber =
+    branchName && branchPullRequests.length === 0
+      ? deps.tryFindPullRequestNumberForBranch(branchName, repoPath)
+      : null;
+  const oldestCommit = commitList[commitList.length - 1];
+  const remotePullRequest =
+    remotePrNumber && oldestCommit
+      ? {
+          number: remotePrNumber,
+          title: oldestCommit.subject,
+          url: `https://github.com/${owner}/${repo}/pull/${remotePrNumber}`,
+        }
+      : null;
+  const authoritativePullRequests = branchPullRequests.length
+    ? branchPullRequests
+    : remotePullRequest
+      ? [remotePullRequest]
+      : [];
+
+  if (authoritativePullRequests.length) {
+    return Object.fromEntries(
+      commitShas.map((commitSha) => [commitSha, authoritativePullRequests]),
+    );
+  }
+
+  return deps.mapCommitsToPrs(owner, repo, commitShas, token, githubApiBase);
+}
+
+async function resolveReleaseBody(params: {
+  /** Parsed CLI options. */
+  cli: CliOptions;
+  /** Replaceable workflow dependencies for GitHub lookups. */
+  deps: ChangelogRunDependencies;
+  /** Repository owner or organization. */
+  owner: string;
+  /** Repository name. */
+  repo: string;
+  /** GitHub API token, when available. */
+  token?: string;
+  /** GitHub or GHES API base URL. */
+  githubApiBase: string;
+}): Promise<string> {
+  if (params.cli.releaseBody) return params.cli.releaseBody;
+  if (!params.cli.releaseTag) return '';
+
+  return params.deps.fetchReleaseBody(
+    params.owner,
+    params.repo,
+    params.cli.releaseTag,
+    params.token,
+    params.githubApiBase,
+  );
+}
+
+function writeDryRunOutput(params: {
+  /** Parsed CLI options. */
+  cli: CliOptions;
+  /** Logger used for user-visible output. */
+  log: ChangelogRunLogger;
+  /** Selected provider name. */
+  providerName: ProviderName;
+  /** Selected model name. */
+  modelName: string;
+  /** Whether changelog generation used a provider successfully. */
+  changelogAiUsed: boolean;
+  /** Changelog-generation fallback reasons. */
+  fallbackReasons: string[];
+  /** Resolved prompt customization and diagnostics. */
+  customInstructionsResolution: ReturnType<
+    typeof resolveCustomInstructionsWithDiagnostics
+  >;
+  /** Usable prompt customization text, if any. */
+  customInstructions?: string;
+  /** Whether the selected provider has a configured API key. */
+  hasProviderKey: boolean;
+  /** WHY extraction diagnostics. */
+  whyDiagnostics: WhyDiagnostics;
+  /** Changelog content produced by the run. */
+  updated: string;
+}): void {
+  const {
+    cli,
+    log,
+    providerName,
+    modelName,
+    changelogAiUsed,
+    fallbackReasons,
+    customInstructionsResolution,
+    customInstructions,
+    hasProviderKey,
+    whyDiagnostics,
+    updated,
+  } = params;
+
+  log('==== DRY RUN (no PR) ====');
+  const diagnosticsInput = {
+    providerName,
+    modelName,
+    aiUsed: changelogAiUsed || whyDiagnostics.aiUsed,
+    fallbackReasons,
+    promptCustomization: {
+      ...customInstructionsResolution.diagnostics,
+      applied: Boolean(customInstructions && changelogAiUsed && !cli.noAi),
+      reason: getPromptCustomizationReason({
+        requested: customInstructionsResolution.diagnostics.requested,
+        resolved: customInstructionsResolution.diagnostics.resolved,
+        noAi: cli.noAi,
+        hasProviderKey,
+        aiUsed: changelogAiUsed,
+      }),
+    },
+    why: whyDiagnostics,
+  };
+  log(
+    cli.dryRunJsonReport
+      ? formatDryRunJsonReport(diagnosticsInput)
+      : formatDryRunDiagnostics(diagnosticsInput),
+  );
+  log('');
+  log(updated);
+}
+
 /**
  * Execute the changelog generation workflow for already-parsed CLI options.
  * WHY: Keeping orchestration here makes `runCli` small and gives tests a seam
@@ -189,57 +358,25 @@ export async function executeChangelogRun(params: {
     repo,
     appConfig,
   );
-  const branchName =
-    releaseRef === 'HEAD' ? deps.currentBranch(repoPath) : null;
-  const branchPullRequests = branchName
-    ? await deps.fetchPullRequestsForBranch(
-        owner,
-        repo,
-        branchName,
-        token,
-        appConfig.github.apiBase,
-      )
-    : [];
-  const remotePrNumber =
-    branchName && branchPullRequests.length === 0
-      ? deps.tryFindPullRequestNumberForBranch(branchName, repoPath)
-      : null;
-  const oldestCommit = commitList[commitList.length - 1];
-  const remotePullRequest =
-    remotePrNumber && oldestCommit
-      ? {
-          number: remotePrNumber,
-          title: oldestCommit.subject,
-          url: `https://github.com/${owner}/${repo}/pull/${remotePrNumber}`,
-        }
-      : null;
-  const authoritativePullRequests = branchPullRequests.length
-    ? branchPullRequests
-    : remotePullRequest
-      ? [remotePullRequest]
-      : [];
-  const apiPrMap = authoritativePullRequests.length
-    ? Object.fromEntries(
-        commitShas.map((commitSha) => [commitSha, authoritativePullRequests]),
-      )
-    : await deps.mapCommitsToPrs(
-        owner,
-        repo,
-        commitShas,
-        token,
-        appConfig.github.apiBase,
-      );
-
-  let releaseBody = cli.releaseBody || '';
-  if (!releaseBody && cli.releaseTag) {
-    releaseBody = await deps.fetchReleaseBody(
-      owner,
-      repo,
-      cli.releaseTag,
-      token,
-      appConfig.github.apiBase,
-    );
-  }
+  const apiPrMap = await resolvePullRequestsBySha({
+    deps,
+    owner,
+    repo,
+    releaseRef,
+    repoPath,
+    token,
+    githubApiBase: appConfig.github.apiBase,
+    commitList,
+    commitShas,
+  });
+  const releaseBody = await resolveReleaseBody({
+    cli,
+    deps,
+    owner,
+    repo,
+    token,
+    githubApiBase: appConfig.github.apiBase,
+  });
 
   const prMapBySha = deps.buildPrMapBySha({
     commitList,
@@ -325,32 +462,19 @@ export async function executeChangelogRun(params: {
   }
 
   if (cli.dryRun) {
-    log('==== DRY RUN (no PR) ====');
-    const diagnosticsInput = {
+    writeDryRunOutput({
+      cli,
+      log,
       providerName: provider.name,
       modelName: providerConfig.model,
-      aiUsed: llmOutput.aiUsed || whyOutput.diagnostics.aiUsed,
+      changelogAiUsed: llmOutput.aiUsed,
       fallbackReasons: llmOutput.fallbackReasons,
-      promptCustomization: {
-        ...customInstructionsResolution.diagnostics,
-        applied: Boolean(customInstructions && llmOutput.aiUsed && !cli.noAi),
-        reason: getPromptCustomizationReason({
-          requested: customInstructionsResolution.diagnostics.requested,
-          resolved: customInstructionsResolution.diagnostics.resolved,
-          noAi: cli.noAi,
-          hasProviderKey,
-          aiUsed: llmOutput.aiUsed,
-        }),
-      },
-      why: whyOutput.diagnostics,
-    };
-    log(
-      cli.dryRunJsonReport
-        ? formatDryRunJsonReport(diagnosticsInput)
-        : formatDryRunDiagnostics(diagnosticsInput),
-    );
-    log('');
-    log(updated);
+      customInstructionsResolution,
+      customInstructions,
+      hasProviderKey,
+      whyDiagnostics: whyOutput.diagnostics,
+      updated,
+    });
     return;
   }
 

@@ -14,6 +14,7 @@ import type {
   WhyTrustBucket,
 } from '@/types/why.js';
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
+import { escapeRegExp } from '@/utils/escape.js';
 
 const TARGET_SECTION_LABEL_PATTERN = Array.from(WHY_SECTION_ALIASES.keys())
   .sort((left, right) => right.length - left.length)
@@ -89,10 +90,6 @@ function canonicalTargetSectionName(
   value: string,
 ): WhyCanonicalSectionName | undefined {
   return WHY_SECTION_ALIASES.get(normalizeHeadingName(value));
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function extractTargetSections(body: string): ExtractedSections {
