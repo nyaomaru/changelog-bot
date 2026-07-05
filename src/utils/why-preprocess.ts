@@ -20,6 +20,21 @@ const TARGET_SECTION_LABEL_PATTERN = Array.from(WHY_SECTION_ALIASES.keys())
   .sort((left, right) => right.length - left.length)
   .map(escapeRegExp)
   .join('|');
+const TARGET_SECTION_LABEL_ONLY_RE = new RegExp(
+  `^\\s*(?:[-*]\\s+)?(?:\\*\\*|__)?(?<name>${TARGET_SECTION_LABEL_PATTERN})\\s*[?？]?(?:(?:\\*\\*|__)\\s*[:：]?|[:：]\\s*(?:\\*\\*|__)?)?\\s*$`,
+  'iu',
+);
+const TEMPLATE_LABEL_RE =
+  /^\s*(?:[-*]\s+)?(?:\*\*|__)?[\p{L}\p{N}][\p{L}\p{N}\s?/._-]{0,48}(?:(?:\*\*|__)?\s*[:：]|[:：]\s*(?:\*\*|__)?)\s*$/u;
+const TEMPLATE_FIELD_LABELS = new Set([
+  'approach',
+  'implementation',
+  'notes',
+  'solution',
+  'test plan',
+  'testing',
+  'tests',
+]);
 
 const STRONG_CANONICAL_SECTION_NAMES = new Set<WhyCanonicalSectionName>([
   'why',
@@ -31,6 +46,10 @@ const STRONG_CANONICAL_SECTION_NAMES = new Set<WhyCanonicalSectionName>([
   'problem',
   'rationale',
 ]);
+const CONTAINER_CANONICAL_SECTION_NAMES = new Set<WhyCanonicalSectionName>([
+  'summary',
+  'description',
+]);
 
 const RATIONALE_MARKER_RE =
   /\b(because|so that|in order to|reason|rationale|motivation|to avoid|to prevent|context|problem)\b/i;
@@ -40,6 +59,8 @@ const ISSUE_REF_RE =
   /(?:fix(?:e[sd])?|close[sd]?|resolve[sd]?)\s+#\d+|https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/issues\/\d+/i;
 const NON_SIGNAL_RE = /\b(changelog|readme|typo|format|lint|refactor only)\b/i;
 const BOT_AUTHOR_RE = /(?:\[bot\]|bot$|renovate|dependabot)/i;
+const PLACEHOLDER_LINE_RE =
+  /^(?:n\/a|na|none|no response|not applicable|todo|tbd|please describe\b.*|please explain\b.*|describe the\b.*|add context\b.*|enter details\b.*|_+|-+|\.+)$/i;
 
 type PreprocessPrBodyOptions = {
   /** Maximum candidate characters to keep for this PR. */
@@ -57,15 +78,31 @@ type PreprocessPrBodyResult = {
 
 type ExtractedSections = {
   /** Extracted text snippets from target sections. */
-  sections: Array<{ name: WhyCanonicalSectionName; text: string }>;
+  sections: ExtractedSection[];
   /** Whether any target section was found. */
   hasTargetSection: boolean;
 };
+
+type ExtractedSection = {
+  /** Canonical section name used for trust scoring. */
+  name: WhyCanonicalSectionName;
+  /** Extracted text from the target section. */
+  text: string;
+  /** Markdown shape that produced this evidence. */
+  source: 'heading' | 'label-block' | 'inline-label';
+};
+
+const TARGET_INLINE_LABEL_RE = new RegExp(
+  `^\\s*(?:[-*]\\s+)?(?:\\*\\*|__)?(?<name>${TARGET_SECTION_LABEL_PATTERN})(?:\\*\\*|__)?\\s*[:：]\\s*(?<text>[^\\n]+)$`,
+  'iu',
+);
 
 function normalizeBody(body: string): string {
   return body
     .replace(/\r\n?/g, '\n')
     .replace(/<!--[\s\S]*?-->/g, '\n')
+    .replace(/<summary\b[^>]*>([\s\S]*?)<\/summary>/gim, '$1:\n')
+    .replace(/<\/?(?:details|summary)\b[^>]*>/gim, '\n')
     .replace(/!\[[^\]]*]\([^)]*\)/g, '\n')
     .replace(/\[!\[[^\]]*]\([^)]*\)]\([^)]*\)/g, '\n')
     .replace(/^\s*[-*]\s+\[[ xX]]\s+.*$/gm, '\n')
@@ -92,58 +129,192 @@ function canonicalTargetSectionName(
   return WHY_SECTION_ALIASES.get(normalizeHeadingName(value));
 }
 
+function isTemplateFieldLabel(line: string): boolean {
+  if (!TEMPLATE_LABEL_RE.test(line)) return false;
+  return TEMPLATE_FIELD_LABELS.has(normalizeHeadingName(line));
+}
+
+function isTargetLabelBlock(line: string): boolean {
+  const labelMatch = line.match(TARGET_SECTION_LABEL_ONLY_RE);
+  return (
+    canonicalTargetSectionName(labelMatch?.groups?.name ?? '') !== undefined
+  );
+}
+
+function isInlineTargetLabel(line: string): boolean {
+  const match = line.match(TARGET_INLINE_LABEL_RE);
+  return canonicalTargetSectionName(match?.groups?.name ?? '') !== undefined;
+}
+
+function extractInlineTargetLabel(line: string): ExtractedSection | undefined {
+  const match = line.match(TARGET_INLINE_LABEL_RE);
+  const name = canonicalTargetSectionName(match?.groups?.name ?? '');
+  const text = (match?.groups?.text ?? '').trim();
+  if (!name || !hasUsableCandidateText(text)) return undefined;
+  return { name, text, source: 'inline-label' };
+}
+
+function extractInlineTargetLabels(body: string): ExtractedSection[] {
+  const sections: ExtractedSection[] = [];
+  for (const line of body.split('\n')) {
+    const section = extractInlineTargetLabel(line);
+    if (section) sections.push(section);
+  }
+  return sections;
+}
+
+function extractTargetLabelBlocks(body: string): ExtractedSection[] {
+  const lines = body.split('\n');
+  const sections: ExtractedSection[] = [];
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex] ?? '';
+    const labelMatch = line.match(TARGET_SECTION_LABEL_ONLY_RE);
+    const name = canonicalTargetSectionName(labelMatch?.groups?.name ?? '');
+    if (!name) continue;
+
+    const textLines: string[] = [];
+    for (
+      let contentIndex = lineIndex + 1;
+      contentIndex < lines.length;
+      contentIndex += 1
+    ) {
+      const contentLine = lines[contentIndex] ?? '';
+      if (/^\s*#{1,6}\s+/.test(contentLine)) break;
+      if (TARGET_SECTION_LABEL_ONLY_RE.test(contentLine)) {
+        break;
+      }
+      if (isTemplateFieldLabel(contentLine)) break;
+      if (isInlineTargetLabel(contentLine)) break;
+      textLines.push(contentLine);
+    }
+
+    const text = textLines.join('\n').trim();
+    if (hasUsableCandidateText(text)) {
+      sections.push({ name, text, source: 'label-block' });
+    }
+  }
+
+  return sections;
+}
+
 function extractTargetSections(body: string): ExtractedSections {
   const headingMatches = Array.from(
     body.matchAll(/^(?<marker>#{1,6})\s+(?<title>.+?)\s*#*\s*$/gm),
   );
-  const sections: Array<{ name: WhyCanonicalSectionName; text: string }> = [];
+  const sections: ExtractedSection[] = [];
+  let hasTargetSection = false;
   for (const [matchIndex, match] of headingMatches.entries()) {
     const rawTitle = match.groups?.title ?? '';
     const name = canonicalTargetSectionName(rawTitle);
     if (!name) {
       continue;
     }
+    hasTargetSection = true;
     const startIndex = (match.index ?? 0) + match[0].length;
     const endIndex =
       headingMatches[matchIndex + 1]?.index === undefined
         ? body.length
         : headingMatches[matchIndex + 1].index;
     const text = body.slice(startIndex, endIndex).trim();
-    if (text) sections.push({ name, text });
+    if (!text) continue;
+
+    const nestedLabelSections = extractTargetLabelBlocks(text).filter(
+      (section) => hasUsableCandidateText(section.text),
+    );
+    const nestedInlineSections = extractInlineTargetLabels(text);
+    if (
+      (nestedLabelSections.length > 0 || nestedInlineSections.length > 0) &&
+      CONTAINER_CANONICAL_SECTION_NAMES.has(name)
+    ) {
+      sections.push(...nestedLabelSections);
+      sections.push(...nestedInlineSections);
+      continue;
+    }
+
+    sections.push({ name, text, source: 'heading' });
+    sections.push(...nestedLabelSections);
+    sections.push(...nestedInlineSections);
   }
 
   if (sections.length > 0) {
     return { sections, hasTargetSection: true };
   }
 
-  const labelPattern = new RegExp(
-    `(?:^|\\n)\\s*(?:\\*\\*|__)?(?<name>${TARGET_SECTION_LABEL_PATTERN})(?:\\*\\*|__)?\\s*[:：]\\s*(?<text>[^\\n]+)`,
-    'gi',
-  );
-  for (const match of body.matchAll(labelPattern)) {
-    const name = canonicalTargetSectionName(match.groups?.name ?? '');
-    const text = (match.groups?.text ?? '').trim();
-    if (name && text) sections.push({ name, text });
+  hasTargetSection =
+    hasTargetSection ||
+    body
+      .split('\n')
+      .some((line) => isTargetLabelBlock(line) || isInlineTargetLabel(line));
+  sections.push(...extractTargetLabelBlocks(body));
+  // WHY: Container fields such as Summary: can contain a later inline
+  // Why: label; keep scanning so that strong explicit WHY evidence is not
+  // hidden inside lower-trust container prose.
+  sections.push(...extractInlineTargetLabels(body));
+  if (sections.length > 0) {
+    return { sections, hasTargetSection: true };
   }
 
-  return { sections, hasTargetSection: sections.length > 0 };
+  return { sections, hasTargetSection };
+}
+
+function cleanCandidateLine(line: string): string {
+  return line
+    .replace(/^\s*>\s?/, '')
+    .replace(/^[-*]\s+/, '')
+    .replace(/^\[[ xX]]\s+/, '')
+    .replace(/^`{1,3}|`{1,3}$/g, '')
+    .replace(/^[_*~]+|[_*~]+$/g, '')
+    .trim();
+}
+
+function isPlaceholderLine(line: string): boolean {
+  const normalizedLine = line
+    .replace(/^[_*~]+|[_*~]+$/g, '')
+    .replace(/[.!?。！？]+$/g, '')
+    .trim();
+  return PLACEHOLDER_LINE_RE.test(normalizedLine);
+}
+
+function hasUsableCandidateText(text: string): boolean {
+  for (const rawLine of text.split('\n')) {
+    const line = cleanCandidateLine(rawLine);
+    if (!line) continue;
+    if (/^https?:\/\//i.test(line) || isPlaceholderLine(line)) continue;
+    if (line.replace(/\s+/g, ' ').trim().length >= 16) return true;
+  }
+  return false;
 }
 
 function toCandidateSnippets(
-  sections: Array<{ name: WhyCanonicalSectionName; text: string }>,
+  sections: ExtractedSection[],
   body: string,
   maxCharsPerPr: number,
+  allowBodyFallback: boolean,
 ): string[] {
-  const sourceTexts =
-    sections.length > 0 ? sections.map((section) => section.text) : [body];
+  const sources =
+    sections.length > 0
+      ? sections.map((section) => ({
+          text: section.text,
+          stopAtTemplateLabel: true,
+        }))
+      : allowBodyFallback
+        ? [{ text: body, stopAtTemplateLabel: false }]
+        : [];
   const snippets: string[] = [];
 
-  for (const text of sourceTexts) {
-    const cleanedLines = text
-      .split('\n')
-      .map((line) => line.replace(/^[-*]\s+/, '').trim())
-      .filter(Boolean)
-      .filter((line) => !/^https?:\/\//i.test(line));
+  for (const source of sources) {
+    const cleanedLines: string[] = [];
+    for (const rawLine of source.text.split('\n')) {
+      const line = cleanCandidateLine(rawLine);
+      if (!line) continue;
+      if (isTemplateFieldLabel(line)) {
+        if (source.stopAtTemplateLabel) break;
+        continue;
+      }
+      if (/^https?:\/\//i.test(line) || isPlaceholderLine(line)) continue;
+      cleanedLines.push(line);
+    }
     for (const line of cleanedLines) {
       const compactLine = line.replace(/\s+/g, ' ').trim();
       if (compactLine.length < 16) continue;
@@ -177,7 +348,7 @@ function trustBucketForScore(score: number): WhyTrustBucket {
 }
 
 function scoreCandidateMaterial(
-  sections: Array<{ name: WhyCanonicalSectionName; text: string }>,
+  sections: ExtractedSection[],
   candidates: string[],
   body: string,
 ): number {
@@ -191,22 +362,37 @@ function scoreCandidateMaterial(
   } else if (sections.length > 0) {
     score += 2;
   }
-  if (RATIONALE_MARKER_RE.test(candidateText)) score += 3;
-  if (PROBLEM_MARKER_RE.test(candidateText)) score += 2;
+  if (
+    sections.some(
+      (section) =>
+        section.source === 'label-block' &&
+        STRONG_CANONICAL_SECTION_NAMES.has(section.name),
+    )
+  ) {
+    score += 2;
+  }
+  const hasRationaleMarker = RATIONALE_MARKER_RE.test(candidateText);
+  const hasProblemMarker = PROBLEM_MARKER_RE.test(candidateText);
+  if (hasRationaleMarker) score += 3;
+  if (hasProblemMarker) score += 2;
   if (ISSUE_REF_RE.test(body)) score += 1;
   if (candidateText.length >= 60) score += 1;
   if (candidateText.length > 500) score += 1;
   if (containsNonAscii(candidateText) && candidateText.length >= 40) {
     score += 6;
   }
-  if (NON_SIGNAL_RE.test(candidateText)) score -= 2;
+  if (
+    NON_SIGNAL_RE.test(candidateText) &&
+    !hasRationaleMarker &&
+    !hasProblemMarker
+  ) {
+    score -= 2;
+  }
 
   return Math.max(score, 0);
 }
 
-function hasStrongStructuralSignal(
-  sections: Array<{ name: WhyCanonicalSectionName; text: string }>,
-): boolean {
+function hasStrongStructuralSignal(sections: ExtractedSection[]): boolean {
   return sections.some((section) =>
     STRONG_CANONICAL_SECTION_NAMES.has(section.name),
   );
@@ -262,6 +448,7 @@ export function preprocessWhyPrBody(
     extracted.sections,
     body,
     options.maxCharsPerPr,
+    !extracted.hasTargetSection,
   );
   if (candidates.length === 0) {
     return {
