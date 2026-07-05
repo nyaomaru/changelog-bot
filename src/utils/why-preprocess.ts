@@ -263,7 +263,7 @@ function toCandidateSnippets(
     for (const rawLine of text.split('\n')) {
       const line = cleanCandidateLine(rawLine);
       if (!line) continue;
-      if (cleanedLines.length > 0 && isTemplateFieldLabel(line)) break;
+      if (isTemplateFieldLabel(line)) break;
       if (/^https?:\/\//i.test(line) || isPlaceholderLine(line)) continue;
       cleanedLines.push(line);
     }

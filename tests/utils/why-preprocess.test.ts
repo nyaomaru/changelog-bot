@@ -309,6 +309,28 @@ describe('why-preprocess', () => {
     expect(result.skippedReason).toContain('no usable WHY candidate');
   });
 
+  test('does not use the next template field when a why heading is empty', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '## Why',
+          '',
+          'Implementation:',
+          'Because this fixes the release event listener.',
+          '',
+          'Testing:',
+          'Verified manually.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item).toBeUndefined();
+    expect(result.lowTrust).toBe(true);
+    expect(result.skippedReason).toContain('no usable WHY candidate');
+  });
+
   test('skips large bodies without target sections before provider input', () => {
     const result = preprocessWhyPrBody(
       target,
