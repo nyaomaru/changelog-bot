@@ -218,4 +218,17 @@ describe('cli-args', () => {
       expect(mapErrorToExitCode(error)).toBe(EXIT_USAGE);
     }
   });
+
+  test.each([
+    ['unknown flag', ['node', 'cli', '--unknown-flag']],
+    ['invalid provider choice', ['node', 'cli', '--provider', 'bogus']],
+  ])('maps yargs %s failures to usage exit code', async (_, argv) => {
+    try {
+      await parseCliArgs(argv);
+      throw new Error('Expected parseCliArgs to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigError);
+      expect(mapErrorToExitCode(error)).toBe(EXIT_USAGE);
+    }
+  });
 });

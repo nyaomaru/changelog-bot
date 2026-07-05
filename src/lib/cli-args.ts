@@ -61,6 +61,11 @@ export async function parseCliArgs(
       choices: ['low', 'medium', 'high'] as const,
     })
     .option('why-label', { type: 'string' })
+    .exitProcess(false)
+    .fail((message, error) => {
+      const detail = message || error?.message || 'Invalid CLI arguments';
+      throw new ConfigError(`Invalid CLI arguments: ${detail}`);
+    })
     .strict()
     .parse();
 
