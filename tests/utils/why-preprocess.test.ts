@@ -355,6 +355,33 @@ describe('why-preprocess', () => {
     expect(result.skippedReason).toContain('no usable WHY candidate');
   });
 
+  test.each(['**Implementation:**', '__Testing:__', '**Implementation**:'])(
+    'does not boost summary text with empty why before bold template field %s',
+    (templateLabel) => {
+      const result = preprocessWhyPrBody(
+        target,
+        details({
+          body: [
+            '**Why:**',
+            '',
+            templateLabel,
+            'Because this fixes the release event listener.',
+            '',
+            '**Summary:**',
+            'Fix release workflow so changelog generation runs reliably for publication.',
+          ].join('\n'),
+        }),
+        { maxCharsPerPr: 800 },
+      );
+
+      const candidates = result.item?.candidates.join('\n') ?? '';
+
+      expect(result.item?.trustScore ?? 0).toBeLessThan(7);
+      expect(candidates).toContain('Fix release workflow');
+      expect(candidates).not.toContain('Because this fixes');
+    },
+  );
+
   test('does not use the next template field when a why heading is empty', () => {
     const result = preprocessWhyPrBody(
       target,

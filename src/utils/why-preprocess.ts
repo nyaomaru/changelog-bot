@@ -25,7 +25,7 @@ const TARGET_SECTION_LABEL_ONLY_RE = new RegExp(
   'iu',
 );
 const TEMPLATE_LABEL_RE =
-  /^\s*(?:[-*]\s+)?(?:\*\*|__)?[\p{L}\p{N}][\p{L}\p{N}\s?/._-]{0,48}(?:\*\*|__)?\s*[:：]\s*$/u;
+  /^\s*(?:[-*]\s+)?(?:\*\*|__)?[\p{L}\p{N}][\p{L}\p{N}\s?/._-]{0,48}(?:(?:\*\*|__)?\s*[:：]|[:：]\s*(?:\*\*|__)?)\s*$/u;
 const TEMPLATE_FIELD_LABELS = new Set([
   'approach',
   'implementation',
