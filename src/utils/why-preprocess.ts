@@ -134,6 +134,18 @@ function isTemplateFieldLabel(line: string): boolean {
   return TEMPLATE_FIELD_LABELS.has(normalizeHeadingName(line));
 }
 
+function isTargetLabelBlock(line: string): boolean {
+  const labelMatch = line.match(TARGET_SECTION_LABEL_ONLY_RE);
+  return (
+    canonicalTargetSectionName(labelMatch?.groups?.name ?? '') !== undefined
+  );
+}
+
+function isInlineTargetLabel(line: string): boolean {
+  const match = line.match(TARGET_INLINE_LABEL_RE);
+  return canonicalTargetSectionName(match?.groups?.name ?? '') !== undefined;
+}
+
 function extractInlineTargetLabel(line: string): ExtractedSection | undefined {
   const match = line.match(TARGET_INLINE_LABEL_RE);
   const name = canonicalTargetSectionName(match?.groups?.name ?? '');
@@ -173,7 +185,7 @@ function extractTargetLabelBlocks(body: string): ExtractedSection[] {
         break;
       }
       if (isTemplateFieldLabel(contentLine)) break;
-      if (extractInlineTargetLabel(contentLine)) break;
+      if (isInlineTargetLabel(contentLine)) break;
       textLines.push(contentLine);
     }
 
@@ -191,12 +203,14 @@ function extractTargetSections(body: string): ExtractedSections {
     body.matchAll(/^(?<marker>#{1,6})\s+(?<title>.+?)\s*#*\s*$/gm),
   );
   const sections: ExtractedSection[] = [];
+  let hasTargetSection = false;
   for (const [matchIndex, match] of headingMatches.entries()) {
     const rawTitle = match.groups?.title ?? '';
     const name = canonicalTargetSectionName(rawTitle);
     if (!name) {
       continue;
     }
+    hasTargetSection = true;
     const startIndex = (match.index ?? 0) + match[0].length;
     const endIndex =
       headingMatches[matchIndex + 1]?.index === undefined
@@ -227,6 +241,11 @@ function extractTargetSections(body: string): ExtractedSections {
     return { sections, hasTargetSection: true };
   }
 
+  hasTargetSection =
+    hasTargetSection ||
+    body
+      .split('\n')
+      .some((line) => isTargetLabelBlock(line) || isInlineTargetLabel(line));
   sections.push(...extractTargetLabelBlocks(body));
   // WHY: Container fields such as Summary: can contain a later inline
   // Why: label; keep scanning so that strong explicit WHY evidence is not
@@ -236,7 +255,7 @@ function extractTargetSections(body: string): ExtractedSections {
     return { sections, hasTargetSection: true };
   }
 
-  return { sections, hasTargetSection: sections.length > 0 };
+  return { sections, hasTargetSection };
 }
 
 function cleanCandidateLine(line: string): string {
@@ -271,17 +290,28 @@ function toCandidateSnippets(
   sections: ExtractedSection[],
   body: string,
   maxCharsPerPr: number,
+  allowBodyFallback: boolean,
 ): string[] {
-  const sourceTexts =
-    sections.length > 0 ? sections.map((section) => section.text) : [body];
+  const sources =
+    sections.length > 0
+      ? sections.map((section) => ({
+          text: section.text,
+          stopAtTemplateLabel: true,
+        }))
+      : allowBodyFallback
+        ? [{ text: body, stopAtTemplateLabel: false }]
+        : [];
   const snippets: string[] = [];
 
-  for (const text of sourceTexts) {
+  for (const source of sources) {
     const cleanedLines: string[] = [];
-    for (const rawLine of text.split('\n')) {
+    for (const rawLine of source.text.split('\n')) {
       const line = cleanCandidateLine(rawLine);
       if (!line) continue;
-      if (isTemplateFieldLabel(line)) break;
+      if (isTemplateFieldLabel(line)) {
+        if (source.stopAtTemplateLabel) break;
+        continue;
+      }
       if (/^https?:\/\//i.test(line) || isPlaceholderLine(line)) continue;
       cleanedLines.push(line);
     }
@@ -418,6 +448,7 @@ export function preprocessWhyPrBody(
     extracted.sections,
     body,
     options.maxCharsPerPr,
+    !extracted.hasTargetSection,
   );
   if (candidates.length === 0) {
     return {

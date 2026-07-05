@@ -251,6 +251,25 @@ describe('why-preprocess', () => {
     expect(result.item?.candidates.join('\n') ?? '').not.toContain('N/A');
   });
 
+  test('does not fallback after a placeholder inline why label', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          'Why: N/A',
+          '',
+          'Implementation:',
+          'Because this fixes a release workflow regression, changelog generation must rerun when drafts are published.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item).toBeUndefined();
+    expect(result.lowTrust).toBe(true);
+    expect(result.skippedReason).toContain('no usable WHY candidate');
+  });
+
   test.each([
     ['## Why?', 'Because draft releases need the publish event.'],
     [
@@ -370,6 +389,25 @@ describe('why-preprocess', () => {
     expect(result.skippedReason).toContain(
       'PR description too large without target section',
     );
+  });
+
+  test('keeps scanning fallback bodies after generic template labels', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          'Notes:',
+          'Because this fixes a release workflow regression, changelog generation must rerun when drafts are published.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    const candidates = result.item?.candidates.join('\n') ?? '';
+
+    expect(result.item?.trustScore).toBeGreaterThanOrEqual(5);
+    expect(candidates).toContain('Because this fixes');
+    expect(candidates).not.toContain('Notes:');
   });
 
   test('allows non-English candidate bodies to reach provider judgment', () => {
