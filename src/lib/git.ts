@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { HEAD_REF } from '@/constants/git.js';
+import { GitError } from '@/lib/errors.js';
 
 /**
  * Pattern that whitelists simple tag or branch names (alphanumeric plus ._-).
@@ -18,7 +19,7 @@ const SAFE_SHA_PATTERN = /^[0-9a-f]{7,40}$/i;
  */
 function assertSafeGitRef(value: string, label: string): void {
   if (!SAFE_REF_PATTERN.test(value) && !SAFE_SHA_PATTERN.test(value)) {
-    throw new Error(
+    throw new GitError(
       `Invalid ${label}: "${value}" contains unsupported characters.`,
     );
   }
@@ -31,7 +32,7 @@ function assertSafeGitRef(value: string, label: string): void {
  */
 function assertSafePath(value: string, label: string): void {
   if (value.includes('\0')) {
-    throw new Error(`Invalid ${label}: null byte is not allowed.`);
+    throw new GitError(`Invalid ${label}: null byte is not allowed.`);
   }
 }
 
@@ -42,7 +43,12 @@ function assertSafePath(value: string, label: string): void {
  * @returns Trimmed stdout string.
  */
 export function run(args: readonly string[], cwd?: string): string {
-  return execFileSync('git', args, { encoding: 'utf8', cwd }).trim();
+  try {
+    return execFileSync('git', args, { encoding: 'utf8', cwd }).trim();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new GitError(`Git command failed: git ${args.join(' ')}. ${message}`);
+  }
 }
 /**
  * Run a command and return null on failure instead of throwing.
