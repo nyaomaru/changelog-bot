@@ -1,3 +1,4 @@
+import { ConfigError } from '@/lib/errors.js';
 import type { AppConfig } from '@/types/config.js';
 
 /**
@@ -9,10 +10,9 @@ import type { AppConfig } from '@/types/config.js';
 export function getRepoFullName(appConfig: AppConfig): string {
   const repoFull = appConfig.github.repoFullName;
   if (!repoFull || !repoFull.includes('/')) {
-    console.error(
+    throw new ConfigError(
       'REPO_FULL_NAME or GITHUB_REPOSITORY is required (owner/repo).',
     );
-    process.exit(1);
   }
   return repoFull;
 }

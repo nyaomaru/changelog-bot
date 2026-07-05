@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
-import type { Env } from '@/schema/env.js';
+import { EXIT_USAGE } from '@/constants/errors.js';
+import { ConfigError } from '@/lib/errors.js';
+import { ensureGithubTokenRequired, type Env } from '@/schema/env.js';
 import { getEnv } from '@/utils/env.js';
 
 describe('getEnv', () => {
@@ -30,5 +32,28 @@ describe('getEnv', () => {
   test('returns undefined when not in parsed nor process.env', () => {
     const parsed: Env = {} as Env;
     expect(getEnv('GITHUB_APP_ID', parsed)).toBeUndefined();
+  });
+});
+
+describe('ensureGithubTokenRequired', () => {
+  test('allows dry-runs without GitHub authentication', () => {
+    expect(() => ensureGithubTokenRequired(true, undefined)).not.toThrow();
+  });
+
+  test('allows non-dry-runs with resolved GitHub authentication', () => {
+    expect(() => ensureGithubTokenRequired(false, 'token')).not.toThrow();
+  });
+
+  test('throws usage error for non-dry-runs without GitHub authentication', () => {
+    expect(() => ensureGithubTokenRequired(false, undefined)).toThrow(
+      ConfigError,
+    );
+
+    try {
+      ensureGithubTokenRequired(false, undefined);
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigError);
+      expect((error as ConfigError).exitCode).toBe(EXIT_USAGE);
+    }
   });
 });

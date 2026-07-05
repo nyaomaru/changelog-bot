@@ -242,6 +242,26 @@ When AI is not used for changelog generation, the PR body is annotated with
 “Generated without LLM. Reason: …”. Title classification uses the provider when
 available; without keys, titles fall back to deterministic local categories.
 
+### Exit codes
+
+Codes `64` and `65` follow the common POSIX `sysexits` convention
+(`EX_USAGE`, `EX_DATAERR`). Codes `66` and `67` stay in the same reserved range
+for changelog-bot-specific provider and schema failures. Code `1` is kept for
+unexpected errors that are not yet classified.
+
+| Code | Meaning                   | Typical cause                                                             |
+| ---- | ------------------------- | ------------------------------------------------------------------------- |
+| `0`  | Success                   | Changelog was generated, or dry-run completed.                            |
+| `1`  | Unexpected error          | Unclassified runtime failure.                                             |
+| `64` | Usage/configuration error | Invalid CLI/config values, missing repo identity, or missing GitHub auth. |
+| `65` | Repository/data error     | Invalid repository state or Git data needed for changelog generation.     |
+| `66` | Provider failure          | LLM generation/classification/WHY extraction failed in strict mode.       |
+| `67` | Output validation failure | Provider output did not match the expected schema after retry.            |
+
+The CLI prints the actionable error message to stderr before exiting. Use
+`--dry-run` to preview without requiring GitHub write authentication, or provide
+`GITHUB_TOKEN` / GitHub App credentials before creating a PR.
+
 ## GitHub Actions integration
 
 The published composite action installs the CLI with `pnpm dlx` and forwards
@@ -539,7 +559,7 @@ Notes
 
 - `Resource not accessible by integration`: add `contents: write` and `pull-requests: write` to the job. For reusable workflows, add them on the calling job.
 - Label warning: the PR was created, but labels were skipped. Add `issues: write` for direct Action/CLI runs, or pass a PAT/GitHub App token with Issues write access to the reusable workflow.
-- `GITHUB_TOKEN is required to create PR`: non-dry-run mode needs `GITHUB_TOKEN`, a PAT, or GitHub App credentials. Dry-run mode does not create a PR.
+- `GitHub authentication is required to create PR`: non-dry-run mode needs `GITHUB_TOKEN`, a PAT, or GitHub App credentials. Dry-run mode does not create a PR.
 - GitHub App JWT or private key errors: use `CHANGELOG_BOT_APP_ID` and `CHANGELOG_BOT_APP_PRIVATE_KEY`, keep the PEM unencrypted, and preserve newlines or use escaped `\n`.
 - Missing release notes or PR titles: use `actions/checkout` with `fetch-depth: 0`, pass `release-body`, and provide GitHub auth for private repositories.
 - AI key missing: the CLI falls back by default. Set the matching provider key, use `require-provider: 'true'` to fail instead, or use `no-ai: 'true'` intentionally.
