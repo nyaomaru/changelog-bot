@@ -92,6 +92,11 @@ type ExtractedSection = {
   source: 'heading' | 'label-block' | 'inline-label';
 };
 
+const TARGET_INLINE_LABEL_RE = new RegExp(
+  `^\\s*(?:[-*]\\s+)?(?:\\*\\*|__)?(?<name>${TARGET_SECTION_LABEL_PATTERN})(?:\\*\\*|__)?\\s*[:：]\\s*(?<text>[^\\n]+)$`,
+  'iu',
+);
+
 function normalizeBody(body: string): string {
   return body
     .replace(/\r\n?/g, '\n')
@@ -129,6 +134,23 @@ function isTemplateFieldLabel(line: string): boolean {
   return TEMPLATE_FIELD_LABELS.has(normalizeHeadingName(line));
 }
 
+function extractInlineTargetLabel(line: string): ExtractedSection | undefined {
+  const match = line.match(TARGET_INLINE_LABEL_RE);
+  const name = canonicalTargetSectionName(match?.groups?.name ?? '');
+  const text = (match?.groups?.text ?? '').trim();
+  if (!name || !hasUsableCandidateText(text)) return undefined;
+  return { name, text, source: 'inline-label' };
+}
+
+function extractInlineTargetLabels(body: string): ExtractedSection[] {
+  const sections: ExtractedSection[] = [];
+  for (const line of body.split('\n')) {
+    const section = extractInlineTargetLabel(line);
+    if (section) sections.push(section);
+  }
+  return sections;
+}
+
 function extractTargetLabelBlocks(body: string): ExtractedSection[] {
   const lines = body.split('\n');
   const sections: ExtractedSection[] = [];
@@ -151,6 +173,7 @@ function extractTargetLabelBlocks(body: string): ExtractedSection[] {
         break;
       }
       if (isTemplateFieldLabel(contentLine)) break;
+      if (extractInlineTargetLabel(contentLine)) break;
       textLines.push(contentLine);
     }
 
@@ -185,16 +208,19 @@ function extractTargetSections(body: string): ExtractedSections {
     const nestedLabelSections = extractTargetLabelBlocks(text).filter(
       (section) => hasUsableCandidateText(section.text),
     );
+    const nestedInlineSections = extractInlineTargetLabels(text);
     if (
-      nestedLabelSections.length > 0 &&
+      (nestedLabelSections.length > 0 || nestedInlineSections.length > 0) &&
       CONTAINER_CANONICAL_SECTION_NAMES.has(name)
     ) {
       sections.push(...nestedLabelSections);
+      sections.push(...nestedInlineSections);
       continue;
     }
 
     sections.push({ name, text, source: 'heading' });
     sections.push(...nestedLabelSections);
+    sections.push(...nestedInlineSections);
   }
 
   if (sections.length > 0) {
@@ -202,20 +228,12 @@ function extractTargetSections(body: string): ExtractedSections {
   }
 
   sections.push(...extractTargetLabelBlocks(body));
+  // WHY: Container fields such as Summary: can contain a later inline
+  // Why: label; keep scanning so that strong explicit WHY evidence is not
+  // hidden inside lower-trust container prose.
+  sections.push(...extractInlineTargetLabels(body));
   if (sections.length > 0) {
     return { sections, hasTargetSection: true };
-  }
-
-  const labelPattern = new RegExp(
-    `(?:^|\\n)\\s*(?:\\*\\*|__)?(?<name>${TARGET_SECTION_LABEL_PATTERN})(?:\\*\\*|__)?\\s*[:：]\\s*(?<text>[^\\n]+)`,
-    'gi',
-  );
-  for (const match of body.matchAll(labelPattern)) {
-    const name = canonicalTargetSectionName(match.groups?.name ?? '');
-    const text = (match.groups?.text ?? '').trim();
-    if (name && hasUsableCandidateText(text)) {
-      sections.push({ name, text, source: 'inline-label' });
-    }
   }
 
   return { sections, hasTargetSection: sections.length > 0 };

@@ -180,6 +180,33 @@ describe('why-preprocess', () => {
     expect(candidates).not.toContain('Listen to release published events');
   });
 
+  test('keeps inline why labels after container label blocks', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          'Summary:',
+          'Restore release workflow event handling.',
+          '',
+          'Why: Because draft releases can be published later, changelog generation must run at publication time.',
+          '',
+          'Testing:',
+          'Verified manually.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    const candidates = result.item?.candidates.join('\n') ?? '';
+
+    expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
+    expect(candidates).toContain(
+      'Because draft releases can be published later',
+    );
+    expect(candidates).not.toContain('Why: Because');
+    expect(candidates).not.toContain('Verified manually');
+  });
+
   test('preserves parent why text when nested template labels are placeholders', () => {
     const result = preprocessWhyPrBody(
       target,
