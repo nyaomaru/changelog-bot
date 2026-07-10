@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { describe, expect, test } from '@jest/globals';
 
 import { parseCliArgs } from '@/lib/cli-args.js';
+import { EXIT_USAGE } from '@/constants/errors.js';
 import {
   DEFAULT_BASE_BRANCH,
   DEFAULT_CHANGELOG_FILE,
@@ -20,6 +21,7 @@ import {
   DEFAULT_WHY_MAX_CHARS_PER_PR,
   DEFAULT_WHY_MAX_PRS,
 } from '@/constants/why.js';
+import { ConfigError, mapErrorToExitCode } from '@/lib/errors.js';
 
 describe('cli-args', () => {
   test('parses defaults with minimal argv', async () => {
@@ -201,5 +203,32 @@ describe('cli-args', () => {
     await expect(
       parseCliArgs(['node', 'cli', '--no-ai', '--require-provider']),
     ).rejects.toThrow('--no-ai cannot be combined with --require-provider');
+
+    await expect(
+      parseCliArgs(['node', 'cli', '--no-ai', '--require-provider']),
+    ).rejects.toBeInstanceOf(ConfigError);
+  });
+
+  test('maps schema-invalid CLI values to usage exit code', async () => {
+    try {
+      await parseCliArgs(['node', 'cli', '--why-max-prs', '-1']);
+      throw new Error('Expected parseCliArgs to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigError);
+      expect(mapErrorToExitCode(error)).toBe(EXIT_USAGE);
+    }
+  });
+
+  test.each([
+    ['unknown flag', ['node', 'cli', '--unknown-flag']],
+    ['invalid provider choice', ['node', 'cli', '--provider', 'bogus']],
+  ])('maps yargs %s failures to usage exit code', async (_, argv) => {
+    try {
+      await parseCliArgs(argv);
+      throw new Error('Expected parseCliArgs to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigError);
+      expect(mapErrorToExitCode(error)).toBe(EXIT_USAGE);
+    }
   });
 });

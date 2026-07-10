@@ -1,36 +1,16 @@
-// @ts-nocheck
-import {
-  describe,
-  test,
-  expect,
-  jest,
-  beforeEach,
-  afterEach,
-} from '@jest/globals';
+import { describe, test, expect } from '@jest/globals';
+import { EXIT_USAGE } from '@/constants/errors.js';
 import { loadAppConfig } from '@/lib/app-config.js';
+import { ConfigError } from '@/lib/errors.js';
 import { getRepoFullName } from '@/utils/repository.js';
 
 describe('utils/repository.getRepoFullName', () => {
-  const originalExit = process.exit;
-  let errorSpy: jest.SpyInstance;
-
-  beforeEach(() => {
-    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    process.exit = jest.fn() as never;
-  });
-
-  afterEach(() => {
-    errorSpy.mockRestore();
-    process.exit = originalExit;
-  });
-
   test('returns REPO_FULL_NAME when set', () => {
     const config = loadAppConfig({ REPO_FULL_NAME: 'owner/repo' });
 
     const name = getRepoFullName(config);
 
     expect(name).toBe('owner/repo');
-    expect(process.exit).not.toHaveBeenCalled();
   });
 
   test('falls back to GITHUB_REPOSITORY when REPO_FULL_NAME is missing', () => {
@@ -39,20 +19,29 @@ describe('utils/repository.getRepoFullName', () => {
     const name = getRepoFullName(config);
 
     expect(name).toBe('acme/tools');
-    expect(process.exit).not.toHaveBeenCalled();
   });
 
-  test('exits when neither env is set or invalid', () => {
-    getRepoFullName(loadAppConfig({}));
+  test('throws usage error when neither env is set or invalid', () => {
+    expect(() => getRepoFullName(loadAppConfig({}))).toThrow(ConfigError);
 
-    expect(errorSpy).toHaveBeenCalled();
-    expect(process.exit).toHaveBeenCalledWith(1);
+    try {
+      getRepoFullName(loadAppConfig({}));
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigError);
+      expect((error as ConfigError).exitCode).toBe(EXIT_USAGE);
+    }
   });
 
-  test('exits when value does not include a slash', () => {
-    getRepoFullName(loadAppConfig({ REPO_FULL_NAME: 'invalid' }));
+  test('throws usage error when value does not include a slash', () => {
+    expect(() =>
+      getRepoFullName(loadAppConfig({ REPO_FULL_NAME: 'invalid' })),
+    ).toThrow(ConfigError);
 
-    expect(errorSpy).toHaveBeenCalled();
-    expect(process.exit).toHaveBeenCalledWith(1);
+    try {
+      getRepoFullName(loadAppConfig({ REPO_FULL_NAME: 'invalid' }));
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigError);
+      expect((error as ConfigError).exitCode).toBe(EXIT_USAGE);
+    }
   });
 });

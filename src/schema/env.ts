@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConfigError } from '@/lib/errors.js';
 
 /**
  * Environment variable validation used by the CLI.
@@ -33,5 +34,9 @@ export function ensureGithubTokenRequired(
   token?: string,
 ): void {
   if (dryRun) return;
-  if (!token) throw new Error('GITHUB_TOKEN is required to create PR.');
+  if (!token) {
+    throw new ConfigError(
+      'GitHub authentication is required to create PR. Set GITHUB_TOKEN or GitHub App credentials.',
+    );
+  }
 }
