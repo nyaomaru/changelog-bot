@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.5] - 2026-07-11
+
+### Fixed
+
+- document exit codes and typed config errors by @nyaomaru in [#158](https://github.com/nyaomaru/changelog-bot/pull/158)
+  - Why: Document CLI exit codes and their `sysexits`-style rationale in README.
+
+### Changed
+
+- clarify category tuning rules by @nyaomaru in [#159](https://github.com/nyaomaru/changelog-bot/pull/159)
+- clarify release section rendering by @nyaomaru in [#160](https://github.com/nyaomaru/changelog-bot/pull/160)
+
+### Docs
+
+- 0.6.4 by [bot] by @github-actions in [#157](https://github.com/nyaomaru/changelog-bot/pull/157)
+
+### Chore
+
+- Release: 0.6.5 by [bot] by @github-actions in [#161](https://github.com/nyaomaru/changelog-bot/pull/161)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.5
+
+[v0.6.5]: https://github.com/nyaomaru/changelog-bot/compare/v0.6.4...v0.6.5
+
 ## [v0.6.4] - 2026-07-05
 
 ### Added
