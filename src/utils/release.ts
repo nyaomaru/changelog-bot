@@ -8,7 +8,11 @@ import { SECTION_ORDER } from '@/constants/changelog.js';
 import { stripConventionalPrefix } from '@/utils/title-normalize.js';
 import { FULL_CHANGELOG_RE } from '@/constants/release.js';
 import { BULLET_PREFIX_RE } from '@/constants/markdown.js';
-import { buildTitleLookup, findTitleMatch } from '@/utils/title-lookup.js';
+import {
+  buildTitleLookup,
+  findTitleMatch,
+  type TitleLookup,
+} from '@/utils/title-lookup.js';
 import type { CommitLite } from '@/types/commit.js';
 import type { PullRef } from '@/types/github.js';
 
@@ -451,6 +455,96 @@ export function buildReleaseItemsFromPullRequests(
   return foundPullRequest ? items : [];
 }
 
+function buildReleaseItemLookup(
+  items: ReleaseItem[],
+): TitleLookup<ReleaseItem> {
+  return buildTitleLookup(
+    items.map((item) => ({
+      // WHY: LLM output can refer to either the stripped or raw release-note title.
+      titles: new Set(
+        [item.title, item.rawTitle].filter((title): title is string =>
+          Boolean(title),
+        ),
+      ),
+      value: item,
+    })),
+  );
+}
+
+function releaseItemKey(item: ReleaseItem): string {
+  return item.pr
+    ? `pr-${item.pr}`
+    : `title-${item.title}-${item.rawTitle ?? ''}`;
+}
+
+function formatReleaseItemBullet(item: ReleaseItem): string {
+  let line = `- ${item.title}`;
+  if (item.author) line += ` by @${item.author}`;
+  if (item.pr && item.url) line += ` in [#${item.pr}](${item.url})`;
+  return line;
+}
+
+function collectCategorizedReleaseItems(
+  section: string,
+  categories: Record<string, string[]>,
+  itemLookup: TitleLookup<ReleaseItem>,
+  seenItemKeys: Set<string>,
+): ReleaseItem[] {
+  const entries: ReleaseItem[] = [];
+  for (const candidateTitle of categories[section] || []) {
+    const item = findTitleMatch(candidateTitle, itemLookup, {
+      minRelativePrefixLength: RELEASE_TITLE_MATCH_MIN_RELATIVE_PREFIX_LENGTH,
+    });
+    if (!item) continue;
+
+    const itemKey = releaseItemKey(item);
+    if (seenItemKeys.has(itemKey)) continue;
+
+    entries.push(item);
+    seenItemKeys.add(itemKey);
+  }
+  return entries;
+}
+
+function appendCategorizedReleaseSections(
+  lines: string[],
+  items: ReleaseItem[],
+  categories: Record<string, string[]>,
+): void {
+  const itemLookup = buildReleaseItemLookup(items);
+  // Track items already assigned to enforce single-category membership within this version.
+  const seenItemKeys = new Set<string>();
+
+  for (const section of SECTION_ORDER) {
+    const entries = collectCategorizedReleaseItems(
+      section,
+      categories,
+      itemLookup,
+      seenItemKeys,
+    );
+    if (!entries.length) continue;
+
+    lines.push(`### ${section}`, '');
+    for (const item of entries) {
+      lines.push(formatReleaseItemBullet(item));
+    }
+    lines.push('');
+  }
+}
+
+function appendAdditionalReleaseSections(
+  lines: string[],
+  sections: ReleaseSection[],
+): void {
+  for (const section of sections) {
+    lines.push(
+      `${'#'.repeat(CHANGELOG_ADDITIONAL_SECTION_HEADING_LEVEL)} ${section.heading}`,
+      '',
+    );
+    lines.push(demoteAdditionalSectionHeadings(section.body.trim()), '');
+  }
+}
+
 /**
  * Build a categorized changelog section from parsed release items and category mapping.
  * @param params Version/date, parsed items, mapping of categories->titles, and optional full changelog link.
@@ -465,58 +559,10 @@ export function buildSectionFromRelease(params: {
   sections?: ReleaseSection[];
 }): string {
   const { version, date, items, categories, sections = [] } = params;
-  const itemLookup = buildTitleLookup(
-    items.map((item) => ({
-      // WHY: LLM output can refer to either the stripped or raw release-note title.
-      titles: new Set([item.title, item.rawTitle].filter(Boolean) as string[]),
-      value: item,
-    })),
-  );
   const lines: string[] = [`## [v${version}] - ${date}`, ''];
 
-  function formatBullet(item: ReleaseItem): string {
-    let line = `- ${item.title}`;
-    if (item.author) line += ` by @${item.author}`;
-    if (item.pr && item.url) line += ` in [#${item.pr}](${item.url})`;
-    return line;
-  }
-
-  // Track items already assigned to enforce single-category membership within this version
-  const seen = new Set<string>();
-
-  for (const section of SECTION_ORDER) {
-    const titles = categories[section] || [];
-    const entries: ReleaseItem[] = [];
-    for (const candidateTitle of titles) {
-      const item = findTitleMatch(candidateTitle, itemLookup, {
-        minRelativePrefixLength: RELEASE_TITLE_MATCH_MIN_RELATIVE_PREFIX_LENGTH,
-      });
-      if (item) {
-        const key = item.pr
-          ? `pr-${item.pr}`
-          : `title-${item.title}-${item.rawTitle ?? ''}`;
-        if (!seen.has(key)) {
-          entries.push(item);
-          seen.add(key);
-        }
-      }
-    }
-    if (!entries.length) continue;
-
-    lines.push(`### ${section}`, '');
-    for (const item of entries) {
-      lines.push(formatBullet(item));
-    }
-    lines.push('');
-  }
-
-  for (const section of sections) {
-    lines.push(
-      `${'#'.repeat(CHANGELOG_ADDITIONAL_SECTION_HEADING_LEVEL)} ${section.heading}`,
-      '',
-    );
-    lines.push(demoteAdditionalSectionHeadings(section.body.trim()), '');
-  }
+  appendCategorizedReleaseSections(lines, items, categories);
+  appendAdditionalReleaseSections(lines, sections);
 
   if (params.fullChangelog)
     lines.push(`**Full Changelog**: ${params.fullChangelog}`, '');
