@@ -135,7 +135,9 @@ The preprocessor recognizes common reason/context section headings in English,
 Spanish, French, German, Portuguese, Italian, Dutch, Japanese, Chinese, Korean,
 and Russian. This is a heading-alias list, not a hard language limit: compact PR
 descriptions in other languages can still reach provider judgment, and missing
-or unclear evidence is still omitted rather than guessed.
+or unclear evidence is still omitted rather than guessed. A `Description`
+section can also supply WHY evidence when its prose explicitly marks the reason,
+for example with `WHY:`, `because`, or `in order to`.
 
 ### Force a specific model (example: gpt-4o-mini)
 

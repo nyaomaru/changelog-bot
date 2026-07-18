@@ -180,6 +180,70 @@ describe('why-preprocess', () => {
     expect(candidates).not.toContain('Listen to release published events');
   });
 
+  test('builds a trusted candidate from explicit WHY prose in Description', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '## Description',
+          '',
+          'This restores the release workflow event handling.',
+          '',
+          'WHY: Users need release notes when drafts are published.',
+          '',
+          '## Testing',
+          'Verified manually.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    const candidates = result.item?.candidates.join('\n') ?? '';
+
+    expect(result.item?.trustScore).toBe(9);
+    expect(candidates).toContain(
+      'Users need release notes when drafts are published.',
+    );
+    expect(candidates).not.toContain('This restores the release workflow');
+    expect(candidates).not.toContain('Verified manually');
+  });
+
+  test('builds a trusted candidate from rationale prose in Description', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '## Description',
+          '',
+          'Adds retries because GitHub returns 502.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item?.trustScore).toBe(7);
+    expect(result.item?.candidates).toContain(
+      'Adds retries because GitHub returns 502.',
+    );
+  });
+
+  test('does not trust generic Description prose without rationale evidence', () => {
+    const result = preprocessWhyPrBody(
+      target,
+      details({
+        body: [
+          '## Description',
+          '',
+          'This updates the release workflow event handling and related configuration.',
+        ].join('\n'),
+      }),
+      { maxCharsPerPr: 800 },
+    );
+
+    expect(result.item).toBeUndefined();
+    expect(result.lowTrust).toBe(true);
+  });
+
   test('keeps inline why labels after container label blocks', () => {
     const result = preprocessWhyPrBody(
       target,

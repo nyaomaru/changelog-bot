@@ -52,7 +52,7 @@ const CONTAINER_CANONICAL_SECTION_NAMES = new Set<WhyCanonicalSectionName>([
 ]);
 
 const RATIONALE_MARKER_RE =
-  /\b(because|so that|in order to|reason|rationale|motivation|to avoid|to prevent|context|problem)\b/i;
+  /\b(why|because|so that|in order to|reason|rationale|motivation|to avoid|to prevent|context|problem)\b|,\s*so\b/i;
 const PROBLEM_MARKER_RE =
   /\b(fix|prevent|avoid|missing|broken|incorrect|regression|failure|bug|issue|risk|support|compatib|performance)\b/i;
 const ISSUE_REF_RE =
@@ -371,10 +371,26 @@ function scoreCandidateMaterial(
   ) {
     score += 2;
   }
-  const hasRationaleMarker = RATIONALE_MARKER_RE.test(candidateText);
+  const hasInlineWhyLabel = sections.some(
+    (section) => section.name === 'why' && section.source === 'inline-label',
+  );
+  // WHY: Inline labels are removed from candidate text, so retain their
+  // explicit rationale signal for trust scoring.
+  const hasRationaleMarker =
+    RATIONALE_MARKER_RE.test(candidateText) || hasInlineWhyLabel;
   const hasProblemMarker = PROBLEM_MARKER_RE.test(candidateText);
   if (hasRationaleMarker) score += 3;
   if (hasProblemMarker) score += 2;
+  // WHY: Description prose must explicitly signal rationale. An inline Why
+  // label is equally explicit even though container extraction removes its
+  // Description parent.
+  if (
+    hasRationaleMarker &&
+    (hasInlineWhyLabel ||
+      sections.some((section) => section.name === 'description'))
+  ) {
+    score += 2;
+  }
   if (ISSUE_REF_RE.test(body)) score += 1;
   if (candidateText.length >= 60) score += 1;
   if (candidateText.length > 500) score += 1;
