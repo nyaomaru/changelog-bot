@@ -52,7 +52,7 @@ const CONTAINER_CANONICAL_SECTION_NAMES = new Set<WhyCanonicalSectionName>([
 ]);
 
 const RATIONALE_MARKER_RE =
-  /\b(because|so that|in order to|reason|rationale|motivation|to avoid|to prevent|context|problem)\b/i;
+  /\b(why|because|so that|in order to|reason|rationale|motivation|to avoid|to prevent|context|problem)\b|,\s*so\b/i;
 const PROBLEM_MARKER_RE =
   /\b(fix|prevent|avoid|missing|broken|incorrect|regression|failure|bug|issue|risk|support|compatib|performance)\b/i;
 const ISSUE_REF_RE =
@@ -375,6 +375,15 @@ function scoreCandidateMaterial(
   const hasProblemMarker = PROBLEM_MARKER_RE.test(candidateText);
   if (hasRationaleMarker) score += 3;
   if (hasProblemMarker) score += 2;
+  // WHY: Description sections often combine WHAT and WHY. Promote them only
+  // when the prose explicitly signals rationale, rather than trusting any
+  // generic description as sufficient evidence.
+  if (
+    hasRationaleMarker &&
+    sections.some((section) => section.name === 'description')
+  ) {
+    score += 1;
+  }
   if (ISSUE_REF_RE.test(body)) score += 1;
   if (candidateText.length >= 60) score += 1;
   if (candidateText.length > 500) score += 1;
