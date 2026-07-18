@@ -213,15 +213,15 @@ describe('why-preprocess', () => {
         body: [
           '## Description',
           '',
-          'This restores the workflow because draft releases can be published later and need changelog generation at publication time.',
+          'Adds retries because GitHub returns 502.',
         ].join('\n'),
       }),
       { maxCharsPerPr: 800 },
     );
 
-    expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
-    expect(result.item?.candidates.join('\n')).toContain(
-      'because draft releases can be published later',
+    expect(result.item?.trustScore).toBe(7);
+    expect(result.item?.candidates).toContain(
+      'Adds retries because GitHub returns 502.',
     );
   });
 

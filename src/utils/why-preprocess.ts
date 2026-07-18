@@ -382,7 +382,7 @@ function scoreCandidateMaterial(
     hasRationaleMarker &&
     sections.some((section) => section.name === 'description')
   ) {
-    score += 1;
+    score += 2;
   }
   if (ISSUE_REF_RE.test(body)) score += 1;
   if (candidateText.length >= 60) score += 1;
