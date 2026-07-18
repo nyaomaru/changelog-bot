@@ -189,7 +189,7 @@ describe('why-preprocess', () => {
           '',
           'This restores the release workflow event handling.',
           '',
-          'WHY: Draft releases can be published later, so changelog generation must run at publication time.',
+          'WHY: Users need release notes when drafts are published.',
           '',
           '## Testing',
           'Verified manually.',
@@ -200,8 +200,10 @@ describe('why-preprocess', () => {
 
     const candidates = result.item?.candidates.join('\n') ?? '';
 
-    expect(result.item?.trustScore).toBeGreaterThanOrEqual(7);
-    expect(candidates).toContain('Draft releases can be published later');
+    expect(result.item?.trustScore).toBe(9);
+    expect(candidates).toContain(
+      'Users need release notes when drafts are published.',
+    );
     expect(candidates).not.toContain('This restores the release workflow');
     expect(candidates).not.toContain('Verified manually');
   });

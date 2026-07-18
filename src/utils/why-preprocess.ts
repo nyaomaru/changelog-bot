@@ -371,16 +371,23 @@ function scoreCandidateMaterial(
   ) {
     score += 2;
   }
-  const hasRationaleMarker = RATIONALE_MARKER_RE.test(candidateText);
+  const hasInlineWhyLabel = sections.some(
+    (section) => section.name === 'why' && section.source === 'inline-label',
+  );
+  // WHY: Inline labels are removed from candidate text, so retain their
+  // explicit rationale signal for trust scoring.
+  const hasRationaleMarker =
+    RATIONALE_MARKER_RE.test(candidateText) || hasInlineWhyLabel;
   const hasProblemMarker = PROBLEM_MARKER_RE.test(candidateText);
   if (hasRationaleMarker) score += 3;
   if (hasProblemMarker) score += 2;
-  // WHY: Description sections often combine WHAT and WHY. Promote them only
-  // when the prose explicitly signals rationale, rather than trusting any
-  // generic description as sufficient evidence.
+  // WHY: Description prose must explicitly signal rationale. An inline Why
+  // label is equally explicit even though container extraction removes its
+  // Description parent.
   if (
     hasRationaleMarker &&
-    sections.some((section) => section.name === 'description')
+    (hasInlineWhyLabel ||
+      sections.some((section) => section.name === 'description'))
   ) {
     score += 2;
   }
