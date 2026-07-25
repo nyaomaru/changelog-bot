@@ -1,5 +1,6 @@
 import { SECTION_CHORE, SECTION_ORDER } from '@/constants/changelog.js';
 import type { CategoryMap } from '@/types/changelog.js';
+import type { ClassifyTitlesOptions } from '@/types/provider.js';
 import { isRecord, isString } from '@/utils/is.js';
 
 /** Prompt payload sent to classification LLMs. */
@@ -56,5 +57,40 @@ export function parseCategoryMap(rawJson: string): CategoryMap | undefined {
     return result;
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Run provider classification with the shared fallback and error policy.
+ * @param params Classification inputs and provider-specific request callback.
+ * @returns Parsed categories, an empty map for empty input, or the deterministic fallback.
+ */
+export async function classifyTitlesWithFallback(params: {
+  titles: string[];
+  hasApiKey: boolean;
+  options?: ClassifyTitlesOptions;
+  request: () => Promise<string>;
+  invalidResponseMessage: string;
+}): Promise<CategoryMap> {
+  const {
+    titles,
+    hasApiKey,
+    options = {},
+    request,
+    invalidResponseMessage,
+  } = params;
+
+  if (!titles.length) return {};
+  if (!hasApiKey) return fallbackCategoryMap(titles);
+
+  try {
+    const categories = parseCategoryMap(await request());
+    if (!categories) {
+      throw new Error(invalidResponseMessage);
+    }
+    return categories;
+  } catch (error) {
+    if (options.throwOnError) throw error;
+    return fallbackCategoryMap(titles);
   }
 }

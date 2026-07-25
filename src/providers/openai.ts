@@ -18,8 +18,7 @@ import { PROVIDER_OPENAI } from '@/constants/provider.js';
 import { RELEASE_NOTES_SYSTEM_PROMPT } from '@/constants/system-prompts.js';
 import {
   buildClassificationPrompt,
-  fallbackCategoryMap,
-  parseCategoryMap,
+  classifyTitlesWithFallback,
 } from '@/providers/classification.js';
 import type { CategoryMap } from '@/types/changelog.js';
 import {
@@ -144,56 +143,51 @@ export class OpenAIProvider implements Provider {
     titles: string[],
     options: ClassifyTitlesOptions = {},
   ): Promise<CategoryMap> {
-    if (!titles.length) return {};
-    if (!this.apiKey) return fallbackCategoryMap(titles);
-
-    const prompt = buildClassificationPrompt(titles);
-
-    try {
-      let text: string;
-      if (isReasoningModel(this.modelName)) {
-        const payload = buildOpenAiResponsePayload(
-          this.modelName,
-          SYSTEM_OPENAI_CLASSIFY,
-          JSON.stringify(prompt),
-          LLM_CLASSIFY_MAX_TOKENS,
-        );
-        const response = await postJson<OpenAIResponse>(
-          OPENAI_RESPONSES_API,
-          payload,
-          { Authorization: `Bearer ${this.apiKey}` },
-          'OpenAI classify error',
-        );
-        text = extractOpenAiResponseText(response);
-      } else {
-        const payload = {
-          model: this.modelName,
-          max_tokens: LLM_CLASSIFY_MAX_TOKENS,
-          temperature: 0,
-          messages: [
-            { role: 'system', content: SYSTEM_OPENAI_CLASSIFY },
-            { role: 'user', content: JSON.stringify(prompt) },
-          ],
-          // Enforce strict JSON object output for robust parsing.
-          response_format: { type: 'json_object' },
-        } as const;
-        const response = await postJson<unknown>(
-          OPENAI_CHAT_API,
-          payload,
-          { Authorization: `Bearer ${this.apiKey}` },
-          'OpenAI classify error',
-        );
-        text = extractOpenAiClassificationResponse(response);
-      }
-      const categories = parseCategoryMap(text);
-      if (!categories) {
-        throw new Error('OpenAI classify output did not match schema');
-      }
-      return categories;
-    } catch (err) {
-      if (options.throwOnError) throw err;
-      return fallbackCategoryMap(titles);
-    }
+    return classifyTitlesWithFallback({
+      titles,
+      hasApiKey: Boolean(this.apiKey),
+      options,
+      invalidResponseMessage: 'OpenAI classify output did not match schema',
+      request: async () => {
+        const prompt = buildClassificationPrompt(titles);
+        let text: string;
+        if (isReasoningModel(this.modelName)) {
+          const payload = buildOpenAiResponsePayload(
+            this.modelName,
+            SYSTEM_OPENAI_CLASSIFY,
+            JSON.stringify(prompt),
+            LLM_CLASSIFY_MAX_TOKENS,
+          );
+          const response = await postJson<OpenAIResponse>(
+            OPENAI_RESPONSES_API,
+            payload,
+            { Authorization: `Bearer ${this.apiKey}` },
+            'OpenAI classify error',
+          );
+          text = extractOpenAiResponseText(response);
+        } else {
+          const payload = {
+            model: this.modelName,
+            max_tokens: LLM_CLASSIFY_MAX_TOKENS,
+            temperature: 0,
+            messages: [
+              { role: 'system', content: SYSTEM_OPENAI_CLASSIFY },
+              { role: 'user', content: JSON.stringify(prompt) },
+            ],
+            // Enforce strict JSON object output for robust parsing.
+            response_format: { type: 'json_object' },
+          } as const;
+          const response = await postJson<unknown>(
+            OPENAI_CHAT_API,
+            payload,
+            { Authorization: `Bearer ${this.apiKey}` },
+            'OpenAI classify error',
+          );
+          text = extractOpenAiClassificationResponse(response);
+        }
+        return text;
+      },
+    });
   }
 
   async extractWhyNotes(

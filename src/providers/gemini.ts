@@ -17,8 +17,7 @@ import { PROVIDER_GEMINI } from '@/constants/provider.js';
 import { RELEASE_NOTES_SYSTEM_PROMPT } from '@/constants/system-prompts.js';
 import {
   buildClassificationPrompt,
-  fallbackCategoryMap,
-  parseCategoryMap,
+  classifyTitlesWithFallback,
 } from '@/providers/classification.js';
 import {
   buildWhyExtractionPrompt,
@@ -127,54 +126,50 @@ export class GeminiProvider implements Provider {
     titles: string[],
     options: ClassifyTitlesOptions = {},
   ): Promise<CategoryMap> {
-    if (!titles.length) return {};
-    if (!this.apiKey) return fallbackCategoryMap(titles);
+    return classifyTitlesWithFallback({
+      titles,
+      hasApiKey: Boolean(this.apiKey),
+      options,
+      invalidResponseMessage: 'Gemini classify output did not match schema',
+      request: async () => {
+        const prompt = buildClassificationPrompt(titles);
+        const properties: Record<string, unknown> = {};
+        for (const category of prompt.categories) {
+          properties[category] = { type: 'array', items: { type: 'string' } };
+        }
 
-    const prompt = buildClassificationPrompt(titles);
-    const properties: Record<string, unknown> = {};
-    for (const category of prompt.categories) {
-      properties[category] = { type: 'array', items: { type: 'string' } };
-    }
+        const payload = {
+          systemInstruction: {
+            parts: [{ text: SYSTEM_GEMINI_CLASSIFY }],
+          },
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: JSON.stringify(prompt) }],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: LLM_CLASSIFY_MAX_TOKENS,
+            temperature: 0,
+            responseMimeType: 'application/json',
+            responseJsonSchema: {
+              type: 'object',
+              properties,
+              required: [...prompt.categories],
+              additionalProperties: false,
+            },
+          },
+        } as const;
 
-    const payload = {
-      systemInstruction: {
-        parts: [{ text: SYSTEM_GEMINI_CLASSIFY }],
+        const response = await postJson<GeminiResponse>(
+          buildGeminiGenerateUrl(this.modelName),
+          payload,
+          { 'x-goog-api-key': this.apiKey ?? '' },
+          'Gemini classify error',
+        );
+        return extractGeminiText(response);
       },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: JSON.stringify(prompt) }],
-        },
-      ],
-      generationConfig: {
-        maxOutputTokens: LLM_CLASSIFY_MAX_TOKENS,
-        temperature: 0,
-        responseMimeType: 'application/json',
-        responseJsonSchema: {
-          type: 'object',
-          properties,
-          required: [...prompt.categories],
-          additionalProperties: false,
-        },
-      },
-    } as const;
-
-    try {
-      const response = await postJson<GeminiResponse>(
-        buildGeminiGenerateUrl(this.modelName),
-        payload,
-        { 'x-goog-api-key': this.apiKey },
-        'Gemini classify error',
-      );
-      const categories = parseCategoryMap(extractGeminiText(response));
-      if (!categories) {
-        throw new Error('Gemini classify output did not match schema');
-      }
-      return categories;
-    } catch (err) {
-      if (options.throwOnError) throw err;
-      return fallbackCategoryMap(titles);
-    }
+    });
   }
 
   async extractWhyNotes(
