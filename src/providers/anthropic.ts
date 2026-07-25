@@ -16,8 +16,7 @@ import { PROVIDER_ANTHROPIC } from '@/constants/provider.js';
 import { RELEASE_NOTES_SYSTEM_PROMPT } from '@/constants/system-prompts.js';
 import {
   buildClassificationPrompt,
-  fallbackCategoryMap,
-  parseCategoryMap,
+  classifyTitlesWithFallback,
 } from '@/providers/classification.js';
 import { isRecord, isString } from '@/utils/is.js';
 import type { CategoryMap } from '@/types/changelog.js';
@@ -115,56 +114,51 @@ export class AnthropicProvider implements Provider {
     titles: string[],
     options: ClassifyTitlesOptions = {},
   ): Promise<CategoryMap> {
-    if (!titles.length) return {};
-    if (!this.apiKey) return fallbackCategoryMap(titles);
+    return classifyTitlesWithFallback({
+      titles,
+      hasApiKey: Boolean(this.apiKey),
+      options,
+      invalidResponseMessage: 'Anthropic classify output did not match schema',
+      request: async () => {
+        const prompt = buildClassificationPrompt(titles);
+        const properties: Record<string, unknown> = {};
+        for (const category of prompt.categories) {
+          properties[category] = { type: 'array', items: { type: 'string' } };
+        }
 
-    const prompt = buildClassificationPrompt(titles);
-    const properties: Record<string, unknown> = {};
-    for (const category of prompt.categories) {
-      properties[category] = { type: 'array', items: { type: 'string' } };
-    }
+        const payload = {
+          model: this.modelName,
+          max_tokens: LLM_CLASSIFY_MAX_TOKENS,
+          temperature: 0,
+          system: SYSTEM_ANTHROPIC_CLASSIFY,
+          messages: [{ role: 'user', content: JSON.stringify(prompt) }],
+          tools: [
+            {
+              name: 'return_categories',
+              description:
+                'Return a JSON object mapping each category to an array of titles.',
+              input_schema: {
+                type: 'object',
+                properties,
+                additionalProperties: false,
+              },
+            },
+          ],
+          tool_choice: { type: 'tool', name: 'return_categories' },
+        } as const;
 
-    const payload = {
-      model: this.modelName,
-      max_tokens: LLM_CLASSIFY_MAX_TOKENS,
-      temperature: 0,
-      system: SYSTEM_ANTHROPIC_CLASSIFY,
-      messages: [{ role: 'user', content: JSON.stringify(prompt) }],
-      tools: [
-        {
-          name: 'return_categories',
-          description:
-            'Return a JSON object mapping each category to an array of titles.',
-          input_schema: {
-            type: 'object',
-            properties,
-            additionalProperties: false,
+        const json = await postJson<unknown>(
+          ANTHROPIC_API,
+          payload,
+          {
+            'x-api-key': this.apiKey ?? '',
+            'anthropic-version': ANTHROPIC_VERSION,
           },
-        },
-      ],
-      tool_choice: { type: 'tool', name: 'return_categories' },
-    } as const;
-
-    try {
-      const json = await postJson<unknown>(
-        ANTHROPIC_API,
-        payload,
-        {
-          'x-api-key': this.apiKey,
-          'anthropic-version': ANTHROPIC_VERSION,
-        },
-        'Anthropic classify error',
-      );
-      const text = extractAnthropicClassificationResponse(json) || '{}';
-      const categories = parseCategoryMap(text);
-      if (!categories) {
-        throw new Error('Anthropic classify output did not match schema');
-      }
-      return categories;
-    } catch (err) {
-      if (options.throwOnError) throw err;
-      return fallbackCategoryMap(titles);
-    }
+          'Anthropic classify error',
+        );
+        return extractAnthropicClassificationResponse(json) || '{}';
+      },
+    });
   }
 
   async extractWhyNotes(
