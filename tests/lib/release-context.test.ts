@@ -81,6 +81,28 @@ describe('lib/release-context', () => {
     expect(plan.version).toBe('1.2.0');
   });
 
+  test('preserves HEAD when explicitly supplied as the release name', () => {
+    tryDetectPrevTag.mockReturnValue('v1.1.0');
+    dateForRef.mockReturnValue('2026-04-10');
+
+    const plan = resolveReleasePlan(
+      {
+        repoPath: '/repo',
+        changelogPath: 'CHANGELOG.md',
+        baseBranch: 'main',
+        provider: 'openai',
+        releaseTag: 'v1.2.0',
+        releaseName: 'HEAD',
+        releaseBody: '',
+        dryRun: false,
+      },
+      'octo/repo',
+    );
+
+    expect(plan.releaseRef).toBe('v1.2.0');
+    expect(plan.version).toBe('HEAD');
+  });
+
   test('removes an existing compare link for the current version', () => {
     readChangelog.mockReturnValue(
       [
