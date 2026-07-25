@@ -10,7 +10,7 @@ import { getProviderRuntimeConfig } from '@/lib/app-config.js';
 import type { AppConfig } from '@/types/config.js';
 import type { ProviderName } from '@/types/llm.js';
 import { resolveGitHubAuth } from '@/utils/github-auth.js';
-import { versionFromRef } from '@/utils/version.js';
+import { normalizeReleaseName, versionFromRef } from '@/utils/version.js';
 import { escapeRegExp } from '@/utils/escape.js';
 import { HEAD_REF } from '@/constants/git.js';
 import { DATE_YYYY_MM_DD_LEN } from '@/constants/time.js';
@@ -56,7 +56,9 @@ export function resolveReleasePlan(
   const [owner, repo] = repoFullName.split('/');
   const releaseRef =
     cli.releaseTag || tryDetectLatestTag(cli.repoPath) || HEAD_REF;
-  const version = cli.releaseName || versionFromRef(releaseRef);
+  const version = cli.releaseName
+    ? normalizeReleaseName(cli.releaseName)
+    : versionFromRef(releaseRef);
   const prevRef =
     tryDetectPrevTag(releaseRef, cli.repoPath) || firstCommit(cli.repoPath);
   const date =
