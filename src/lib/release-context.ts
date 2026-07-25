@@ -56,7 +56,7 @@ export function resolveReleasePlan(
   const [owner, repo] = repoFullName.split('/');
   const releaseRef =
     cli.releaseTag || tryDetectLatestTag(cli.repoPath) || HEAD_REF;
-  const version = cli.releaseName || versionFromRef(releaseRef);
+  const version = versionFromRef(cli.releaseName || releaseRef);
   const prevRef =
     tryDetectPrevTag(releaseRef, cli.repoPath) || firstCommit(cli.repoPath);
   const date =
