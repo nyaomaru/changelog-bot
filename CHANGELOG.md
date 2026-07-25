@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.7] - 2026-07-25
+
+### Added
+
+- extract WHY from description sections by @nyaomaru in [#166](https://github.com/nyaomaru/changelog-bot/pull/166)
+  - Why: Extract explicit rationale from `Description` sections using markers such as `WHY:`, `because`, and `in order to`.
+
+### Fixed
+
+- normalize semver-style release names by @nyaomaru in [#168](https://github.com/nyaomaru/changelog-bot/pull/168)
+
+### Changed
+
+- centralize provider classification fallback by @nyaomaru in [#167](https://github.com/nyaomaru/changelog-bot/pull/167)
+
+### Docs
+
+- 0.6.6 by [bot] by @github-actions in [#165](https://github.com/nyaomaru/changelog-bot/pull/165)
+
+### Chore
+
+- Release: 0.6.7 by [bot] by @github-actions in [#169](https://github.com/nyaomaru/changelog-bot/pull/169)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.7
+
+[v0.6.7]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.7
+
 ## [v0.6.6] - 2026-07-18
 
 ### Changed
