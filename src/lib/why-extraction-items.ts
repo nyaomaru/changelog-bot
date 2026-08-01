@@ -12,10 +12,15 @@ type CollectWhyExtractionItemsParams = {
   fetchPRDetails: typeof fetchPRDetails;
 };
 
+/** Result of fetching and locally validating WHY extraction candidates. */
 export type WhyItemCollectionResult = {
+  /** Trusted provider-ready items collected from pull request descriptions. */
   items: WhyExtractionItem[];
+  /** Number of pull request descriptions fetched successfully. */
   prBodiesFetched: number;
+  /** Number of fetched descriptions rejected by local trust checks. */
   skippedLowTrust: number;
+  /** Per-PR reasons explaining unavailable or rejected descriptions. */
   fallbackReasons: string[];
 };
 
