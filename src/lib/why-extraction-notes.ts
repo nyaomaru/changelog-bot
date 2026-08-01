@@ -12,8 +12,11 @@ const CONFIDENCE_RANK = {
   high: 3,
 } as const;
 
+/** Result of applying local confidence and trust checks to provider notes. */
 export type AcceptedWhyNotesResult = {
+  /** Provider results that passed identity, confidence, and trust checks. */
   notes: WhyNote[];
+  /** Number of provider results rejected by confidence or trust checks. */
   skippedLowTrust: number;
 };
 
