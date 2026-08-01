@@ -1,5 +1,6 @@
 const MIN_MARKDOWN_ATX_HEADING_LEVEL = 1;
 const RELEASE_SECTION_HEADING_LEVEL = 2;
+/** Heading depth used to render additional release-note sections. */
 export const CHANGELOG_ADDITIONAL_SECTION_HEADING_LEVEL = 3;
 const HEADING_LEVEL_STEP = 1;
 const MAX_MARKDOWN_ATX_HEADING_LEVEL = 6;
