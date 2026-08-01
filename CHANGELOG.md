@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.8] - 2026-08-01
+
+### Changed
+
+- separate release and WHY responsibilities by @nyaomaru in [#171](https://github.com/nyaomaru/changelog-bot/pull/171)
+  - Why: To separate release and WHY responsibilities for better organization and clarity.
+
+### Docs
+
+- 0.6.7 by [bot] by @github-actions in [#170](https://github.com/nyaomaru/changelog-bot/pull/170)
+
+### Chore
+
+- Release: 0.6.8 by [bot] by @github-actions in [#172](https://github.com/nyaomaru/changelog-bot/pull/172)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.8
+
+[v0.6.8]: https://github.com/nyaomaru/changelog-bot/compare/v0.6.7...v0.6.8
+
 ## [v0.6.7] - 2026-07-25
 
 ### Added
