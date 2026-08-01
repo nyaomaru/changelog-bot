@@ -1,26 +1,23 @@
 import { LlmError } from '@/lib/errors.js';
 import type { fetchPRDetails } from '@/lib/github.js';
 import type { CliOptions } from '@/schema/cli.js';
-import {
-  WHY_MAX_TOTAL_PAYLOAD_CHARS,
-  WHY_MIN_RENDER_TRUST_SCORE,
-} from '@/constants/why.js';
 import type { LLMOutput } from '@/types/llm.js';
 import type { Provider } from '@/types/provider.js';
-import type {
-  WhyConfidence,
-  WhyDiagnostics,
-  WhyExtractionItem,
-  WhyExtractionOutput,
-  WhyNote,
-  WhyTarget,
-} from '@/types/why.js';
-import { preprocessWhyPrBody } from '@/utils/why-preprocess.js';
+import type { WhyDiagnostics } from '@/types/why.js';
 import {
   applyWhyNotesToSection,
   extractWhyTargets,
 } from '@/utils/why-targets.js';
 import { removeFallbackNote } from '@/utils/llm-output-common.js';
+import {
+  collectWhyExtractionItems,
+  truncateWhyPayloadItems,
+} from '@/lib/why-extraction-items.js';
+import {
+  acceptWhyNotes,
+  appendWhyPreview,
+  githubWebHost,
+} from '@/lib/why-extraction-notes.js';
 
 type RunWhyExtractionParams = {
   /** Parsed CLI options controlling WHY extraction. */
@@ -50,30 +47,6 @@ type RunWhyExtractionResult = {
   diagnostics: WhyDiagnostics;
 };
 
-type WhyItemCollectionResult = {
-  /** Trusted provider-ready items collected from GitHub. */
-  items: WhyExtractionItem[];
-  /** Number of PR descriptions fetched successfully. */
-  prBodiesFetched: number;
-  /** Number of fetched descriptions rejected by local trust checks. */
-  skippedLowTrust: number;
-  /** Per-PR reasons explaining unavailable or rejected descriptions. */
-  fallbackReasons: string[];
-};
-
-type AcceptedWhyNotesResult = {
-  /** Provider results that passed local identity, confidence, and trust checks. */
-  notes: WhyNote[];
-  /** Number of provider results rejected by confidence or trust checks. */
-  skippedLowTrust: number;
-};
-
-const CONFIDENCE_RANK = {
-  low: 1,
-  medium: 2,
-  high: 3,
-} as const;
-
 function createEmptyDiagnostics(enabled: boolean): WhyDiagnostics {
   return {
     enabled,
@@ -85,150 +58,6 @@ function createEmptyDiagnostics(enabled: boolean): WhyDiagnostics {
     notesRendered: 0,
     fallbackReasons: [],
   };
-}
-
-function truncatePayloadItems(items: WhyExtractionItem[]): WhyExtractionItem[] {
-  const boundedItems: WhyExtractionItem[] = [];
-  let usedChars = 0;
-
-  for (const item of items) {
-    const itemChars = item.candidates.join('\n').length;
-    if (usedChars + itemChars > WHY_MAX_TOTAL_PAYLOAD_CHARS) break;
-    boundedItems.push(item);
-    usedChars += itemChars;
-  }
-
-  return boundedItems;
-}
-
-function normalizeWhyText(why: string): string {
-  return why
-    .replace(/\s+/g, ' ')
-    .replace(/^[-*]\s+/, '')
-    .trim()
-    .slice(0, 180);
-}
-
-/**
- * Resolve the pull-link hostname corresponding to a GitHub API base URL.
- * @param apiBase GitHub.com or GHES API base URL.
- * @returns Hostname used by repository pull request links.
- */
-function githubWebHost(apiBase: string): string {
-  try {
-    const apiHost = new URL(apiBase).hostname;
-    return apiHost.toLowerCase() === 'api.github.com' ? 'github.com' : apiHost;
-  } catch {
-    return 'github.com';
-  }
-}
-
-function appendWhyPreview(
-  prBody: string,
-  notes: readonly WhyNote[],
-  whyLabel: string,
-): string {
-  if (!notes.length) return prBody;
-  const preview = notes
-    .map((note) => `- #${note.prNumber}: ${whyLabel}: ${note.why}`)
-    .join('\n');
-  return `${prBody.trim()}\n\n### WHY preview\n\n${preview}`.trim();
-}
-
-/**
- * Fetch and preprocess PR descriptions selected from changelog bullets.
- * @param params WHY extraction dependencies.
- * @param targets Authoritative PR targets selected from the changelog.
- * @param token GitHub token required for PR detail requests.
- * @returns Trusted provider inputs and collection diagnostics.
- */
-async function collectWhyExtractionItems(
-  params: RunWhyExtractionParams,
-  targets: readonly WhyTarget[],
-  token?: string,
-): Promise<WhyItemCollectionResult> {
-  const result: WhyItemCollectionResult = {
-    items: [],
-    prBodiesFetched: 0,
-    skippedLowTrust: 0,
-    fallbackReasons: [],
-  };
-
-  for (const target of targets) {
-    const details = await params.fetchPRDetails(
-      params.owner,
-      params.repo,
-      target.prNumber,
-      token,
-      params.githubApiBase,
-    );
-    if (!details) {
-      result.fallbackReasons.push(
-        `Skipped PR #${target.prNumber}: PR details unavailable`,
-      );
-      continue;
-    }
-    result.prBodiesFetched += 1;
-    const preprocessed = preprocessWhyPrBody(target, details, {
-      maxCharsPerPr: params.cli.whyMaxCharsPerPr,
-    });
-    if (preprocessed.item) {
-      result.items.push(preprocessed.item);
-      continue;
-    }
-    if (preprocessed.lowTrust) result.skippedLowTrust += 1;
-    if (preprocessed.skippedReason) {
-      result.fallbackReasons.push(preprocessed.skippedReason);
-    }
-  }
-
-  return result;
-}
-
-/**
- * Apply deterministic confidence and trust checks to provider WHY results.
- * @param providerOutput Validated provider output.
- * @param inputItems Provider inputs keyed by their authoritative PR targets.
- * @param minimumConfidence User-configured minimum provider confidence.
- * @returns Accepted notes and the number rejected by trust checks.
- */
-function acceptWhyNotes(
-  providerOutput: WhyExtractionOutput,
-  inputItems: readonly WhyExtractionItem[],
-  minimumConfidence: WhyConfidence,
-): AcceptedWhyNotesResult {
-  const itemsByPr = new Map(
-    inputItems.map((item) => [item.prNumber, item] as const),
-  );
-  const notes: WhyNote[] = [];
-  let skippedLowTrust = 0;
-
-  for (const providerResult of providerOutput.items) {
-    const item = itemsByPr.get(providerResult.prNumber);
-    if (!item) continue;
-    const confidenceRank = CONFIDENCE_RANK[providerResult.confidence];
-    const requiredConfidence = item.requiresHighConfidence
-      ? 'high'
-      : minimumConfidence;
-    if (
-      confidenceRank < CONFIDENCE_RANK[requiredConfidence] ||
-      item.trustScore < WHY_MIN_RENDER_TRUST_SCORE
-    ) {
-      skippedLowTrust += 1;
-      continue;
-    }
-    const why = normalizeWhyText(providerResult.why);
-    if (!why) continue;
-    notes.push({
-      ...providerResult,
-      why,
-      sectionTitle: item.sectionTitle,
-      trustScore: item.trustScore,
-      trustBucket: item.trustBucket,
-    });
-  }
-
-  return { notes, skippedLowTrust };
 }
 
 /**
@@ -278,15 +107,21 @@ export async function runWhyExtraction(
   }
 
   const collection = await collectWhyExtractionItems(
-    params,
+    {
+      owner: params.owner,
+      repo: params.repo,
+      token: params.token,
+      githubApiBase: params.githubApiBase,
+      maxCharsPerPr: cli.whyMaxCharsPerPr,
+      fetchPRDetails: params.fetchPRDetails,
+    },
     targets,
-    params.token,
   );
   diagnostics.prBodiesFetched = collection.prBodiesFetched;
   diagnostics.skippedLowTrust += collection.skippedLowTrust;
   diagnostics.fallbackReasons.push(...collection.fallbackReasons);
 
-  const boundedItems = truncatePayloadItems(collection.items);
+  const boundedItems = truncateWhyPayloadItems(collection.items);
   if (!boundedItems.length) {
     diagnostics.fallbackReasons.push(
       'WHY extraction skipped: no trusted PR description candidates',
