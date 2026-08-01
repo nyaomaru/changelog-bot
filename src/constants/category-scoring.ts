@@ -1,5 +1,6 @@
 // WHY: Keep tunable heuristic data separate from the scoring algorithm so
 // weight changes can be reviewed without navigating score-control flow.
+/** Named positive weight levels shared by scoring signals. */
 export const WEIGHT_LEVEL = {
   low: 2,
   default: 3,
@@ -13,6 +14,7 @@ const NEGATIVE_LEVEL = {
   strong: -3,
 } as const;
 
+/** Semantic weights assigned to prefix, keyword, and negative signals. */
 export const WEIGHT = {
   prefix: {
     breaking: WEIGHT_LEVEL.veryHigh,
@@ -38,6 +40,7 @@ export const WEIGHT = {
   },
 } as const;
 
+/** Keyword signal represented by a default-weight string or explicit weight. */
 export type WeightedKeyword =
   | string
   | { readonly keyword: string; readonly weight: number };
@@ -196,12 +199,25 @@ export const CATEGORY_WEIGHTS = {
   negative: readonly Exclude<WeightedKeyword, string>[];
 };
 
+/** Lowest score retained after heuristic scoring. */
 export const SCORE_MIN = 0;
+
+/** Highest score retained after heuristic scoring. */
 export const SCORE_MAX = 12;
+
+/** Minimum score required for a category to be selected as the best match. */
 export const BEST_CATEGORY_MIN_SCORE = 4;
+
+/** Minimum lead over the runner-up required for best-category selection. */
 export const BEST_CATEGORY_REQUIRED_MARGIN = 2;
+
+/** Default contribution from a weak keyword match. */
 export const WEAK_KEYWORD_WEIGHT = 1;
+
+/** Amount removed from the leading category when uncertainty is detected. */
 export const NEGATIVE_ATTENUATION_WEIGHT = 1;
+
+/** Maximum title length in words eligible for n-gram expansion. */
 export const NGRAM_MAX_WORDS = 50;
 
 /** Thresholds for interpreting category scores. */
