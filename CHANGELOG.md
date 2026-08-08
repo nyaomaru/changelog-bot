@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.9] - 2026-08-08
+
+### Changed
+
+- improve changelog file and git helper coverage by @nyaomaru in [#174](https://github.com/nyaomaru/changelog-bot/pull/174)
+- split GitHub API responsibilities by @nyaomaru in [#175](https://github.com/nyaomaru/changelog-bot/pull/175)
+  - Why: Split GitHub API responsibilities to centralize request headers and authentication while maintaining backward compatibility.
+
+### Docs
+
+- 0.6.8 by [bot] by @github-actions in [#173](https://github.com/nyaomaru/changelog-bot/pull/173)
+
+### Chore
+
+- Release: 0.6.9 by [bot] by @github-actions in [#176](https://github.com/nyaomaru/changelog-bot/pull/176)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.9
+
+[v0.6.9]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.9
+
 ## [v0.6.8] - 2026-08-01
 
 ### Changed
