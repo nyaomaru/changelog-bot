@@ -1,153 +1,35 @@
-import {
-  SECTION_ORDER,
-  SECTION_ADDED,
-  SECTION_CHANGED,
-  SECTION_CHORE,
-  SECTION_DOCS,
-  SECTION_FIXED,
-  SECTION_REVERTED,
-  SECTION_TEST,
-  SECTION_BREAKING_CHANGES,
-} from '@/constants/changelog.js';
-import type { CategoryScores } from '@/types/changelog.js';
-import { normalizeTitle } from '@/utils/title-normalize.js';
-import {
-  FEAT_PREFIX_FLEX_RE,
-  FIX_PREFIX_FLEX_RE,
-  REFACTOR_PERF_STYLE_PREFIX_FLEX_RE,
-  DOCS_PREFIX_FLEX_RE,
-  TEST_PREFIX_FLEX_RE,
-  REVERT_PREFIX_FLEX_RE,
-  CHORE_PREFIX_FLEX_RE,
-  PERF_PREFIX_FLEX_RE,
-} from '@/constants/conventional.js';
-import {
-  BREAKING_PREFIX_MARKER_RE,
-  COMBO_ADD_TO_IMPROVE_RE,
-  COMBO_TIGHTEN_TYPE_RE,
-  COMBO_FIX_BY_ADDING_RE,
-  COMBO_REMOVE_WITHOUT_REPLACEMENT_RE,
-  BUMP_OR_UPGRADE_RE,
-  VERSION_FROM_TO_RE,
-} from '@/constants/scoring.js';
-import { isNullable } from '@/utils/is.js';
-import type { BucketName } from '@/types/changelog.js';
+import { SECTION_ORDER } from '@/constants/changelog.js';
 import {
   BEST_CATEGORY_MIN_SCORE,
   BEST_CATEGORY_REQUIRED_MARGIN,
-  CATEGORY_WEIGHTS,
-  NEGATIVE_ATTENUATION_WEIGHT,
-  NGRAM_MAX_WORDS,
-  SCORE_MAX,
-  SCORE_MIN,
-  WEAK_KEYWORD_WEIGHT,
-  WEIGHT,
-  WEIGHT_LEVEL,
-  type WeightedKeyword,
 } from '@/constants/category-scoring.js';
+import type { BucketName, CategoryScores } from '@/types/changelog.js';
+import {
+  applyComboHeuristics,
+  applyDependencyBumpHeuristic,
+  applyNegativeSignalAttenuation,
+  clampCategoryScores,
+  collectPrefixScoreDeltas,
+} from '@/utils/category-score-heuristics.js';
+import {
+  collectKeywordScoreDeltas,
+  createNormalizedPhrases,
+} from '@/utils/category-score-keywords.js';
+import { isNullable } from '@/utils/is.js';
+import { normalizeTitle } from '@/utils/title-normalize.js';
 
 export { SCORE_THRESHOLDS } from '@/constants/category-scoring.js';
 
-// Use centralized BucketName type for section identifiers.
-type SectionName = BucketName;
-
-type ScoreDeltas = Partial<Record<SectionName, number>>;
-
-type KeywordIndex = Map<
-  string,
-  Array<{ section: SectionName; weight: number }>
->;
-
-/**
- * Add a weighted keyword entry to a keyword index.
- * @param index Keyword index being built.
- * @param section Changelog section affected by the keyword.
- * @param entry Keyword string or explicit weighted keyword.
- * @param defaultWeight Weight used for plain string entries.
- */
-function addKeywordToIndex(
-  index: KeywordIndex,
-  section: SectionName,
-  entry: WeightedKeyword,
-  defaultWeight: number,
-): void {
-  const { keyword, weight } =
-    typeof entry === 'string'
-      ? { keyword: entry, weight: defaultWeight }
-      : entry;
-  const existingEntries = index.get(keyword) || [];
-  existingEntries.push({ section, weight });
-  index.set(keyword, existingEntries);
-}
-
-/**
- * Build an index from grouped weighted keyword entries.
- * @param groups Section-keyword groups to index.
- * @param defaultWeight Weight used for plain string entries.
- * @returns Map from keyword phrase to section-weight pairs.
- */
-function buildKeywordIndex(
-  groups: Array<{
-    section: SectionName;
-    entries: readonly WeightedKeyword[];
-  }>,
-  defaultWeight: number,
-): KeywordIndex {
-  const index: KeywordIndex = new Map();
-  for (const { section, entries } of groups) {
-    for (const entry of entries) {
-      addKeywordToIndex(index, section, entry, defaultWeight);
-    }
-  }
-  return index;
-}
-
-// WHY: Build keyword indices once at module init time to avoid per-call allocation.
-const STRONG_KEYWORD_INDEX: KeywordIndex = buildKeywordIndex(
-  [
-    {
-      section: SECTION_BREAKING_CHANGES,
-      entries: CATEGORY_WEIGHTS.strong.breaking,
-    },
-    { section: SECTION_ADDED, entries: CATEGORY_WEIGHTS.strong.added },
-    { section: SECTION_FIXED, entries: CATEGORY_WEIGHTS.strong.fixed },
-    { section: SECTION_CHANGED, entries: CATEGORY_WEIGHTS.strong.changed },
-    { section: SECTION_DOCS, entries: CATEGORY_WEIGHTS.strong.docs },
-    { section: SECTION_TEST, entries: CATEGORY_WEIGHTS.strong.test },
-    { section: SECTION_CHORE, entries: CATEGORY_WEIGHTS.strong.chore },
-  ],
-  WEIGHT.strong.default,
-);
-const WEAK_KEYWORD_INDEX: KeywordIndex = buildKeywordIndex(
-  [
-    { section: SECTION_ADDED, entries: CATEGORY_WEIGHTS.weak.added },
-    { section: SECTION_FIXED, entries: CATEGORY_WEIGHTS.weak.fixed },
-    { section: SECTION_CHANGED, entries: CATEGORY_WEIGHTS.weak.changed },
-    { section: SECTION_DOCS, entries: CATEGORY_WEIGHTS.weak.docs },
-    { section: SECTION_CHORE, entries: CATEGORY_WEIGHTS.weak.chore },
-  ],
-  WEAK_KEYWORD_WEIGHT,
-);
+type ScoreDeltas = Partial<Record<BucketName, number>>;
 
 /**
  * Initialize an empty score object with zero for every section.
- * @returns Fresh `CategoryScores` with all sections set to 0.
+ * @returns Fresh category scores with all sections set to zero.
  */
 function createEmptyScores(): CategoryScores {
   const categoryScores = {} as CategoryScores;
   for (const section of SECTION_ORDER) categoryScores[section] = 0;
   return categoryScores;
-}
-
-/**
- * Check whether a raw commit/title includes a breaking marker in the prefix.
- * Accepts both `type!: msg` and `type(scope)!: msg` forms.
- * @param rawTitle Original PR title or commit subject.
- * @returns True when a breaking marker is found in the prefix.
- */
-function hasBreakingMarkerInPrefix(rawTitle: string): boolean {
-  // Accept both `type!: msg` and `type(scope)!: msg` forms
-  return BREAKING_PREFIX_MARKER_RE.test(rawTitle.split('\n')[0] || '');
 }
 
 /**
@@ -157,201 +39,9 @@ function hasBreakingMarkerInPrefix(rawTitle: string): boolean {
  */
 function addScoreDeltas(scores: CategoryScores, deltas: ScoreDeltas): void {
   for (const [sectionName, weight] of Object.entries(deltas) as Array<
-    [SectionName, number]
+    [BucketName, number]
   >) {
     scores[sectionName] += weight;
-  }
-}
-
-/**
- * Generate normalized words and short n-grams for keyword matching.
- * @param normalizedTitle Title after lowercasing and normalization.
- * @returns Unique phrases eligible for keyword scoring.
- */
-function createNormalizedPhrases(normalizedTitle: string): Set<string> {
-  const words = normalizedTitle.split(/\s+/).filter(Boolean);
-  const shouldUseNgrams = words.length <= NGRAM_MAX_WORDS;
-  if (!shouldUseNgrams) return new Set(words);
-
-  const phrases = new Set(words);
-  for (let wordIndex = 0; wordIndex < words.length - 1; wordIndex++) {
-    phrases.add(`${words[wordIndex]} ${words[wordIndex + 1]}`);
-  }
-  for (let wordIndex = 0; wordIndex < words.length - 2; wordIndex++) {
-    phrases.add(
-      `${words[wordIndex]} ${words[wordIndex + 1]} ${words[wordIndex + 2]}`,
-    );
-  }
-  return phrases;
-}
-
-/**
- * Score conventional prefix signals.
- * @param rawTitle Original title, preserving prefix punctuation.
- * @param lowercasedTitle Lowercased title used by prefix regexes.
- * @returns Per-section prefix score deltas.
- */
-function collectPrefixFamilyDeltas(
-  rawTitle: string,
-  lowercasedTitle: string,
-): ScoreDeltas {
-  const deltas: ScoreDeltas = {};
-
-  if (hasBreakingMarkerInPrefix(rawTitle)) {
-    deltas[SECTION_BREAKING_CHANGES] = CATEGORY_WEIGHTS.prefix.breaking;
-  }
-  if (FEAT_PREFIX_FLEX_RE.test(lowercasedTitle)) {
-    deltas[SECTION_ADDED] = CATEGORY_WEIGHTS.prefix.feat;
-  }
-  if (FIX_PREFIX_FLEX_RE.test(lowercasedTitle)) {
-    deltas[SECTION_FIXED] = CATEGORY_WEIGHTS.prefix.fix;
-  }
-  if (REFACTOR_PERF_STYLE_PREFIX_FLEX_RE.test(lowercasedTitle)) {
-    deltas[SECTION_CHANGED] = Math.max(
-      CATEGORY_WEIGHTS.prefix.refactor,
-      PERF_PREFIX_FLEX_RE.test(lowercasedTitle)
-        ? CATEGORY_WEIGHTS.prefix.perf
-        : CATEGORY_WEIGHTS.prefix.refactor,
-    );
-  }
-  if (DOCS_PREFIX_FLEX_RE.test(lowercasedTitle)) {
-    deltas[SECTION_DOCS] = CATEGORY_WEIGHTS.prefix.docs;
-  }
-  if (TEST_PREFIX_FLEX_RE.test(lowercasedTitle)) {
-    deltas[SECTION_TEST] = CATEGORY_WEIGHTS.prefix.test;
-  }
-  if (REVERT_PREFIX_FLEX_RE.test(lowercasedTitle)) {
-    deltas[SECTION_REVERTED] = CATEGORY_WEIGHTS.prefix.revert;
-  }
-  if (CHORE_PREFIX_FLEX_RE.test(lowercasedTitle)) {
-    deltas[SECTION_CHORE] = CATEGORY_WEIGHTS.prefix.chore;
-  }
-
-  return deltas;
-}
-
-/**
- * Collect capped keyword scores for one keyword family.
- * @param normalizedPhrases Normalized words and n-grams from the title.
- * @param keywordIndex Index for the keyword family to score.
- * @returns Max matching keyword score per section.
- */
-function collectKeywordFamilyDeltas(
-  normalizedPhrases: Set<string>,
-  keywordIndex: KeywordIndex,
-): ScoreDeltas {
-  const deltas: ScoreDeltas = {};
-
-  for (const phrase of normalizedPhrases) {
-    const keywordHits = keywordIndex.get(phrase);
-    if (!keywordHits) continue;
-
-    for (const { section, weight } of keywordHits) {
-      deltas[section] = Math.max(deltas[section] || 0, weight);
-    }
-  }
-
-  return deltas;
-}
-
-/**
- * Attenuate the strongest main category when the title includes uncertainty signals.
- * @param scores Mutable scores to adjust.
- * @param normalizedPhrases Normalized words and n-grams from the title.
- */
-function applyNegativeSignalAttenuation(
-  scores: CategoryScores,
-  normalizedPhrases: Set<string>,
-): void {
-  const hasNegativeSignal = CATEGORY_WEIGHTS.negative.some(({ keyword }) =>
-    normalizedPhrases.has(keyword),
-  );
-  if (!hasNegativeSignal) return;
-
-  const candidateSections: SectionName[] = [
-    SECTION_FIXED,
-    SECTION_CHANGED,
-    SECTION_ADDED,
-  ];
-  let bestSection: SectionName | null = null;
-  let bestScore = -Infinity;
-
-  for (const section of candidateSections) {
-    if (scores[section] > bestScore) {
-      bestScore = scores[section];
-      bestSection = section;
-    }
-  }
-
-  if (bestSection) {
-    scores[bestSection] = Math.max(
-      scores[bestSection] - NEGATIVE_ATTENUATION_WEIGHT,
-      SCORE_MIN,
-    );
-  }
-}
-
-/**
- * Apply phrase-combination heuristics that need regex context beyond n-grams.
- * @param scores Mutable scores to adjust.
- * @param normalizedTitle Normalized title used by combo regexes.
- */
-function applyComboHeuristics(
-  scores: CategoryScores,
-  normalizedTitle: string,
-): void {
-  if (COMBO_ADD_TO_IMPROVE_RE.test(normalizedTitle)) {
-    scores[SECTION_ADDED] += WEAK_KEYWORD_WEIGHT;
-    scores[SECTION_CHANGED] += WEIGHT.strong.default;
-  }
-  if (COMBO_TIGHTEN_TYPE_RE.test(normalizedTitle)) {
-    scores[SECTION_FIXED] += WEIGHT.strong.default;
-    scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
-  }
-  if (COMBO_FIX_BY_ADDING_RE.test(normalizedTitle)) {
-    scores[SECTION_FIXED] += WEIGHT.strong.default;
-    scores[SECTION_ADDED] += WEAK_KEYWORD_WEIGHT;
-  }
-  if (COMBO_REMOVE_WITHOUT_REPLACEMENT_RE.test(normalizedTitle)) {
-    scores[SECTION_BREAKING_CHANGES] += WEIGHT.strong.high;
-    scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
-  }
-}
-
-/**
- * Apply dependency version bump heuristics.
- * @param scores Mutable scores to adjust.
- * @param normalizedTitle Normalized title used by dependency regexes.
- */
-function applyDependencyBumpHeuristic(
-  scores: CategoryScores,
-  normalizedTitle: string,
-): void {
-  if (!BUMP_OR_UPGRADE_RE.test(normalizedTitle)) return;
-
-  scores[SECTION_CHORE] += WEIGHT_LEVEL.low;
-  const versionRangeMatch = normalizedTitle.match(VERSION_FROM_TO_RE);
-  if (!versionRangeMatch) return;
-
-  const fromMajorVersion = parseInt(versionRangeMatch[1], 10);
-  const toMajorVersion = parseInt(versionRangeMatch[2], 10);
-  if (
-    !Number.isNaN(fromMajorVersion) &&
-    !Number.isNaN(toMajorVersion) &&
-    toMajorVersion > fromMajorVersion
-  ) {
-    scores[SECTION_BREAKING_CHANGES] += WEIGHT_LEVEL.low;
-    scores[SECTION_CHANGED] += WEAK_KEYWORD_WEIGHT;
-  }
-}
-
-/**
- * Clamp all category scores to the supported scoring range.
- * @param scores Mutable scores to clamp.
- */
-function clampScores(scores: CategoryScores): void {
-  for (const section of SECTION_ORDER) {
-    scores[section] = Math.max(SCORE_MIN, Math.min(SCORE_MAX, scores[section]));
   }
 }
 
@@ -363,24 +53,18 @@ function clampScores(scores: CategoryScores): void {
 export function scoreCategories(rawTitle: string): CategoryScores {
   const scores = createEmptyScores();
   if (!rawTitle) return scores;
+
   const lowercasedTitle = rawTitle.toLowerCase();
   const normalizedTitle = normalizeTitle(lowercasedTitle);
   const normalizedPhrases = createNormalizedPhrases(normalizedTitle);
 
-  addScoreDeltas(scores, collectPrefixFamilyDeltas(rawTitle, lowercasedTitle));
-  addScoreDeltas(
-    scores,
-    collectKeywordFamilyDeltas(normalizedPhrases, STRONG_KEYWORD_INDEX),
-  );
-  addScoreDeltas(
-    scores,
-    collectKeywordFamilyDeltas(normalizedPhrases, WEAK_KEYWORD_INDEX),
-  );
+  addScoreDeltas(scores, collectPrefixScoreDeltas(rawTitle, lowercasedTitle));
+  addScoreDeltas(scores, collectKeywordScoreDeltas(normalizedPhrases));
 
   applyNegativeSignalAttenuation(scores, normalizedPhrases);
   applyComboHeuristics(scores, normalizedTitle);
   applyDependencyBumpHeuristic(scores, normalizedTitle);
-  clampScores(scores);
+  clampCategoryScores(scores);
 
   return scores;
 }
@@ -390,9 +74,9 @@ export function scoreCategories(rawTitle: string): CategoryScores {
  * @param scores Category scores computed by `scoreCategories`.
  * @returns Best section name, or null if inconclusive.
  */
-export function bestCategory(scores: CategoryScores): SectionName | null {
-  let topSection: SectionName | undefined;
-  let secondSection: SectionName | undefined;
+export function bestCategory(scores: CategoryScores): BucketName | null {
+  let topSection: BucketName | undefined;
+  let secondSection: BucketName | undefined;
   for (const section of SECTION_ORDER) {
     if (isNullable(topSection) || scores[section] > scores[topSection]) {
       secondSection = topSection;
@@ -404,13 +88,15 @@ export function bestCategory(scores: CategoryScores): SectionName | null {
       secondSection = section;
     }
   }
+
   if (isNullable(topSection)) return null;
   const topScore = scores[topSection];
   const secondScore = isNullable(secondSection) ? 0 : scores[secondSection];
   if (
     topScore >= BEST_CATEGORY_MIN_SCORE &&
     topScore - secondScore >= BEST_CATEGORY_REQUIRED_MARGIN
-  )
+  ) {
     return topSection;
+  }
   return null;
 }
