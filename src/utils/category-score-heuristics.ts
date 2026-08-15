@@ -41,6 +41,12 @@ import type { BucketName, CategoryScores } from '@/types/changelog.js';
 
 type ScoreDeltas = Partial<Record<BucketName, number>>;
 
+/**
+ * Check the first line of a title for a breaking conventional prefix marker.
+ * Accepts both `type!: message` and `type(scope)!: message` forms.
+ * @param rawTitle Original PR title or commit subject.
+ * @returns True when the first line contains a breaking prefix marker.
+ */
 function hasBreakingMarkerInPrefix(rawTitle: string): boolean {
   return BREAKING_PREFIX_MARKER_RE.test(rawTitle.split('\n')[0] || '');
 }
