@@ -87,7 +87,7 @@ runs:
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
         node-version: '22'
 
@@ -96,7 +96,7 @@ runs:
       run: |
         set -euo pipefail
         corepack enable
-        corepack prepare pnpm@11.2.2 --activate
+        corepack prepare pnpm@11.22.0 --activate
 
     - name: Run changelog-bot
       shell: bash
