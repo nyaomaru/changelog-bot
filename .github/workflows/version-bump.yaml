@@ -22,14 +22,14 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
           persist-credentials: true
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@v4
         with:
           install: true
 
@@ -40,10 +40,16 @@ jobs:
 
       - name: Resolve pnpm store path
         id: pnpm-store
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+        run: |
+          pnpm_store_path="$(pnpm store path)"
+          if [[ -z "$pnpm_store_path" ]]; then
+            echo "::error::pnpm store path returned an empty value"
+            exit 1
+          fi
+          printf 'path=%s\n' "$pnpm_store_path" >> "$GITHUB_OUTPUT"
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
