@@ -33,6 +33,11 @@ jobs:
         with:
           install: true
 
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack install
+
       - name: Resolve pnpm store path
         id: pnpm-store
         run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"

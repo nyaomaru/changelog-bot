@@ -17,16 +17,25 @@ jobs:
         with:
           cache: true
 
+      - name: Install toolchain
+        run: mise install
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack install
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
-          path: ~/.local/share/pnpm/store/v3
+          path: ${{ steps.pnpm-store.outputs.path }}
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
-
-      - name: Install toolchain
-        run: mise install
 
       - name: Install dependencies
         run: pnpm install
