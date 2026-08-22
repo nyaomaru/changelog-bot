@@ -25,7 +25,7 @@ import {
   SCORE_THRESHOLDS,
 } from '@/utils/category-score.js';
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
-import { isBucketName } from '@/utils/is.js';
+import { isArray, isBucketName } from '@/utils/is.js';
 
 const TYPE_INTENT_INDICATORS = [
   'type',
@@ -108,7 +108,7 @@ function collectKnownTitles(
   }
 
   for (const list of Object.values(categories)) {
-    if (!Array.isArray(list)) continue;
+    if (!isArray(list)) continue;
     for (const title of list) {
       knownTitles.add(title);
     }
@@ -121,7 +121,7 @@ function cloneCategoryMap(categories: CategoryMap): CategoryMap {
   const adjusted: CategoryMap = Object.fromEntries(
     Object.entries(categories).map(([section, list]) => [
       section,
-      Array.isArray(list) ? list.slice() : [],
+      isArray(list) ? list.slice() : [],
     ]),
   );
 
@@ -142,11 +142,11 @@ function moveTitlesToCategory(
   titles: string[],
   targetCategory: BucketName,
 ): void {
-  if (!Array.isArray(adjusted[targetCategory])) adjusted[targetCategory] = [];
+  if (!isArray(adjusted[targetCategory])) adjusted[targetCategory] = [];
   const target = adjusted[targetCategory];
   for (const title of titles) {
     for (const list of Object.values(adjusted)) {
-      if (!Array.isArray(list)) continue;
+      if (!isArray(list)) continue;
       const titleIndex = list.indexOf(title);
       if (titleIndex !== -1) list.splice(titleIndex, 1);
     }
@@ -166,7 +166,7 @@ function findCategory(
   title: string,
 ): BucketName | undefined {
   for (const [section, list] of Object.entries(categories)) {
-    if (Array.isArray(list) && list.includes(title) && isBucketName(section)) {
+    if (isArray(list) && list.includes(title) && isBucketName(section)) {
       return section;
     }
   }

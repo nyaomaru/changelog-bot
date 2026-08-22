@@ -7,8 +7,10 @@ import {
   type CliConfigFile,
 } from '@/schema/config-file.js';
 import { ConfigError } from '@/lib/errors.js';
+import { isError, isInstanceOf } from '@/utils/is.js';
 
 const CLI_CONFIG_ENCODING = 'utf8';
+const isZodError = isInstanceOf(z.ZodError);
 
 /**
  * Load optional CLI configuration from JSON.
@@ -36,12 +38,12 @@ export function loadCliConfigFile(
     );
     return CliConfigFileSchema.parse(rawConfig);
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (isZodError(error)) {
       throw new ConfigError(
         `Invalid config file ${resolvedPath}: ${z.prettifyError(error)}`,
       );
     }
-    const message = error instanceof Error ? error.message : String(error);
+    const message = isError(error) ? error.message : String(error);
     throw new ConfigError(`Invalid config file ${resolvedPath}: ${message}`);
   }
 }

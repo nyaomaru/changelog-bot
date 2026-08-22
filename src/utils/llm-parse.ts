@@ -3,6 +3,7 @@ import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import { LLMOutputSchema } from '@/schema/schema.js';
 import { LlmError, ValidationError } from '@/lib/errors.js';
 import { LLM_TRUNCATE_LIMIT } from '@/constants/prompt.js';
+import { isError } from '@/utils/is.js';
 
 /**
  * Generate LLM output and enforce schema with a bounded retry using a repaired prompt.
@@ -43,7 +44,7 @@ export async function parseOrRetryLLMOutput(
   if (lastWasProviderError) {
     // Wrap provider errors for clearer upstream handling after retries.
     throw new LlmError(
-      lastErr instanceof Error ? lastErr.message : 'Unknown LLM provider error',
+      isError(lastErr) ? lastErr.message : 'Unknown LLM provider error',
     );
   }
   throw new ValidationError('LLM output did not match schema after retry');

@@ -1,3 +1,5 @@
+import { isSafeInteger } from '@/utils/is.js';
+
 const PULL_URL_PR_NUMBER_RE =
   /\b(?<pullUrl>https?:\/\/[^\s)]+\/pull\/(?<prNumber>\d+)\b)/gi;
 const PULL_LINK_SUFFIX_RE =
@@ -70,7 +72,7 @@ function isCurrentRepositoryPullUrl(
 function parsePrNumber(rawNumber: string | undefined): number | null {
   if (!rawNumber) return null;
   const prNumber = Number.parseInt(rawNumber, 10);
-  return Number.isSafeInteger(prNumber) ? prNumber : null;
+  return isSafeInteger(prNumber) ? prNumber : null;
 }
 
 function extractOwningPrReference(

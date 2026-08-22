@@ -1,7 +1,9 @@
 import { SECTION_CHORE, SECTION_ORDER } from '@/constants/changelog.js';
 import type { CategoryMap } from '@/types/changelog.js';
 import type { ClassifyTitlesOptions } from '@/types/provider.js';
-import { isRecord, isString } from '@/utils/is.js';
+import { arrayOf, isRecord, isString } from '@/utils/is.js';
+
+const isStringArray = arrayOf(isString);
 
 /** Prompt payload sent to classification LLMs. */
 export type ClassificationPrompt = {
@@ -45,8 +47,8 @@ export function parseCategoryMap(rawJson: string): CategoryMap | undefined {
 
     const result: CategoryMap = {};
     for (const [category, titles] of Object.entries(parsed)) {
-      if (Array.isArray(titles) && titles.every(isString)) {
-        result[category] = titles.slice();
+      if (isStringArray(titles)) {
+        result[category] = [...titles];
       }
     }
 

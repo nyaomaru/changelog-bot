@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { LLMOutputSchema } from '@/schema/schema.js';
+import { isInstanceOf } from '@/utils/is.js';
+
+const isZodArray = isInstanceOf(z.ZodArray);
+const isZodDefault = isInstanceOf(z.ZodDefault);
+const isZodOptional = isInstanceOf(z.ZodOptional);
+const isZodString = isInstanceOf(z.ZodString);
 
 /**
  * Recursively unwrap optional/default wrappers to reach the inner schema.
@@ -7,9 +13,9 @@ import { LLMOutputSchema } from '@/schema/schema.js';
  * @returns Inner non-optional schema.
  */
 function unwrapOptional(schema: z.ZodTypeAny): z.ZodTypeAny {
-  if (schema instanceof z.ZodDefault)
+  if (isZodDefault(schema))
     return unwrapOptional(schema.unwrap() as z.ZodTypeAny);
-  if (schema instanceof z.ZodOptional)
+  if (isZodOptional(schema))
     return unwrapOptional(schema.unwrap() as z.ZodTypeAny);
   return schema;
 }
@@ -19,7 +25,7 @@ function unwrapOptional(schema: z.ZodTypeAny): z.ZodTypeAny {
  * @param schema Zod schema to inspect.
  */
 function isOptionalSchema(schema: z.ZodTypeAny): boolean {
-  return schema instanceof z.ZodOptional || schema instanceof z.ZodDefault;
+  return isZodOptional(schema) || isZodDefault(schema);
 }
 
 /**
@@ -29,7 +35,7 @@ function isOptionalSchema(schema: z.ZodTypeAny): boolean {
  */
 function buildJsonSchemaForArray(schema: z.ZodArray): unknown {
   const inner = unwrapOptional(schema.element as z.ZodTypeAny);
-  if (inner instanceof z.ZodString) {
+  if (isZodString(inner)) {
     return { type: 'array', items: { type: 'string' } };
   }
   return {}; // unknown array element type, stay permissive
@@ -42,8 +48,8 @@ function buildJsonSchemaForArray(schema: z.ZodArray): unknown {
  */
 function buildJsonSchemaForProperty(schema: z.ZodTypeAny): unknown {
   const core = unwrapOptional(schema);
-  if (core instanceof z.ZodString) return { type: 'string' };
-  if (core instanceof z.ZodArray) return buildJsonSchemaForArray(core);
+  if (isZodString(core)) return { type: 'string' };
+  if (isZodArray(core)) return buildJsonSchemaForArray(core);
   return {}; // default to loose typing when structure is unfamiliar
 }
 

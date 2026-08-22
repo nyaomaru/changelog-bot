@@ -7,6 +7,7 @@ import type { CategoryMap } from '@/types/changelog.js';
 import type { Provider } from '@/types/provider.js';
 import { fallbackCategoryMap } from '@/providers/classification.js';
 import { providerFactory } from '@/utils/provider.js';
+import { isString } from '@/utils/is.js';
 
 function providerFromConfig(
   providerName: ProviderName,
@@ -36,7 +37,7 @@ export async function classifyTitles(
   config?: ProviderRuntimeConfig,
 ): Promise<CategoryMap> {
   if (!titles.length) return {};
-  if (typeof provider !== 'string') {
+  if (!isString(provider)) {
     return provider.classifyTitles(titles);
   }
   if (!config) {

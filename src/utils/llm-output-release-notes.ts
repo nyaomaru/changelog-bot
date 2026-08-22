@@ -24,6 +24,7 @@ import {
   buildPrUrl,
   resolvePrFromTitles,
 } from '@/utils/llm-output-common.js';
+import { isError } from '@/utils/is.js';
 
 /**
  * Fill missing PR numbers/URLs/authors for release note items when possible.
@@ -138,7 +139,7 @@ export async function buildOutputFromReleaseNotes(
         // Mark AI usage only when classification had input and a provider key is available.
         aiUsed = aiUsed || hasProviderKey;
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = isError(err) ? err.message : String(err);
         if (failOnLlmError) {
           throw new LlmError(`LLM classification failed: ${message}`);
         }

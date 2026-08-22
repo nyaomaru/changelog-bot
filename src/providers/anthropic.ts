@@ -18,7 +18,7 @@ import {
   buildClassificationPrompt,
   classifyTitlesWithFallback,
 } from '@/providers/classification.js';
-import { isRecord, isString } from '@/utils/is.js';
+import { isArray, isRecord, isString } from '@/utils/is.js';
 import type { CategoryMap } from '@/types/changelog.js';
 import {
   buildWhyExtractionPrompt,
@@ -37,7 +37,7 @@ const SYSTEM_ANTHROPIC_CLASSIFY =
  */
 function extractAnthropicClassificationResponse(json: unknown): string {
   // Prefer structured tool_use output when present.
-  if (isRecord(json) && Array.isArray(json.content)) {
+  if (isRecord(json) && isArray(json.content)) {
     const first = json.content[0];
     // tool_use content: { type: 'tool_use', name, input: {...} }
     if (isRecord(first) && first.type === 'tool_use' && isRecord(first.input)) {

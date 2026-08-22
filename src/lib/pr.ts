@@ -6,6 +6,7 @@ import {
   GIT_REMOTE,
 } from '@/constants/git.js';
 import type { CreatePRParams } from '@/types/pr.js';
+import { isError } from '@/utils/is.js';
 
 type GitArgs = readonly [string, ...string[]];
 const INVALID_BRANCH_PUNCTUATION = ' ~^:?*[';
@@ -131,7 +132,7 @@ export async function createPR(params: CreatePRParams) {
         labels,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = isError(err) ? err.message : String(err);
       console.warn(`Warning: Failed to apply PR labels: ${message}`);
     }
   }

@@ -3,6 +3,7 @@ import {
   type WhyCanonicalSectionName,
 } from '@/constants/why-section-aliases.js';
 import { escapeRegExp } from '@/utils/escape.js';
+import { isUndefined } from '@/utils/is.js';
 
 const TARGET_SECTION_LABEL_PATTERN = Array.from(WHY_SECTION_ALIASES.keys())
   .sort((left, right) => right.length - left.length)
@@ -94,14 +95,14 @@ function isTemplateFieldLabel(line: string): boolean {
 
 function isTargetLabelBlock(line: string): boolean {
   const labelMatch = line.match(TARGET_SECTION_LABEL_ONLY_RE);
-  return (
-    canonicalTargetSectionName(labelMatch?.groups?.name ?? '') !== undefined
+  return !isUndefined(
+    canonicalTargetSectionName(labelMatch?.groups?.name ?? ''),
   );
 }
 
 function isInlineTargetLabel(line: string): boolean {
   const match = line.match(TARGET_INLINE_LABEL_RE);
-  return canonicalTargetSectionName(match?.groups?.name ?? '') !== undefined;
+  return !isUndefined(canonicalTargetSectionName(match?.groups?.name ?? ''));
 }
 
 function extractInlineTargetLabel(line: string): ExtractedSection | undefined {
@@ -172,10 +173,9 @@ export function extractWhyTargetSections(body: string): ExtractedSections {
 
     hasTargetSection = true;
     const startIndex = (match.index ?? 0) + match[0].length;
-    const endIndex =
-      headingMatches[matchIndex + 1]?.index === undefined
-        ? body.length
-        : headingMatches[matchIndex + 1].index;
+    const endIndex = isUndefined(headingMatches[matchIndex + 1]?.index)
+      ? body.length
+      : headingMatches[matchIndex + 1].index;
     const text = body.slice(startIndex, endIndex).trim();
     if (!text) continue;
 

@@ -9,6 +9,7 @@ import {
   EXIT_USAGE,
   EXIT_VALIDATION,
 } from '@/constants/errors.js';
+import { isInstanceOf } from '@/utils/is.js';
 
 /** Base application error with optional exit code hint. */
 export class AppError extends Error {
@@ -20,6 +21,8 @@ export class AppError extends Error {
     this.exitCode = exitCode;
   }
 }
+
+const isAppError = isInstanceOf(AppError);
 
 /** Misconfiguration or invalid CLI/env/config values. */
 export class ConfigError extends AppError {
@@ -55,7 +58,7 @@ export class ValidationError extends AppError {
  * @returns Exit code to use with `process.exit`.
  */
 export function mapErrorToExitCode(error: unknown): number {
-  if (error instanceof AppError) return error.exitCode ?? 1;
+  if (isAppError(error)) return error.exitCode ?? 1;
   // Default nonzero exit code for untyped errors.
   return 1;
 }

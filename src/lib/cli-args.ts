@@ -7,6 +7,9 @@ import { PROVIDER_NAMES, PROVIDER_OPENAI } from '@/constants/provider.js';
 import type { ProviderName } from '@/types/llm.js';
 import { loadCliConfigFile } from '@/lib/config-file.js';
 import { ConfigError } from '@/lib/errors.js';
+import { isInstanceOf, isUndefined } from '@/utils/is.js';
+
+const isZodError = isInstanceOf(z.ZodError);
 
 type ParseCliArgsOptions = {
   /** Directory used to resolve config files. */
@@ -17,7 +20,7 @@ function omitUndefined<T extends Record<string, unknown>>(
   value: T,
 ): Partial<T> {
   return Object.fromEntries(
-    Object.entries(value).filter(([, fieldValue]) => fieldValue !== undefined),
+    Object.entries(value).filter(([, fieldValue]) => !isUndefined(fieldValue)),
   ) as Partial<T>;
 }
 
@@ -84,7 +87,7 @@ export async function parseCliArgs(
     dryRunJsonReport: parsed['dry-run-json-report'],
     failOnLlmError: parsed['fail-on-llm-error'],
     requireProvider: parsed['require-provider'],
-    noAi: parsed.ai === undefined ? undefined : !parsed.ai,
+    noAi: isUndefined(parsed.ai) ? undefined : !parsed.ai,
     why: parsed.why,
     whyMaxPrs: parsed['why-max-prs'],
     whyMaxCharsPerPr: parsed['why-max-chars-per-pr'],
@@ -99,7 +102,7 @@ export async function parseCliArgs(
       ...cliOverrides,
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (isZodError(error)) {
       throw new ConfigError(`Invalid CLI options: ${z.prettifyError(error)}`);
     }
     throw error;

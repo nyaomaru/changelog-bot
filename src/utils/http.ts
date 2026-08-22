@@ -1,5 +1,6 @@
 import type { HttpError } from '@/types/http.js';
 import { safeJsonParse } from '@/utils/json.js';
+import { isUndefined } from '@/utils/is.js';
 
 /**
  * Build a rich HttpError instance containing status code and parsed body details.
@@ -38,7 +39,7 @@ async function parseJsonResponse<T>(
   }
 
   const data = safeJsonParse<T>(text);
-  if (data === undefined) {
+  if (isUndefined(data)) {
     throw new Error(`${errorPrefix} failed to parse JSON response`);
   }
   return data;
