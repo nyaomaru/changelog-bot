@@ -578,8 +578,12 @@ If you're contributing to `changelog-bot`, the repo ships a `mise.toml` to pin t
 
 ### Mise (toolchain & tasks)
 
-- Tools: Node `22`, pnpm `11.2.2`.
+- Tools: Node `22`; pnpm `11.22.0` is pinned through Corepack and `packageManager`.
 - Tasks: `lint`, `build`, `test`, `test_unit`, `test_performance`, `qa`.
+
+Builds use the TypeScript 7 native compiler. TypeScript 6 remains installed
+through the official compatibility package for tools that still require the
+compiler API, including `typescript-eslint`, `ts-jest`, and `ts-node`.
 
 ```sh
 # Install tool versions declared in mise.toml

@@ -8,7 +8,6 @@
     "target": "ES2022",
     "isolatedModules": true,
     "types": ["node", "jest"],
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
