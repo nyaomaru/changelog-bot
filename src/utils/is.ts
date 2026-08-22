@@ -1,35 +1,66 @@
 import {
-  arrayOf,
+  arrayOf as createArrayOfGuard,
   define,
-  isArray,
-  isError,
+  isArray as isArrayValue,
+  isError as isErrorValue,
   isInstanceOf as createInstanceGuard,
-  isNaN,
+  isNaN as isNaNValue,
   isNull,
   isNumber,
   isObject,
   isPrimitive,
-  isSafeInteger,
+  isSafeInteger as isSafeIntegerValue,
   isString,
-  isUndefined,
+  isUndefined as isUndefinedValue,
   oneOf,
   type Guard,
 } from 'is-kit';
 import { SECTION_ORDER } from '@/constants/changelog.js';
 import type { BucketName } from '@/types/changelog.js';
 
-export {
-  arrayOf,
-  isArray,
-  isError,
-  isNaN,
-  isNull,
-  isNumber,
-  isPrimitive,
-  isSafeInteger,
-  isString,
-  isUndefined,
-};
+export { isNull, isNumber, isPrimitive, isString };
+
+/**
+ * Create a guard that accepts arrays whose elements all satisfy a guard.
+ * @param elementGuard Guard applied to every array element.
+ * @returns Guard narrowing unknown values to a readonly array of guarded elements.
+ */
+export const arrayOf = createArrayOfGuard;
+
+/**
+ * Determine whether a value is an array.
+ * @param value Unknown candidate.
+ * @returns True when the value is an array, narrowing it to a readonly unknown array.
+ */
+export const isArray = isArrayValue;
+
+/**
+ * Determine whether a value represents an Error object.
+ * @param value Unknown candidate.
+ * @returns True for Error instances or values with the built-in Error object tag.
+ */
+export const isError = isErrorValue;
+
+/**
+ * Determine whether a value is the numeric NaN value without coercion.
+ * @param value Unknown candidate.
+ * @returns True only for NaN, narrowing the value to number.
+ */
+export const isNaN = isNaNValue;
+
+/**
+ * Determine whether a value is an integer within JavaScript's safe range.
+ * @param value Unknown candidate.
+ * @returns True for safe integer numbers, narrowing the value to number.
+ */
+export const isSafeInteger = isSafeIntegerValue;
+
+/**
+ * Determine whether a value is exactly undefined.
+ * @param value Unknown candidate.
+ * @returns True only for undefined, narrowing the value accordingly.
+ */
+export const isUndefined = isUndefinedValue;
 
 /**
  * Create a guard for instances of a constructor.
