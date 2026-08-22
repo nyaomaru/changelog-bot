@@ -19,6 +19,7 @@ import {
   buildAutoPrBody,
 } from '@/utils/llm-output-common.js';
 import { LlmError } from '@/lib/errors.js';
+import { isError } from '@/utils/is.js';
 
 function buildLogsForLLM(
   commitList: CommitLite[],
@@ -87,9 +88,11 @@ export async function buildOutputFromModelOrFallback(
       llm = await parseOrRetryLLMOutput(provider, llmInput);
       aiUsed = true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = isError(err) ? err.message : String(err);
       if (failOnLlmError) {
-        throw err instanceof Error ? err : new LlmError(`LLM generation failed: ${message}`);
+        throw isError(err)
+          ? err
+          : new LlmError(`LLM generation failed: ${message}`);
       }
       fallbackReasons.push(`LLM generation failed: ${message}`);
     }

@@ -16,6 +16,7 @@ import {
   type WeightedKeyword,
 } from '@/constants/category-scoring.js';
 import type { BucketName } from '@/types/changelog.js';
+import { isString } from '@/utils/is.js';
 
 type ScoreDeltas = Partial<Record<BucketName, number>>;
 
@@ -27,10 +28,9 @@ function addKeywordToIndex(
   entry: WeightedKeyword,
   defaultWeight: number,
 ): void {
-  const { keyword, weight } =
-    typeof entry === 'string'
-      ? { keyword: entry, weight: defaultWeight }
-      : entry;
+  const { keyword, weight } = isString(entry)
+    ? { keyword: entry, weight: defaultWeight }
+    : entry;
   const existingEntries = index.get(keyword) || [];
   existingEntries.push({ section, weight });
   index.set(keyword, existingEntries);

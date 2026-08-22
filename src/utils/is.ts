@@ -1,22 +1,58 @@
 import {
-  isString,
-  isNull,
-  isObject,
+  arrayOf,
   define,
-  isPrimitive,
+  isArray,
+  isError,
+  isInstanceOf as createInstanceGuard,
+  isNaN,
+  isNull,
   isNumber,
+  isObject,
+  isPrimitive,
+  isSafeInteger,
+  isString,
+  isUndefined,
+  oneOf,
+  type Guard,
 } from 'is-kit';
 import { SECTION_ORDER } from '@/constants/changelog.js';
 import type { BucketName } from '@/types/changelog.js';
 
-export { isString, isNumber, isNull, isPrimitive };
+export {
+  arrayOf,
+  isArray,
+  isError,
+  isNaN,
+  isNull,
+  isNumber,
+  isPrimitive,
+  isSafeInteger,
+  isString,
+  isUndefined,
+};
+
+/**
+ * Create a guard for instances of a constructor.
+ * WHY: is-kit 1.6 types constructor parameters as `unknown[]`, which rejects
+ * ordinary constructors under strict function variance even though runtime
+ * instance checks do not invoke the constructor.
+ * @param constructor Class constructor used for the instance check.
+ * @returns Guard narrowing values to the constructor's instance type.
+ */
+export function isInstanceOf<Instance>(
+  constructor: abstract new (...args: never[]) => Instance,
+): Guard<Instance> {
+  return createInstanceGuard(
+    constructor as unknown as abstract new (...args: unknown[]) => Instance,
+  );
+}
 
 /**
  * Determine whether a value is null or undefined.
  * @param value Unknown candidate.
  * @returns True when the value is nullish (null or undefined).
  */
-export const isNullable = define<null | undefined>((value) => value == null);
+export const isNullable = oneOf(isNull, isUndefined);
 
 /**
  * Determine whether a value is a plain object record (non-null object).
@@ -55,6 +91,5 @@ export function isBulletLine(line: string): boolean {
  */
 export const isBucketName = define<BucketName>(
   (section) =>
-    typeof section === 'string' &&
-    (SECTION_ORDER as readonly string[]).includes(section),
+    isString(section) && (SECTION_ORDER as readonly string[]).includes(section),
 );

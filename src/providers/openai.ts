@@ -13,7 +13,7 @@ import {
   LLM_TEMPERATURE_DEFAULT,
   LLM_REASONING_EFFORT,
 } from '@/constants/prompt.js';
-import { isReasoningModel, isRecord, isString } from '@/utils/is.js';
+import { isArray, isReasoningModel, isRecord, isString } from '@/utils/is.js';
 import { PROVIDER_OPENAI } from '@/constants/provider.js';
 import { RELEASE_NOTES_SYSTEM_PROMPT } from '@/constants/system-prompts.js';
 import {
@@ -52,7 +52,7 @@ const SYSTEM_OPENAI_CLASSIFY =
 function extractOpenAiClassificationResponse(json: unknown): string {
   if (
     isRecord(json) &&
-    Array.isArray(json.choices) &&
+    isArray(json.choices) &&
     isRecord(json.choices[0]) &&
     isRecord(json.choices[0].message) &&
     isString(json.choices[0].message.content)

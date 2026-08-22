@@ -16,6 +16,7 @@ import type { GitHubRuntimeConfig } from '@/types/config.js';
 import type { GitHubAuth } from '@/types/github.js';
 import { base64url } from '@/utils/base64url.js';
 import { MS_PER_SECOND } from '@/constants/time.js';
+import { isError } from '@/utils/is.js';
 
 /**
  * Normalize private key: allow either multiline PEM or single-line with \n.
@@ -53,7 +54,7 @@ function createAppJwt(appId: string, privateKey: string): string {
   try {
     signature = signer.sign(privateKey);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = isError(err) ? err.message : String(err);
     // Provide actionable hints for common PEM decoding issues.
     throw new Error(
       `Failed to sign GitHub App JWT with provided private key: ${msg}. ` +

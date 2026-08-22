@@ -1,6 +1,7 @@
 import { UNRELEASED_ANCHOR } from '@/constants/changelog.js';
 import { ANY_H2_HEADING_RE } from '@/constants/markdown.js';
 import { escapeRegExp } from '@/utils/escape.js';
+import { isUndefined } from '@/utils/is.js';
 
 /**
  * Insert a rendered section below the given anchor heading, or near the top when absent.
@@ -31,7 +32,7 @@ export function insertSection(
     'm',
   );
   const anchorMatch = changelog.match(anchorRegExp);
-  if (anchorMatch && anchorMatch.index !== undefined) {
+  if (anchorMatch && !isUndefined(anchorMatch.index)) {
     const anchorStartIndex = anchorMatch.index;
     const anchorLine = anchorMatch[0];
     const beforeAnchor = changelog.slice(0, anchorStartIndex);
@@ -46,7 +47,7 @@ export function insertSection(
 
   // Find the first "## " heading which marks the start of changelog sections
   const firstHeadingMatch = existingContent.match(ANY_H2_HEADING_RE);
-  if (firstHeadingMatch?.index !== undefined) {
+  if (!isUndefined(firstHeadingMatch?.index)) {
     const firstHeadingIndex = firstHeadingMatch.index;
     if (firstHeadingIndex > 0) {
       // There is a header block before the first section

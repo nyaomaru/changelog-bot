@@ -1,4 +1,5 @@
 import { safeJsonParse } from '@/utils/json.js';
+import { isUndefined } from '@/utils/is.js';
 
 /**
  * Extract a JSON object from raw LLM text which might include prose around it.
@@ -9,7 +10,7 @@ import { safeJsonParse } from '@/utils/json.js';
  */
 export function extractJsonObject<T = unknown>(rawText: string): T {
   const directParse = safeJsonParse<T>(rawText);
-  if (directParse !== undefined) {
+  if (!isUndefined(directParse)) {
     return directParse;
   }
 
@@ -20,7 +21,7 @@ export function extractJsonObject<T = unknown>(rawText: string): T {
 
   for (const attemptParse of strategies) {
     const parsed = attemptParse(rawText);
-    if (parsed !== undefined) return parsed;
+    if (!isUndefined(parsed)) return parsed;
   }
 
   throw new Error('Failed to parse JSON from model output');
@@ -67,7 +68,7 @@ function tryParseBalancedObject<T>(text: string): T | undefined {
     const startIndex = braceStack.pop()!;
     const candidate = safeJsonParse<T>(text.slice(startIndex, index + 1));
 
-    if (candidate === undefined) {
+    if (isUndefined(candidate)) {
       continue;
     }
 

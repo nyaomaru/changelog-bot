@@ -18,6 +18,7 @@ import {
   appendWhyPreview,
   githubWebHost,
 } from '@/lib/why-extraction-notes.js';
+import { isError } from '@/utils/is.js';
 
 type RunWhyExtractionParams = {
   /** Parsed CLI options controlling WHY extraction. */
@@ -138,7 +139,7 @@ export async function runWhyExtraction(
     });
     diagnostics.aiUsed = true;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = isError(error) ? error.message : String(error);
     if (cli.failOnLlmError) {
       throw new LlmError(`WHY extraction failed: ${message}`);
     }

@@ -2,6 +2,7 @@ import {
   normalizeTitle,
   stripConventionalPrefix,
 } from '@/utils/title-normalize.js';
+import { isUndefined } from '@/utils/is.js';
 
 /** Case-insensitive and normalized title lookup tables. */
 export type TitleLookup<Value> = {
@@ -72,20 +73,20 @@ export function buildTitleLookup<Value>(
       if (!normalizedTitle) continue;
 
       const existingValue = normalized.get(normalizedTitle);
-      if (existingValue !== undefined && options.onNormalizedCollision) {
+      if (!isUndefined(existingValue) && options.onNormalizedCollision) {
         const resolvedValue = options.onNormalizedCollision({
           title,
           normalizedTitle,
           existingValue,
           incomingValue: entry.value,
         });
-        if (resolvedValue !== undefined) {
+        if (!isUndefined(resolvedValue)) {
           normalized.set(normalizedTitle, resolvedValue);
         }
         continue;
       }
 
-      if (existingValue === undefined) {
+      if (isUndefined(existingValue)) {
         normalized.set(normalizedTitle, entry.value);
       }
     }
@@ -114,12 +115,12 @@ export function findTitleMatch<Value>(
     // normalized hits must win over direct-key matches to keep lookups stable
     // across punctuation, casing, and conventional-prefix variants.
     const exactMatch = lookup.normalized.get(normalizedTitle);
-    if (exactMatch !== undefined) return exactMatch;
+    if (!isUndefined(exactMatch)) return exactMatch;
   }
 
   for (const key of buildDirectKeys(title)) {
     const directMatch = lookup.direct.get(key);
-    if (directMatch !== undefined) return directMatch;
+    if (!isUndefined(directMatch)) return directMatch;
   }
 
   if (!normalizedTitle) return undefined;

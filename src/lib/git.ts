@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { HEAD_REF } from '@/constants/git.js';
 import { GitError } from '@/lib/errors.js';
+import { isError, isNull } from '@/utils/is.js';
 
 /**
  * Pattern that whitelists simple tag or branch names (alphanumeric plus ._-).
@@ -46,7 +47,7 @@ export function run(args: readonly string[], cwd?: string): string {
   try {
     return execFileSync('git', args, { encoding: 'utf8', cwd }).trim();
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = isError(error) ? error.message : String(error);
     throw new GitError(`Git command failed: git ${args.join(' ')}. ${message}`);
   }
 }
@@ -200,7 +201,7 @@ export function extractPrRefsFromText(text: string): number[] {
   const numbers = new Set<number>();
   const regExp = /#(\d+)/g;
   let match: RegExpExecArray | null;
-  while ((match = regExp.exec(text)) !== null) {
+  while (!isNull((match = regExp.exec(text)))) {
     numbers.add(Number(match[1]));
   }
   return [...numbers];

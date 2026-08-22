@@ -38,6 +38,7 @@ import {
   VERSION_FROM_TO_RE,
 } from '@/constants/scoring.js';
 import type { BucketName, CategoryScores } from '@/types/changelog.js';
+import { isNaN } from '@/utils/is.js';
 
 type ScoreDeltas = Partial<Record<BucketName, number>>;
 
@@ -171,8 +172,8 @@ export function applyDependencyBumpHeuristic(
   const fromMajorVersion = parseInt(versionRangeMatch[1], 10);
   const toMajorVersion = parseInt(versionRangeMatch[2], 10);
   if (
-    !Number.isNaN(fromMajorVersion) &&
-    !Number.isNaN(toMajorVersion) &&
+    !isNaN(fromMajorVersion) &&
+    !isNaN(toMajorVersion) &&
     toMajorVersion > fromMajorVersion
   ) {
     scores[SECTION_BREAKING_CHANGES] += WEIGHT_LEVEL.low;

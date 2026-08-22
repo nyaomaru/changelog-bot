@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
+import { isError } from '@/utils/is.js';
 
 export const CUSTOM_INSTRUCTIONS_ENCODING = 'utf8';
 export const CUSTOM_INSTRUCTIONS_MAX_CHARS = 16_000;
@@ -93,7 +94,7 @@ export function resolveCustomInstructionsWithDiagnostics(
       fileStatus = fileInstructions ? 'loaded' : 'empty';
     } catch (error) {
       fileStatus = 'read_failed';
-      fileError = error instanceof Error ? error.message : String(error);
+      fileError = isError(error) ? error.message : String(error);
     }
   }
 
