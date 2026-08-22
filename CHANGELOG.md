@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.11] - 2026-08-22
+
+### Changed
+
+- standardize runtime type guards with is-kit by @nyaomaru in [#181](https://github.com/nyaomaru/changelog-bot/pull/181)
+
+### Docs
+
+- 0.6.10 by [bot] by @github-actions in [#180](https://github.com/nyaomaru/changelog-bot/pull/180)
+
+### Chore
+
+- Release: 0.6.11 by [bot] by @github-actions in [#182](https://github.com/nyaomaru/changelog-bot/pull/182)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.6.10...v0.6.11
+
+[v0.6.11]: https://github.com/nyaomaru/changelog-bot/compare/v0.6.10...v0.6.11
+
 ## [v0.6.10] - 2026-08-15
 
 ### Changed
