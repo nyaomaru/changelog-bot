@@ -10,13 +10,11 @@ import {
   type ChangelogRunDependencies,
 } from '@/lib/changelog-run-dependencies.js';
 import {
-  resolvePullRequestsBySha,
-  resolveReleaseBody,
-} from '@/lib/release-data.js';
-import {
   writeDryRunOutput,
   type ChangelogRunLogger,
 } from '@/lib/changelog-dry-run.js';
+import { resolveChangelogRunInput } from '@/lib/changelog-run-input.js';
+import { finalizeChangelogRunOutput } from '@/lib/changelog-run-output.js';
 
 export type { ChangelogRunDependencies, ChangelogRunLogger };
 
@@ -35,65 +33,28 @@ export async function executeChangelogRun(params: {
 }): Promise<void> {
   const { cli, appConfig, log = console.log } = params;
   const deps = resolveChangelogRunDependencies(params.deps);
-  const provider = deps.providerFactory(cli.provider, appConfig.providers);
   const {
-    owner,
-    repo,
-    repoPath,
-    changelogPath,
-    releaseRef,
-    version,
-    prevRef,
-    date,
-  } = deps.resolveReleasePlan(cli, deps.getRepoFullName(appConfig));
-
-  const prs = deps.gitMergedPRs(prevRef, releaseRef, repoPath);
-  const existing = deps.prepareExistingChangelog(changelogPath, version);
-  const commitList = deps.commitsInRange(prevRef, releaseRef, repoPath);
-
-  const { token, hasProviderKey } = await deps.resolveRunCredentials(
-    provider.name,
-    owner,
-    repo,
-    appConfig,
-  );
-  const apiPrMap = await resolvePullRequestsBySha({
-    deps,
-    owner,
-    repo,
-    releaseRef,
-    repoPath,
-    token,
-    githubApiBase: appConfig.github.apiBase,
+    provider,
+    releasePlan,
+    mergedPullRequests,
+    existingChangelog,
     commitList,
-  });
-  const releaseBody = await resolveReleaseBody({
+    token,
+    hasProviderKey,
+    pullRequestsBySha,
+    releaseBody,
+    prNumbersBySha,
+    titleToPr,
+    customInstructionsResolution,
+    providerConfig,
+  } = await resolveChangelogRunInput({
     cli,
-    deps,
-    owner,
-    repo,
-    token,
-    githubApiBase: appConfig.github.apiBase,
-  });
-
-  const prMapBySha = deps.buildPrMapBySha({
-    commitList,
-    prsLog: prs,
-    repoPath,
-    apiPrMap,
-  });
-  const titleToPr = deps.buildTitleToPr(commitList, prs, prMapBySha);
-  const customInstructionsResolution =
-    deps.resolveCustomInstructionsWithDiagnostics({
-      instructions: cli.instructions,
-      instructionsFile: cli.instructionsFile,
-      repoPath,
-    });
-  const customInstructions = customInstructionsResolution.instructions;
-  const providerConfig = deps.getProviderRuntimeConfig(
     appConfig,
-    provider.name,
-  );
+    deps,
+  });
+  const { owner, repo, changelogPath, releaseRef, version, prevRef, date } =
+    releasePlan;
+  const customInstructions = customInstructionsResolution.instructions;
   const llmOutput = await deps.buildChangelogLlmOutput({
     owner,
     repo,
@@ -104,11 +65,11 @@ export async function executeChangelogRun(params: {
     releaseBody,
     language: cli.language,
     customInstructions,
-    existingChangelog: existing,
+    existingChangelog,
     commitList,
-    prs,
-    prMapBySha,
-    pullRequestsBySha: apiPrMap,
+    prs: mergedPullRequests,
+    prMapBySha: prNumbersBySha,
+    pullRequestsBySha,
     titleToPr,
     provider,
     providerConfig,
@@ -119,45 +80,23 @@ export async function executeChangelogRun(params: {
     requireProvider: cli.requireProvider,
     failOnLlmError: cli.failOnLlmError,
   });
-  let llm = llmOutput.llm;
-
-  let finalizedUpdate = deps.finalizeChangelogUpdate({
+  const finalizedOutput = await finalizeChangelogRunOutput({
+    cli,
+    llm: llmOutput.llm,
+    provider,
+    hasProviderKey,
     owner,
     repo,
     version,
     prevRef,
     releaseRef,
-    existing,
-    llm,
+    existingChangelog,
     titleToPr,
-  });
-  llm = finalizedUpdate.llm;
-  let updated = finalizedUpdate.updated;
-  const whyOutput = await deps.runWhyExtraction({
-    cli,
-    llm,
-    provider,
-    hasProviderKey,
-    owner,
-    repo,
     token,
     githubApiBase: appConfig.github.apiBase,
-    fetchPRDetails: deps.fetchPRDetails,
+    deps,
   });
-  if (whyOutput.llm !== llm) {
-    finalizedUpdate = deps.finalizeChangelogUpdate({
-      owner,
-      repo,
-      version,
-      prevRef,
-      releaseRef,
-      existing,
-      llm: whyOutput.llm,
-      titleToPr,
-    });
-    llm = finalizedUpdate.llm;
-    updated = finalizedUpdate.updated;
-  }
+  const { llm, updatedChangelog, whyDiagnostics } = finalizedOutput;
 
   if (cli.dryRun) {
     writeDryRunOutput({
@@ -170,8 +109,8 @@ export async function executeChangelogRun(params: {
       customInstructionsResolution,
       customInstructions,
       hasProviderKey,
-      whyDiagnostics: whyOutput.diagnostics,
-      updated,
+      whyDiagnostics,
+      updated: updatedChangelog,
     });
     return;
   }
@@ -179,7 +118,7 @@ export async function executeChangelogRun(params: {
   deps.ensureGithubTokenRequired(cli.dryRun, token);
   const ghToken = token as string;
 
-  deps.writeChangelog(changelogPath, updated);
+  deps.writeChangelog(changelogPath, updatedChangelog);
 
   const branch = `${PR_BRANCH_PREFIX}${version}`;
   const prNum = await deps.createPR({
