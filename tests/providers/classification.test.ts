@@ -100,6 +100,23 @@ describe('classifyChangesWithFallback', () => {
     });
   });
 
+  test('rejects omitted assignments when strict mode is enabled', async () => {
+    await expect(
+      classifyChangesWithFallback({
+        changes: [
+          ...changes,
+          { id: 'release-note:1', title: 'Add diagnostics' },
+        ],
+        hasApiKey: true,
+        options: { throwOnError: true },
+        request: async () => JSON.stringify({ 'release-note:0': 'Fixed' }),
+        invalidResponseMessage: 'Invalid provider response',
+      }),
+    ).rejects.toThrow(
+      'Invalid provider response: Classification response omitted 1 change ID(s): release-note:1',
+    );
+  });
+
   test('rejects duplicate input IDs before reconciliation', () => {
     expect(
       parseCategoryAssignments(JSON.stringify({ 'release-note:0': 'Fixed' }), [

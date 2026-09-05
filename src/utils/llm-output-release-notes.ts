@@ -8,7 +8,10 @@ import {
 } from '@/utils/release.js';
 import { tuneCategoryAssignmentsByTitle } from '@/utils/category-tune.js';
 import { buildChangesForClassification } from '@/utils/classify-pre.js';
-import { fallbackCategoryAssignments } from '@/providers/classification.js';
+import {
+  fallbackCategoryAssignments,
+  IncompleteClassificationError,
+} from '@/providers/classification.js';
 import { LlmError } from '@/lib/errors.js';
 import {
   DEFAULT_PR_LABELS,
@@ -145,12 +148,18 @@ export async function buildOutputFromReleaseNotes(
         // Mark AI usage only when classification had input and a provider key is available.
         aiUsed = aiUsed || hasProviderKey;
       } catch (err) {
-        const message = isError(err) ? err.message : String(err);
-        if (failOnLlmError) {
-          throw new LlmError(`LLM classification failed: ${message}`);
+        if (err instanceof IncompleteClassificationError && !failOnLlmError) {
+          assignments = err.result.assignments;
+          fallbackReasons.push(...err.result.diagnostics);
+          aiUsed = aiUsed || hasProviderKey;
+        } else {
+          const message = isError(err) ? err.message : String(err);
+          if (failOnLlmError) {
+            throw new LlmError(`LLM classification failed: ${message}`);
+          }
+          fallbackReasons.push(`LLM classification failed: ${message}`);
+          assignments = fallbackCategoryAssignments(changesForClassification);
         }
-        fallbackReasons.push(`LLM classification failed: ${message}`);
-        assignments = fallbackCategoryAssignments(changesForClassification);
       }
     }
     // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.

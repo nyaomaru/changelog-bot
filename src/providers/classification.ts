@@ -7,6 +7,23 @@ import type {
 import type { ClassifyChangesOptions } from '@/types/provider.js';
 import { isBucketName, isRecord } from '@/utils/is.js';
 
+/** Strict-mode error carrying assignments recovered from an incomplete response. */
+export class IncompleteClassificationError extends Error {
+  /** Partially recovered result available to non-strict orchestration. */
+  readonly result: ClassificationResult;
+
+  /**
+   * Create an error for a provider response that omitted requested IDs.
+   * @param message Provider-specific schema failure message.
+   * @param result Reconciled assignments and omission diagnostics.
+   */
+  constructor(message: string, result: ClassificationResult) {
+    super(`${message}: ${result.diagnostics.join('; ')}`);
+    this.name = 'IncompleteClassificationError';
+    this.result = result;
+  }
+}
+
 /** Prompt payload sent to classification LLMs. */
 export type ClassificationPrompt = {
   /** Canonical IDs and normalized titles to categorize. */
@@ -136,6 +153,9 @@ export async function classifyChangesWithFallback(params: {
   try {
     const result = parseCategoryAssignments(await request(), changes);
     if (!result) throw new Error(invalidResponseMessage);
+    if (options.throwOnError && result.diagnostics.length) {
+      throw new IncompleteClassificationError(invalidResponseMessage, result);
+    }
     return result;
   } catch (error) {
     if (options.throwOnError) throw error;

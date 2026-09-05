@@ -11,6 +11,8 @@ await jest.unstable_mockModule('@/utils/classify.js', () => ({
 
 const { buildChangelogLlmOutput } = await import('@/utils/llm-output.js');
 const { LlmError } = await import('@/lib/errors.js');
+const { classifyChangesWithFallback } =
+  await import('@/providers/classification.js');
 
 const mockProvider = {
   name: 'openai',
@@ -201,15 +203,15 @@ describe('llm-output', () => {
   });
 
   test('records omitted classification IDs and renders their fallback', async () => {
-    const classifyChanges = jest.fn(async () => ({
-      assignments: {
-        'release-note:0': 'Added',
-        'release-note:1': 'Chore',
-      },
-      diagnostics: [
-        'Classification response omitted 1 change ID(s): release-note:1; used deterministic fallback',
-      ],
-    }));
+    const classifyChanges = jest.fn((changes, options) =>
+      classifyChangesWithFallback({
+        changes,
+        hasApiKey: true,
+        options,
+        request: async () => JSON.stringify({ 'release-note:0': 'Added' }),
+        invalidResponseMessage: 'Invalid provider response',
+      }),
+    );
 
     const result = await buildChangelogLlmOutput(
       buildBaseParams({
@@ -428,6 +430,33 @@ describe('llm-output', () => {
       buildChangelogLlmOutput(
         buildBaseParams({
           releaseBody: "## What's Changed\n- Add feature\n",
+          provider: { ...mockProvider, classifyChanges },
+          hasProviderKey: true,
+          failOnLlmError: true,
+        }),
+      ),
+    ).rejects.toThrow(LlmError);
+  });
+
+  test('fail-on-llm-error throws when classification omits a change ID', async () => {
+    const classifyChanges = jest.fn((changes, options) =>
+      classifyChangesWithFallback({
+        changes,
+        hasApiKey: true,
+        options,
+        request: async () => JSON.stringify({ 'release-note:0': 'Added' }),
+        invalidResponseMessage: 'Invalid provider response',
+      }),
+    );
+
+    await expect(
+      buildChangelogLlmOutput(
+        buildBaseParams({
+          releaseBody: [
+            "## What's Changed",
+            '- Add feature',
+            '- Routine maintenance',
+          ].join('\n'),
           provider: { ...mockProvider, classifyChanges },
           hasProviderKey: true,
           failOnLlmError: true,
