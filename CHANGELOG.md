@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.12] - 2026-08-29
+
+### Changed
+
+- separate changelog run phase by @nyaomaru in [#185](https://github.com/nyaomaru/changelog-bot/pull/185)
+  - Why: This simplifies the main orchestration flow, runs independent GitHub lookups concurrently, and adds coverage for WHY enrichment finalization.
+
+### Docs
+
+- 0.6.11 by [bot] by @github-actions in [#183](https://github.com/nyaomaru/changelog-bot/pull/183)
+
+### Chore
+
+- upgrade TypeScript 7 and dependencies by @nyaomaru in [#184](https://github.com/nyaomaru/changelog-bot/pull/184)
+- update dependencies by @nyaomaru in [#186](https://github.com/nyaomaru/changelog-bot/pull/186)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.6.11...v0.6.12
+
+[v0.6.12]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.12
+
 ## [v0.6.11] - 2026-08-22
 
 ### Changed
