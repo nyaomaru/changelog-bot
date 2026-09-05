@@ -35,7 +35,7 @@ const provider: Provider = {
     maxOutputTokens: 1000,
   },
   generate: async () => initialLlm,
-  classifyTitles: async () => ({}),
+  classifyChanges: async () => ({ assignments: {}, diagnostics: [] }),
   extractWhyNotes: async () => ({ items: [] }),
 };
 

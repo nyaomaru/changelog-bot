@@ -8,14 +8,14 @@ import {
   jest,
 } from '@jest/globals';
 import { loadAppConfig } from '@/lib/app-config.js';
-import { classifyTitles } from '@/utils/classify.js';
+import { classifyChanges } from '@/utils/classify.js';
 import {
   PROVIDER_OPENAI,
   PROVIDER_ANTHROPIC,
   PROVIDER_GEMINI,
 } from '@/constants/provider.js';
 
-describe('classifyTitles', () => {
+describe('classifyChanges', () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
@@ -28,15 +28,22 @@ describe('classifyTitles', () => {
 
   test('falls back to Chore when no API key', async () => {
     const config = loadAppConfig({}).providers.openai;
-    const out = await classifyTitles(['Add login'], PROVIDER_OPENAI, config);
+    const out = await classifyChanges(
+      [{ id: 'release-note:0', title: 'Add login' }],
+      PROVIDER_OPENAI,
+      config,
+    );
 
-    expect(out).toEqual({ Chore: ['Add login'] });
+    expect(out.assignments).toEqual({ 'release-note:0': 'Chore' });
   });
 
   test('falls back to Chore when provider config is omitted', async () => {
-    const out = await classifyTitles(['Add login'], PROVIDER_OPENAI);
+    const out = await classifyChanges(
+      [{ id: 'release-note:0', title: 'Add login' }],
+      PROVIDER_OPENAI,
+    );
 
-    expect(out).toEqual({ Chore: ['Add login'] });
+    expect(out.assignments).toEqual({ 'release-note:0': 'Chore' });
   });
 
   test('classifies via OpenAI with mocked fetch', async () => {
@@ -47,7 +54,7 @@ describe('classifyTitles', () => {
           choices: [
             {
               message: {
-                content: JSON.stringify({ Added: ['Add login'] }),
+                content: JSON.stringify({ 'release-note:0': 'Added' }),
               },
             },
           ],
@@ -56,9 +63,13 @@ describe('classifyTitles', () => {
 
     const config = loadAppConfig({ OPENAI_API_KEY: 'sk-test' }).providers
       .openai;
-    const out = await classifyTitles(['Add login'], PROVIDER_OPENAI, config);
+    const out = await classifyChanges(
+      [{ id: 'release-note:0', title: 'Add login' }],
+      PROVIDER_OPENAI,
+      config,
+    );
 
-    expect(out).toEqual({ Added: ['Add login'] });
+    expect(out.assignments).toEqual({ 'release-note:0': 'Added' });
   });
 
   test('classifies via Anthropic with mocked fetch', async () => {
@@ -66,16 +77,20 @@ describe('classifyTitles', () => {
       ok: true,
       text: async () =>
         JSON.stringify({
-          content: [{ text: JSON.stringify({ Fixed: ['Fix bug'] }) }],
+          content: [{ text: JSON.stringify({ 'release-note:0': 'Fixed' }) }],
         }),
     });
 
     const config = loadAppConfig({
       ANTHROPIC_API_KEY: 'ak-test',
     }).providers.anthropic;
-    const out = await classifyTitles(['Fix bug'], PROVIDER_ANTHROPIC, config);
+    const out = await classifyChanges(
+      [{ id: 'release-note:0', title: 'Fix bug' }],
+      PROVIDER_ANTHROPIC,
+      config,
+    );
 
-    expect(out).toEqual({ Fixed: ['Fix bug'] });
+    expect(out.assignments).toEqual({ 'release-note:0': 'Fixed' });
   });
 
   test('classifies via Gemini with mocked fetch', async () => {
@@ -86,7 +101,9 @@ describe('classifyTitles', () => {
           candidates: [
             {
               content: {
-                parts: [{ text: JSON.stringify({ Changed: ['Tune parser'] }) }],
+                parts: [
+                  { text: JSON.stringify({ 'release-note:0': 'Changed' }) },
+                ],
               },
             },
           ],
@@ -96,8 +113,12 @@ describe('classifyTitles', () => {
     const config = loadAppConfig({
       GEMINI_API_KEY: 'gemini-test',
     }).providers.gemini;
-    const out = await classifyTitles(['Tune parser'], PROVIDER_GEMINI, config);
+    const out = await classifyChanges(
+      [{ id: 'release-note:0', title: 'Tune parser' }],
+      PROVIDER_GEMINI,
+      config,
+    );
 
-    expect(out).toEqual({ Changed: ['Tune parser'] });
+    expect(out.assignments).toEqual({ 'release-note:0': 'Changed' });
   });
 });

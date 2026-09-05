@@ -60,7 +60,7 @@ const provider: Provider = {
     pr_title: 'docs(changelog): test',
     pr_body: 'body',
   }),
-  classifyTitles: async () => ({}),
+  classifyChanges: async () => ({ assignments: {}, diagnostics: [] }),
   extractWhyNotes: async () => ({ items: [] }),
 };
 

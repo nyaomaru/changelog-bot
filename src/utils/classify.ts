@@ -3,9 +3,12 @@ import type {
   ProviderRuntimeConfig,
   ProviderRuntimeConfigMap,
 } from '@/types/config.js';
-import type { CategoryMap } from '@/types/changelog.js';
+import type {
+  ClassificationChange,
+  ClassificationResult,
+} from '@/types/changelog.js';
 import type { Provider } from '@/types/provider.js';
-import { fallbackCategoryMap } from '@/providers/classification.js';
+import { fallbackCategoryAssignments } from '@/providers/classification.js';
 import { providerFactory } from '@/utils/provider.js';
 import { isString } from '@/utils/is.js';
 
@@ -22,27 +25,30 @@ function providerFromConfig(
 }
 
 /**
- * Classify PR titles into changelog categories using the selected LLM provider.
+ * Classify canonical changes using the selected LLM provider.
  * Falls back to classifying all as `Chore` when no API key is present or on failure.
  * WHY: Provider-specific request details live in provider adapters; this helper
- * remains as a stable compatibility wrapper for existing callers.
- * @param titles List of PR titles to classify.
+ * centralizes provider selection for callers that only have a provider name.
+ * @param changes Stable IDs and normalized titles to classify.
  * @param provider Provider adapter or provider name.
  * @param config Runtime config required when passing a provider name.
- * @returns Map of category -> titles.
+ * @returns Reconciled ID-to-category assignments and diagnostics.
  */
-export async function classifyTitles(
-  titles: string[],
+export async function classifyChanges(
+  changes: ClassificationChange[],
   provider: Provider | ProviderName,
   config?: ProviderRuntimeConfig,
-): Promise<CategoryMap> {
-  if (!titles.length) return {};
+): Promise<ClassificationResult> {
+  if (!changes.length) return { assignments: {}, diagnostics: [] };
   if (!isString(provider)) {
-    return provider.classifyTitles(titles);
+    return provider.classifyChanges(changes);
   }
   if (!config) {
-    return fallbackCategoryMap(titles);
+    return {
+      assignments: fallbackCategoryAssignments(changes),
+      diagnostics: [],
+    };
   }
   const providerAdapter = providerFromConfig(provider, config);
-  return providerAdapter.classifyTitles(titles);
+  return providerAdapter.classifyChanges(changes);
 }

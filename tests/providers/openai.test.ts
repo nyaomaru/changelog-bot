@@ -112,11 +112,11 @@ describe('OpenAIProvider', () => {
     expect(requestBody).not.toHaveProperty('reasoning');
   });
 
-  test('classifies titles from reasoning models via the Responses API', async () => {
+  test('classifies changes by ID from reasoning models via the Responses API', async () => {
     const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
-          output_text: JSON.stringify({ Fixed: ['Fix release lookup'] }),
+          output_text: JSON.stringify({ 'release-note:0': 'Fixed' }),
         }),
       ),
     );
@@ -126,11 +126,15 @@ describe('OpenAIProvider', () => {
       model: 'gpt-5.1-reasoning',
     });
 
-    const output = await provider.classifyTitles(['Fix release lookup'], {
-      throwOnError: true,
-    });
+    const output = await provider.classifyChanges(
+      [{ id: 'release-note:0', title: 'Fix release lookup' }],
+      { throwOnError: true },
+    );
 
-    expect(output).toEqual({ Fixed: ['Fix release lookup'] });
+    expect(output).toEqual({
+      assignments: { 'release-note:0': 'Fixed' },
+      diagnostics: [],
+    });
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.openai.com/v1/responses',
       expect.objectContaining({ method: 'POST' }),

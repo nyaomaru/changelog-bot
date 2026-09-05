@@ -73,7 +73,7 @@ describe('GeminiProvider', () => {
     expect(requestBody.generationConfig.responseFormat).toBeUndefined();
   });
 
-  test('classifies titles via generateContent', async () => {
+  test('classifies changes by ID via generateContent', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       text: async () =>
@@ -83,9 +83,7 @@ describe('GeminiProvider', () => {
               content: {
                 parts: [
                   {
-                    text: JSON.stringify({
-                      Added: ['Add Gemini support'],
-                    }),
+                    text: JSON.stringify({ 'release-note:0': 'Added' }),
                   },
                 ],
               },
@@ -99,9 +97,14 @@ describe('GeminiProvider', () => {
       model: 'gemini-test-model',
     });
 
-    const output = await provider.classifyTitles(['Add Gemini support']);
+    const output = await provider.classifyChanges([
+      { id: 'release-note:0', title: 'Add Gemini support' },
+    ]);
 
-    expect(output).toEqual({ Added: ['Add Gemini support'] });
+    expect(output).toEqual({
+      assignments: { 'release-note:0': 'Added' },
+      diagnostics: [],
+    });
     expect(global.fetch).toHaveBeenCalledWith(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-test-model:generateContent',
       expect.objectContaining({
@@ -118,6 +121,10 @@ describe('GeminiProvider', () => {
         responseMimeType: 'application/json',
         responseJsonSchema: expect.objectContaining({
           type: 'object',
+          required: ['release-note:0'],
+          properties: {
+            'release-note:0': expect.objectContaining({ type: 'string' }),
+          },
           additionalProperties: false,
         }),
       }),
@@ -133,7 +140,9 @@ describe('GeminiProvider', () => {
           candidates: [
             {
               content: {
-                parts: [{ text: JSON.stringify({ Added: 'not-array' }) }],
+                parts: [
+                  { text: JSON.stringify({ 'release-note:0': ['Added'] }) },
+                ],
               },
             },
           ],
@@ -146,7 +155,10 @@ describe('GeminiProvider', () => {
     });
 
     await expect(
-      provider.classifyTitles(['Add Gemini support'], { throwOnError: true }),
+      provider.classifyChanges(
+        [{ id: 'release-note:0', title: 'Add Gemini support' }],
+        { throwOnError: true },
+      ),
     ).rejects.toThrow('Gemini classify output did not match schema');
   });
 
@@ -158,7 +170,9 @@ describe('GeminiProvider', () => {
           candidates: [
             {
               content: {
-                parts: [{ text: JSON.stringify({ Added: 'not-array' }) }],
+                parts: [
+                  { text: JSON.stringify({ 'release-note:0': ['Added'] }) },
+                ],
               },
             },
           ],
@@ -171,9 +185,14 @@ describe('GeminiProvider', () => {
     });
 
     await expect(
-      provider.classifyTitles(['Add Gemini support']),
+      provider.classifyChanges([
+        { id: 'release-note:0', title: 'Add Gemini support' },
+      ]),
     ).resolves.toEqual({
-      Chore: ['Add Gemini support'],
+      assignments: { 'release-note:0': 'Chore' },
+      diagnostics: [
+        'Gemini classify output did not match schema; used deterministic fallback for all changes',
+      ],
     });
   });
 });

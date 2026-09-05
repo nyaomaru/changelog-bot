@@ -1,7 +1,10 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
-import type { ClassifyTitlesOptions, Provider } from '@/types/provider.js';
-import type { CategoryMap } from '@/types/changelog.js';
+import type { ClassifyChangesOptions, Provider } from '@/types/provider.js';
+import type {
+  ClassificationChange,
+  ClassificationResult,
+} from '@/types/changelog.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
@@ -17,7 +20,8 @@ import { PROVIDER_GEMINI } from '@/constants/provider.js';
 import { RELEASE_NOTES_SYSTEM_PROMPT } from '@/constants/system-prompts.js';
 import {
   buildClassificationPrompt,
-  classifyTitlesWithFallback,
+  buildClassificationAssignmentsJsonSchema,
+  classifyChangesWithFallback,
 } from '@/providers/classification.js';
 import {
   buildWhyExtractionPrompt,
@@ -27,7 +31,7 @@ import {
 } from '@/providers/why.js';
 
 const SYSTEM_GEMINI_CLASSIFY =
-  'Classify each pull request title into one of the given categories. Return a JSON object with those categories as keys and arrays of titles as values.';
+  'Classify each release change into one provided category. Return a JSON object mapping every change ID to its category. Do not rewrite IDs.';
 
 /** Subset of the Gemini generateContent response payload we rely on. */
 type GeminiResponse = {
@@ -122,21 +126,17 @@ export class GeminiProvider implements Provider {
     return extractJsonObject<LLMOutput>(extractGeminiText(response));
   }
 
-  async classifyTitles(
-    titles: string[],
-    options: ClassifyTitlesOptions = {},
-  ): Promise<CategoryMap> {
-    return classifyTitlesWithFallback({
-      titles,
+  async classifyChanges(
+    changes: ClassificationChange[],
+    options: ClassifyChangesOptions = {},
+  ): Promise<ClassificationResult> {
+    return classifyChangesWithFallback({
+      changes,
       hasApiKey: Boolean(this.apiKey),
       options,
       invalidResponseMessage: 'Gemini classify output did not match schema',
       request: async () => {
-        const prompt = buildClassificationPrompt(titles);
-        const properties: Record<string, unknown> = {};
-        for (const category of prompt.categories) {
-          properties[category] = { type: 'array', items: { type: 'string' } };
-        }
+        const prompt = buildClassificationPrompt(changes);
 
         const payload = {
           systemInstruction: {
@@ -152,12 +152,8 @@ export class GeminiProvider implements Provider {
             maxOutputTokens: LLM_CLASSIFY_MAX_TOKENS,
             temperature: 0,
             responseMimeType: 'application/json',
-            responseJsonSchema: {
-              type: 'object',
-              properties,
-              required: [...prompt.categories],
-              additionalProperties: false,
-            },
+            responseJsonSchema:
+              buildClassificationAssignmentsJsonSchema(changes),
           },
         } as const;
 
