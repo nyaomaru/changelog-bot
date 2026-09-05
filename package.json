@@ -1,6 +1,6 @@
 {
   "name": "@nyaomaru/changelog-bot",
-  "version": "0.6.12",
+  "version": "0.6.13",
   "packageManager": "pnpm@11.22.0",
   "description": "CLI and GitHub Action to auto-update CHANGELOG.md from git history and release notes, optionally using LLMs.",
   "type": "module",
