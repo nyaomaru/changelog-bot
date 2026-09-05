@@ -6,8 +6,9 @@ import {
 } from '@/constants/conventional.js';
 import type {
   BucketName,
-  CategoryMap,
+  CategoryAssignments,
   CategoryScores,
+  ClassificationChange,
 } from '@/types/changelog.js';
 import {
   SECTION_ADDED,
@@ -18,14 +19,13 @@ import {
   SECTION_DOCS,
   SECTION_TEST,
 } from '@/constants/changelog.js';
-import type { ReleaseItem } from '@/types/release.js';
+import type { ReleaseChange, ReleaseChangeId } from '@/types/release.js';
 import {
   bestCategory,
   scoreCategories,
   SCORE_THRESHOLDS,
 } from '@/utils/category-score.js';
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
-import { isArray, isBucketName } from '@/utils/is.js';
 
 const TYPE_INTENT_INDICATORS = [
   'type',
@@ -80,12 +80,6 @@ const CHANGE_LIKE_INDICATORS = [
   'finetune',
 ];
 
-const REQUIRED_CATEGORY_BUCKETS = [
-  SECTION_FIXED,
-  SECTION_CHANGED,
-  SECTION_ADDED,
-] as const;
-
 const WEAK_REMAP_BUCKETS = new Set<BucketName>([
   SECTION_CHORE,
   SECTION_DOCS,
@@ -96,81 +90,17 @@ function semanticTitleCore(rawTitle: string): string {
   return rawTitle.toLowerCase().replace(CONVENTIONAL_PREFIX_RE, '').trim();
 }
 
-function collectKnownTitles(
-  items: ReleaseItem[],
-  categories: CategoryMap,
+function releaseChangeTitles(
+  change: ReleaseChange,
+  classificationTitle?: string,
 ): string[] {
-  const knownTitles = new Set<string>();
-
-  for (const item of items) {
-    if (item.rawTitle) knownTitles.add(item.rawTitle);
-    knownTitles.add(item.title);
-  }
-
-  for (const list of Object.values(categories)) {
-    if (!isArray(list)) continue;
-    for (const title of list) {
-      knownTitles.add(title);
-    }
-  }
-
-  return Array.from(knownTitles);
-}
-
-function cloneCategoryMap(categories: CategoryMap): CategoryMap {
-  const adjusted: CategoryMap = Object.fromEntries(
-    Object.entries(categories).map(([section, list]) => [
-      section,
-      isArray(list) ? list.slice() : [],
-    ]),
+  return Array.from(
+    new Set(
+      [change.rawTitle, change.title, classificationTitle].filter(
+        (title): title is string => Boolean(title),
+      ),
+    ),
   );
-
-  for (const section of REQUIRED_CATEGORY_BUCKETS) {
-    if (!adjusted[section]) adjusted[section] = [];
-  }
-
-  return adjusted;
-}
-
-/**
- * Move given titles to a target category on a mutable CategoryMap.
- * - Removes titles from all buckets first to avoid duplicates.
- * - Ensures the target bucket exists and appends uniquely.
- */
-function moveTitlesToCategory(
-  adjusted: CategoryMap,
-  titles: string[],
-  targetCategory: BucketName,
-): void {
-  if (!isArray(adjusted[targetCategory])) adjusted[targetCategory] = [];
-  const target = adjusted[targetCategory];
-  for (const title of titles) {
-    for (const list of Object.values(adjusted)) {
-      if (!isArray(list)) continue;
-      const titleIndex = list.indexOf(title);
-      if (titleIndex !== -1) list.splice(titleIndex, 1);
-    }
-    if (!target.includes(title)) target.push(title);
-  }
-}
-
-function collectMatchingTitles(
-  titles: string[],
-  predicate: (title: string) => boolean,
-): string[] {
-  return titles.filter((title) => predicate(title));
-}
-
-function findCategory(
-  categories: CategoryMap,
-  title: string,
-): BucketName | undefined {
-  for (const [section, list] of Object.entries(categories)) {
-    if (isArray(list) && list.includes(title) && isBucketName(section)) {
-      return section;
-    }
-  }
-  return undefined;
 }
 
 function shouldMoveChangeLikeTitle(
@@ -228,18 +158,20 @@ function confidentScoredCategory(scores: CategoryScores): BucketName | null {
   return null;
 }
 
-function applyScoredWeakBucketRemaps(
-  adjusted: CategoryMap,
+function applyScoredWeakBucketRemap(
+  adjusted: CategoryAssignments,
+  changeId: ReleaseChangeId,
   titles: string[],
 ): void {
   for (const title of titles) {
-    const currentCategory = findCategory(adjusted, title);
+    const currentCategory = adjusted[changeId];
     if (!currentCategory || !WEAK_REMAP_BUCKETS.has(currentCategory)) continue;
 
     const targetCategory = confidentScoredCategory(scoreCategories(title));
     if (!targetCategory) continue;
 
-    moveTitlesToCategory(adjusted, [title], targetCategory);
+    adjusted[changeId] = targetCategory;
+    return;
   }
 }
 
@@ -290,63 +222,62 @@ export function isChangeLikeTitle(rawTitle: string): boolean {
 }
 
 /**
- * Re-map category assignments so that titles implying a fix (e.g., type tightening) land in `Fixed`.
- * @param items Parsed release items (with rawTitle/title values).
- * @param categories Category mapping produced by the classifier.
- * @returns Adjusted CategoryMap with qualifying titles moved to `Fixed`.
+ * Re-map ID-based assignments using deterministic title signals.
+ * @param changes Canonical changes containing raw and display titles.
+ * @param assignments Category assignments produced by the classifier.
+ * @param classificationChanges Normalized titles sent to the classifier.
+ * @returns Adjusted assignments keyed by the same stable change IDs.
  */
-export function tuneCategoriesByTitle(
-  items: ReleaseItem[],
-  categories: CategoryMap,
-): CategoryMap {
-  if (!items.length) return categories;
+export function tuneCategoryAssignmentsByTitle(
+  changes: ReleaseChange[],
+  assignments: CategoryAssignments,
+  classificationChanges: ClassificationChange[] = [],
+): CategoryAssignments {
+  if (!changes.length) return assignments;
 
-  const adjusted = cloneCategoryMap(categories);
-  const allKnownTitles = collectKnownTitles(items, categories);
-
-  // Rule: Dependency-only updates should remain in Chore to avoid noise in Changed.
-  const dependencyUpdates = collectMatchingTitles(
-    allKnownTitles,
-    isDependencyUpdateTitle,
+  const adjusted = { ...assignments };
+  const classificationTitles = new Map(
+    classificationChanges.map(({ id, title }) => [id, title]),
   );
-  if (dependencyUpdates.length)
-    moveTitlesToCategory(adjusted, dependencyUpdates, SECTION_CHORE);
-  const dependencyUpdateSet = new Set(dependencyUpdates);
-  const nonDependencyTitles = allKnownTitles.filter(
-    (title) => !dependencyUpdateSet.has(title),
-  );
+  for (const change of changes) {
+    const titles = releaseChangeTitles(
+      change,
+      classificationTitles.get(change.id),
+    );
+    adjusted[change.id] ??= SECTION_CHORE;
 
-  const implicitFixes = collectMatchingTitles(
-    nonDependencyTitles,
-    isImplicitFixTitle,
-  );
-  if (implicitFixes.length)
-    moveTitlesToCategory(adjusted, implicitFixes, SECTION_FIXED);
+    // Dependency-only updates should remain in Chore to avoid Changed noise.
+    if (titles.some(isDependencyUpdateTitle)) {
+      adjusted[change.id] = SECTION_CHORE;
+      continue;
+    }
 
-  // Rule: Conventional `fix:` prefix should map to Fixed.
-  const conventionalFixes = collectMatchingTitles(
-    nonDependencyTitles,
-    (title) => FIX_PREFIX_FLEX_RE.test(title),
-  );
-  if (conventionalFixes.length)
-    moveTitlesToCategory(adjusted, conventionalFixes, SECTION_FIXED);
+    if (titles.some(isImplicitFixTitle)) {
+      adjusted[change.id] = SECTION_FIXED;
+    }
 
-  // Secondary rule: refactor/perf/style-like items should land in Changed when misclassified as Chore or missing.
-  const changeLikeTitles = nonDependencyTitles.filter((title) =>
-    shouldMoveChangeLikeTitle(title, findCategory(adjusted, title)),
-  );
-  if (changeLikeTitles.length)
-    moveTitlesToCategory(adjusted, changeLikeTitles, SECTION_CHANGED);
+    // Conventional `fix:` prefixes should map to Fixed.
+    if (titles.some((title) => FIX_PREFIX_FLEX_RE.test(title))) {
+      adjusted[change.id] = SECTION_FIXED;
+    }
 
-  // Rule: Conventional `feat:` prefix should map to Added (guard against LLM
-  // placing features under Chore/Changed due to generic verbs like "add/support").
-  const featureTitles = collectMatchingTitles(nonDependencyTitles, (title) =>
-    FEAT_PREFIX_FLEX_RE.test(title),
-  );
-  if (featureTitles.length)
-    moveTitlesToCategory(adjusted, featureTitles, SECTION_ADDED);
+    // Refactor/perf/style-like items should land in Changed when the current
+    // assignment is weak or incorrectly marked as Added.
+    if (
+      titles.some((title) =>
+        shouldMoveChangeLikeTitle(title, adjusted[change.id]),
+      )
+    ) {
+      adjusted[change.id] = SECTION_CHANGED;
+    }
 
-  applyScoredWeakBucketRemaps(adjusted, nonDependencyTitles);
+    // Conventional `feat:` prefixes override weak provider classifications.
+    if (titles.some((title) => FEAT_PREFIX_FLEX_RE.test(title))) {
+      adjusted[change.id] = SECTION_ADDED;
+    }
+
+    applyScoredWeakBucketRemap(adjusted, change.id, titles);
+  }
 
   return adjusted;
 }

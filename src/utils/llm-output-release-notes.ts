@@ -1,13 +1,17 @@
 import { fetchPRInfo } from '@/lib/github.js';
 import {
   buildReleaseItemsFromPullRequests,
+  deduplicateReleaseChangesByPullRequest,
   identifyReleaseItems,
   parseReleaseNotes,
   buildSectionFromRelease,
 } from '@/utils/release.js';
-import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
-import { buildTitlesForClassification } from '@/utils/classify-pre.js';
-import { fallbackCategoryMap } from '@/providers/classification.js';
+import { tuneCategoryAssignmentsByTitle } from '@/utils/category-tune.js';
+import { buildChangesForClassification } from '@/utils/classify-pre.js';
+import {
+  fallbackCategoryAssignments,
+  IncompleteClassificationError,
+} from '@/providers/classification.js';
 import { LlmError } from '@/lib/errors.js';
 import {
   DEFAULT_PR_LABELS,
@@ -27,6 +31,7 @@ import {
 } from '@/utils/llm-output-common.js';
 import { isError } from '@/utils/is.js';
 import type { ReleaseChange } from '@/types/release.js';
+import type { CategoryAssignments } from '@/types/changelog.js';
 
 /**
  * Fill missing PR numbers/URLs/authors for release note items when possible.
@@ -122,37 +127,54 @@ export async function buildOutputFromReleaseNotes(
     titleToPr,
     items: releaseChanges,
   });
+  releaseChanges = deduplicateReleaseChangesByPullRequest(releaseChanges);
 
-  const titlesForLLM = buildTitlesForClassification(releaseChanges);
-  let categories: Record<string, string[]> = {};
-  if (titlesForLLM.length) {
+  const changesForClassification =
+    buildChangesForClassification(releaseChanges);
+  let assignments = {} as CategoryAssignments;
+  if (changesForClassification.length) {
     if (noAi) {
-      categories = fallbackCategoryMap(titlesForLLM);
+      assignments = fallbackCategoryAssignments(changesForClassification);
     } else {
       try {
-        categories = await provider.classifyTitles(titlesForLLM, {
-          throwOnError: true,
-        });
+        const classification = await provider.classifyChanges(
+          changesForClassification,
+          {
+            throwOnError: true,
+          },
+        );
+        assignments = classification.assignments;
+        fallbackReasons.push(...classification.diagnostics);
         // Mark AI usage only when classification had input and a provider key is available.
         aiUsed = aiUsed || hasProviderKey;
       } catch (err) {
-        const message = isError(err) ? err.message : String(err);
-        if (failOnLlmError) {
-          throw new LlmError(`LLM classification failed: ${message}`);
+        if (err instanceof IncompleteClassificationError && !failOnLlmError) {
+          assignments = err.result.assignments;
+          fallbackReasons.push(...err.result.diagnostics);
+          aiUsed = aiUsed || hasProviderKey;
+        } else {
+          const message = isError(err) ? err.message : String(err);
+          if (failOnLlmError) {
+            throw new LlmError(`LLM classification failed: ${message}`);
+          }
+          fallbackReasons.push(`LLM classification failed: ${message}`);
+          assignments = fallbackCategoryAssignments(changesForClassification);
         }
-        fallbackReasons.push(`LLM classification failed: ${message}`);
-        categories = fallbackCategoryMap(titlesForLLM);
       }
     }
     // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.
-    categories = tuneCategoriesByTitle(releaseChanges, categories);
+    assignments = tuneCategoryAssignmentsByTitle(
+      releaseChanges,
+      assignments,
+      changesForClassification,
+    );
   }
 
   const section = buildSectionFromRelease({
     version,
     date,
-    items: releaseChanges,
-    categories,
+    changes: releaseChanges,
+    assignments,
     fullChangelog: parsedRelease.fullChangelog,
     sections: parsedRelease.sections,
   });

@@ -2,6 +2,7 @@
 import { test, expect, describe } from '@jest/globals';
 import {
   buildReleaseItemsFromPullRequests,
+  deduplicateReleaseChangesByPullRequest,
   identifyReleaseItems,
   parseReleaseNotes,
   buildSectionFromRelease,
@@ -91,6 +92,58 @@ describe('release utils', () => {
       { kind: 'release-note', index: 0 },
       { kind: 'release-note', index: 1 },
       { kind: 'pull-request', number: 42 },
+    ]);
+  });
+
+  test('deduplicates repeated explicit PRs before classification', () => {
+    const changes = identifyReleaseItems([
+      {
+        title: 'Add export support',
+        rawTitle: 'feat: Add export support',
+        pr: 42,
+      },
+      {
+        title: 'Mention export support again',
+        author: 'alice',
+        pr: 42,
+        url: 'https://github.com/acme/repo/pull/42',
+      },
+    ]);
+
+    expect(changes).toEqual([
+      {
+        id: 'pr:42',
+        origin: { kind: 'pull-request', number: 42 },
+        title: 'Add export support',
+        rawTitle: 'feat: Add export support',
+        author: 'alice',
+        pr: 42,
+        url: 'https://github.com/acme/repo/pull/42',
+      },
+    ]);
+  });
+
+  test('deduplicates PRs discovered after initial identification', () => {
+    const changes = identifyReleaseItems([
+      { title: 'Add export support' },
+      {
+        title: 'Explicit export entry',
+        author: 'alice',
+        pr: 42,
+        url: 'https://github.com/acme/repo/pull/42',
+      },
+    ]);
+    changes[0].pr = 42;
+
+    expect(deduplicateReleaseChangesByPullRequest(changes)).toEqual([
+      {
+        id: 'release-note:0',
+        origin: { kind: 'release-note', index: 0 },
+        title: 'Add export support',
+        author: 'alice',
+        pr: 42,
+        url: 'https://github.com/acme/repo/pull/42',
+      },
     ]);
   });
 
@@ -312,8 +365,10 @@ describe('release utils', () => {
   });
 
   test('buildSectionFromRelease formats bullets with author and PR link', () => {
-    const items = [
+    const changes = [
       {
+        id: 'pr:123',
+        origin: { kind: 'pull-request', number: 123 },
         title: 'Add thing',
         author: 'alice',
         pr: 123,
@@ -324,8 +379,8 @@ describe('release utils', () => {
     const section = buildSectionFromRelease({
       version: '0.1.1',
       date: '2024-01-01',
-      items,
-      categories: { Added: ['Add thing'] },
+      changes,
+      assignments: { 'pr:123': 'Added' },
       fullChangelog: 'https://github.com/acme/repo/compare/v0.1.0...v0.1.1',
       sections: [
         {
@@ -353,8 +408,8 @@ describe('release utils', () => {
     const section = buildSectionFromRelease({
       version: '1.8.0',
       date: '2026-06-06',
-      items: [],
-      categories: {},
+      changes: [],
+      assignments: {},
       sections: [
         {
           heading: 'What\u2019s new \u{1F680}',
@@ -380,22 +435,21 @@ describe('release utils', () => {
     expect(section).toContain('```ts\n### Not a markdown heading\n');
   });
 
-  test('buildSectionFromRelease matches raw conventional titles and avoids duplicate category membership', () => {
+  test('buildSectionFromRelease renders a change from its stable ID assignment', () => {
     const section = buildSectionFromRelease({
       version: '1.2.3',
       date: '2026-05-16',
-      items: [
+      changes: [
         {
+          id: 'pr:100',
+          origin: { kind: 'pull-request', number: 100 },
           title: 'Add export flag',
           rawTitle: 'feat: Add export flag',
           pr: 100,
           url: 'https://github.com/acme/repo/pull/100',
         },
       ],
-      categories: {
-        Added: ['feat: Add export flag'],
-        Changed: ['Add export flag'],
-      },
+      assignments: { 'pr:100': 'Added' },
     });
 
     expect(section).toBe(
@@ -408,5 +462,32 @@ describe('release utils', () => {
         '',
       ].join('\n'),
     );
+  });
+
+  test('buildSectionFromRelease keeps duplicate titles in separate assigned sections', () => {
+    const section = buildSectionFromRelease({
+      version: '1.2.3',
+      date: '2026-05-16',
+      changes: [
+        {
+          id: 'release-note:0',
+          origin: { kind: 'release-note', index: 0 },
+          title: 'Improve output',
+        },
+        {
+          id: 'release-note:1',
+          origin: { kind: 'release-note', index: 1 },
+          title: 'Improve output',
+        },
+      ],
+      assignments: {
+        'release-note:0': 'Added',
+        'release-note:1': 'Fixed',
+      },
+    });
+
+    expect(section).toContain('### Added\n\n- Improve output');
+    expect(section).toContain('### Fixed\n\n- Improve output');
+    expect(section.match(/- Improve output/g)).toHaveLength(2);
   });
 });

@@ -1,30 +1,33 @@
 // @ts-nocheck
 import { describe, test, expect } from '@jest/globals';
-import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
+import { tuneCategoryAssignmentsByTitle } from '@/utils/category-tune.js';
 
 describe('category-tune with scoring thresholds', () => {
   test('moves improvement-heavy titles from Chore to Changed', () => {
     const items = [
       {
+        id: 'release-note:0',
+        origin: { kind: 'release-note', index: 0 },
         title: 'add pre-processing to improve classification',
         rawTitle: undefined,
       },
     ];
-    const categories = {
-      Chore: ['add pre-processing to improve classification'],
-    };
-    const out = tuneCategoriesByTitle(items, categories);
-    expect(out.Changed).toContain(
-      'add pre-processing to improve classification',
-    );
+    const assignments = { 'release-note:0': 'Chore' as const };
+    const out = tuneCategoryAssignmentsByTitle(items, assignments);
+    expect(out['release-note:0']).toBe('Changed');
   });
 
   test('does not demote explicit Fixed', () => {
     const items = [
-      { title: 'fix: prevent crash', rawTitle: 'fix: prevent crash' },
+      {
+        id: 'release-note:0',
+        origin: { kind: 'release-note' as const, index: 0 },
+        title: 'fix: prevent crash',
+        rawTitle: 'fix: prevent crash',
+      },
     ];
-    const categories = { Fixed: ['fix: prevent crash'] };
-    const out = tuneCategoriesByTitle(items, categories);
-    expect(out.Fixed).toContain('fix: prevent crash');
+    const assignments = { 'release-note:0': 'Fixed' as const };
+    const out = tuneCategoryAssignmentsByTitle(items, assignments);
+    expect(out['release-note:0']).toBe('Fixed');
   });
 });

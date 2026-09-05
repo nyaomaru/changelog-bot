@@ -41,7 +41,10 @@ function provider(): Provider {
       pr_title: 'docs(changelog): 1.2.3',
       pr_body: 'body',
     })),
-    classifyTitles: jest.fn<Provider['classifyTitles']>(async () => ({})),
+    classifyChanges: jest.fn<Provider['classifyChanges']>(async () => ({
+      assignments: {},
+      diagnostics: [],
+    })),
     extractWhyNotes: jest.fn<Provider['extractWhyNotes']>(async () => ({
       items: [
         {

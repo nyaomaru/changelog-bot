@@ -1,6 +1,6 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
-import type { ClassifyTitlesOptions, Provider } from '@/types/provider.js';
+import type { ClassifyChangesOptions, Provider } from '@/types/provider.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
@@ -18,9 +18,12 @@ import { PROVIDER_OPENAI } from '@/constants/provider.js';
 import { RELEASE_NOTES_SYSTEM_PROMPT } from '@/constants/system-prompts.js';
 import {
   buildClassificationPrompt,
-  classifyTitlesWithFallback,
+  classifyChangesWithFallback,
 } from '@/providers/classification.js';
-import type { CategoryMap } from '@/types/changelog.js';
+import type {
+  ClassificationChange,
+  ClassificationResult,
+} from '@/types/changelog.js';
 import {
   buildWhyExtractionPrompt,
   parseWhyExtractionOutput,
@@ -42,7 +45,7 @@ type OpenAIResponse = {
 };
 
 const SYSTEM_OPENAI_CLASSIFY =
-  'Classify each pull request title into one of the given categories. Return a JSON object with those categories as keys and arrays of titles as values.';
+  'Classify each release change into one provided category. Return a JSON object mapping every change ID to its category. Do not rewrite IDs.';
 
 /**
  * Extract the assistant message content from an OpenAI Chat Completions response.
@@ -139,17 +142,17 @@ export class OpenAIProvider implements Provider {
     return extractJsonObject<LLMOutput>(extractOpenAiResponseText(resp));
   }
 
-  async classifyTitles(
-    titles: string[],
-    options: ClassifyTitlesOptions = {},
-  ): Promise<CategoryMap> {
-    return classifyTitlesWithFallback({
-      titles,
+  async classifyChanges(
+    changes: ClassificationChange[],
+    options: ClassifyChangesOptions = {},
+  ): Promise<ClassificationResult> {
+    return classifyChangesWithFallback({
+      changes,
       hasApiKey: Boolean(this.apiKey),
       options,
       invalidResponseMessage: 'OpenAI classify output did not match schema',
       request: async () => {
-        const prompt = buildClassificationPrompt(titles);
+        const prompt = buildClassificationPrompt(changes);
         let text: string;
         if (isReasoningModel(this.modelName)) {
           const payload = buildOpenAiResponsePayload(

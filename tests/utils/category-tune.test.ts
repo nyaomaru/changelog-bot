@@ -1,77 +1,86 @@
 // eslint-disable @typescript-eslint/no-explicit-any -- Tests may coerce types when focusing on behavior, not type surfaces.
-import { tuneCategoriesByTitle } from '@/utils/category-tune.js';
-import type { ReleaseItem } from '@/types/release.js';
-import type { CategoryMap } from '@/types/changelog.js';
+import { tuneCategoryAssignmentsByTitle } from '@/utils/category-tune.js';
+import type { ReleaseChange } from '@/types/release.js';
+import type { CategoryAssignments } from '@/types/changelog.js';
 
-describe('tuneCategoriesByTitle', () => {
+describe('tuneCategoryAssignmentsByTitle', () => {
   test('moves conventional fix-like titles to Fixed', () => {
-    const items: ReleaseItem[] = [
-      { title: 'tighten option type', rawTitle: 'chore: tighten option type' },
+    const items: ReleaseChange[] = [
+      {
+        id: 'release-note:0',
+        origin: { kind: 'release-note', index: 0 },
+        title: 'tighten option type',
+        rawTitle: 'chore: tighten option type',
+      },
     ];
-    const categories: CategoryMap = { Chore: ['chore: tighten option type'] };
-    const out = tuneCategoriesByTitle(items, categories);
-    expect(out.Fixed).toContain('chore: tighten option type');
+    const assignments: CategoryAssignments = { 'release-note:0': 'Chore' };
+    const out = tuneCategoryAssignmentsByTitle(items, assignments);
+    expect(out['release-note:0']).toBe('Fixed');
   });
 
   test('moves refactor-like titles to Changed', () => {
-    const items: ReleaseItem[] = [
+    const items: ReleaseChange[] = [
       {
+        id: 'release-note:0',
+        origin: { kind: 'release-note', index: 0 },
         title: 'refactor: internal pipeline',
         rawTitle: 'refactor: internal pipeline',
       },
     ];
-    const categories: CategoryMap = { Chore: ['refactor: internal pipeline'] };
-    const out = tuneCategoriesByTitle(items, categories);
-    expect(out.Changed).toContain('refactor: internal pipeline');
+    const assignments: CategoryAssignments = { 'release-note:0': 'Chore' };
+    const out = tuneCategoryAssignmentsByTitle(items, assignments);
+    expect(out['release-note:0']).toBe('Changed');
   });
 
   test('moves feat: titles to Added', () => {
-    const items: ReleaseItem[] = [
+    const items: ReleaseChange[] = [
       {
+        id: 'release-note:0',
+        origin: { kind: 'release-note', index: 0 },
         title: 'Support GitHub App auth',
         rawTitle: 'feat: Support GitHub App auth',
       },
     ];
-    const categories: CategoryMap = {
-      Chore: ['feat: Support GitHub App auth'],
-    };
-    const out = tuneCategoriesByTitle(items, categories);
-    expect(out.Added).toContain('feat: Support GitHub App auth');
-    // Ensure it is removed from Chore
-    expect(out.Chore?.includes('feat: Support GitHub App auth')).toBeFalsy();
+    const assignments: CategoryAssignments = { 'release-note:0': 'Chore' };
+    const out = tuneCategoryAssignmentsByTitle(items, assignments);
+    expect(out['release-note:0']).toBe('Added');
   });
 
   test('matches feat(scope)!: and fix(scope)!: forms', () => {
-    const items: ReleaseItem[] = [
-      { title: 'Breaking feature', rawTitle: 'feat(core)!: new something' },
-      { title: 'Critical fix', rawTitle: 'fix(api)!: patch issue' },
+    const items: ReleaseChange[] = [
+      {
+        id: 'release-note:0',
+        origin: { kind: 'release-note', index: 0 },
+        title: 'Breaking feature',
+        rawTitle: 'feat(core)!: new something',
+      },
+      {
+        id: 'release-note:1',
+        origin: { kind: 'release-note', index: 1 },
+        title: 'Critical fix',
+        rawTitle: 'fix(api)!: patch issue',
+      },
     ];
-    const categories: CategoryMap = {
-      Chore: ['feat(core)!: new something', 'fix(api)!: patch issue'],
+    const assignments: CategoryAssignments = {
+      'release-note:0': 'Chore',
+      'release-note:1': 'Chore',
     };
-    const out = tuneCategoriesByTitle(items, categories);
-    expect(out.Added).toContain('feat(core)!: new something');
-    expect(out.Fixed).toContain('fix(api)!: patch issue');
+    const out = tuneCategoryAssignmentsByTitle(items, assignments);
+    expect(out['release-note:0']).toBe('Added');
+    expect(out['release-note:1']).toBe('Fixed');
   });
 
   test('keeps dependency-only updates in Chore', () => {
-    const items: ReleaseItem[] = [
+    const items: ReleaseChange[] = [
       {
+        id: 'release-note:0',
+        origin: { kind: 'release-note', index: 0 },
         title: 'Update dependency prettier to v3.8.0',
         rawTitle: 'chore(deps): Update dependency prettier to v3.8.0',
       },
     ];
-    const categories: CategoryMap = {
-      Changed: ['chore(deps): Update dependency prettier to v3.8.0'],
-    };
-    const out = tuneCategoriesByTitle(items, categories);
-    expect(out.Chore).toContain(
-      'chore(deps): Update dependency prettier to v3.8.0',
-    );
-    expect(
-      out.Changed?.includes(
-        'chore(deps): Update dependency prettier to v3.8.0',
-      ),
-    ).toBeFalsy();
+    const assignments: CategoryAssignments = { 'release-note:0': 'Changed' };
+    const out = tuneCategoryAssignmentsByTitle(items, assignments);
+    expect(out['release-note:0']).toBe('Chore');
   });
 });

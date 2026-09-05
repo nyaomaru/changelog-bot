@@ -1,6 +1,6 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
-import type { ClassifyTitlesOptions, Provider } from '@/types/provider.js';
+import type { ClassifyChangesOptions, Provider } from '@/types/provider.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
@@ -16,10 +16,14 @@ import { PROVIDER_ANTHROPIC } from '@/constants/provider.js';
 import { RELEASE_NOTES_SYSTEM_PROMPT } from '@/constants/system-prompts.js';
 import {
   buildClassificationPrompt,
-  classifyTitlesWithFallback,
+  buildClassificationAssignmentsJsonSchema,
+  classifyChangesWithFallback,
 } from '@/providers/classification.js';
 import { isArray, isRecord, isString } from '@/utils/is.js';
-import type { CategoryMap } from '@/types/changelog.js';
+import type {
+  ClassificationChange,
+  ClassificationResult,
+} from '@/types/changelog.js';
 import {
   buildWhyExtractionPrompt,
   WHY_EXTRACTION_SYSTEM_PROMPT,
@@ -28,7 +32,7 @@ import {
 import { WhyExtractionOutputSchema } from '@/schema/why.js';
 
 const SYSTEM_ANTHROPIC_CLASSIFY =
-  'You are a changelog section classifier. Return JSON mapping each category to an array of titles. Use only the provided categories.';
+  'Classify each release change into one provided category. Return a JSON object mapping every change ID to its category. Do not rewrite IDs.';
 
 /**
  * Extract the assistant text content from an Anthropic Messages API response.
@@ -110,21 +114,17 @@ export class AnthropicProvider implements Provider {
     return extractJsonObject<LLMOutput>(outputText);
   }
 
-  async classifyTitles(
-    titles: string[],
-    options: ClassifyTitlesOptions = {},
-  ): Promise<CategoryMap> {
-    return classifyTitlesWithFallback({
-      titles,
+  async classifyChanges(
+    changes: ClassificationChange[],
+    options: ClassifyChangesOptions = {},
+  ): Promise<ClassificationResult> {
+    return classifyChangesWithFallback({
+      changes,
       hasApiKey: Boolean(this.apiKey),
       options,
       invalidResponseMessage: 'Anthropic classify output did not match schema',
       request: async () => {
-        const prompt = buildClassificationPrompt(titles);
-        const properties: Record<string, unknown> = {};
-        for (const category of prompt.categories) {
-          properties[category] = { type: 'array', items: { type: 'string' } };
-        }
+        const prompt = buildClassificationPrompt(changes);
 
         const payload = {
           model: this.modelName,
@@ -134,17 +134,13 @@ export class AnthropicProvider implements Provider {
           messages: [{ role: 'user', content: JSON.stringify(prompt) }],
           tools: [
             {
-              name: 'return_categories',
+              name: 'return_assignments',
               description:
-                'Return a JSON object mapping each category to an array of titles.',
-              input_schema: {
-                type: 'object',
-                properties,
-                additionalProperties: false,
-              },
+                'Return a JSON object mapping every change ID to one category.',
+              input_schema: buildClassificationAssignmentsJsonSchema(changes),
             },
           ],
-          tool_choice: { type: 'tool', name: 'return_categories' },
+          tool_choice: { type: 'tool', name: 'return_assignments' },
         } as const;
 
         const json = await postJson<unknown>(
