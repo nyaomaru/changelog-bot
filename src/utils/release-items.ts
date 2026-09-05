@@ -42,17 +42,38 @@ export function buildReleaseChangeId(
 export function identifyReleaseItems(
   items: readonly ReleaseItem[],
 ): ReleaseChange[] {
-  return items.map((item, itemIndex) => {
+  const changes: ReleaseChange[] = [];
+  const changesByPrNumber = new Map<number, ReleaseChange>();
+
+  items.forEach((item, itemIndex) => {
     const origin: ReleaseChangeOrigin =
       item.pr !== undefined
         ? { kind: 'pull-request', number: item.pr }
         : { kind: 'release-note', index: itemIndex };
-    return {
+    const existingPrChange =
+      origin.kind === 'pull-request'
+        ? changesByPrNumber.get(origin.number)
+        : undefined;
+    if (existingPrChange) {
+      // WHY: A generated release body may mention one PR more than once. Keep
+      // the first display entry while retaining metadata found on later rows.
+      existingPrChange.author ??= item.author;
+      existingPrChange.url ??= item.url;
+      return;
+    }
+
+    const change: ReleaseChange = {
       ...item,
       id: buildReleaseChangeId(origin),
       origin,
     };
+    changes.push(change);
+    if (origin.kind === 'pull-request') {
+      changesByPrNumber.set(origin.number, change);
+    }
   });
+
+  return changes;
 }
 
 /**

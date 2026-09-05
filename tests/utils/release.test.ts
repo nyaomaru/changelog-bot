@@ -94,6 +94,34 @@ describe('release utils', () => {
     ]);
   });
 
+  test('deduplicates repeated explicit PRs before classification', () => {
+    const changes = identifyReleaseItems([
+      {
+        title: 'Add export support',
+        rawTitle: 'feat: Add export support',
+        pr: 42,
+      },
+      {
+        title: 'Mention export support again',
+        author: 'alice',
+        pr: 42,
+        url: 'https://github.com/acme/repo/pull/42',
+      },
+    ]);
+
+    expect(changes).toEqual([
+      {
+        id: 'pr:42',
+        origin: { kind: 'pull-request', number: 42 },
+        title: 'Add export support',
+        rawTitle: 'feat: Add export support',
+        author: 'alice',
+        pr: 42,
+        url: 'https://github.com/acme/repo/pull/42',
+      },
+    ]);
+  });
+
   test('parseReleaseNotes extracts items and full changelog', () => {
     const body = [
       '# Some Release',

@@ -139,6 +139,36 @@ describe('llm-output', () => {
     ).toHaveLength(2);
   });
 
+  test('classifies and renders a repeated explicit PR only once', async () => {
+    const classifyChanges = jest.fn(async () => ({
+      assignments: { 'pr:42': 'Added' },
+      diagnostics: [],
+    }));
+
+    const result = await buildChangelogLlmOutput(
+      buildBaseParams({
+        releaseBody: [
+          "## What's Changed",
+          '- feat: Add export support by @alice in #42',
+          '- feat: Add export support by @alice in #42',
+        ].join('\n'),
+        provider: { ...mockProvider, classifyChanges },
+        hasProviderKey: true,
+      }),
+    );
+
+    expect(classifyChanges).toHaveBeenCalledWith(
+      [{ id: 'pr:42', title: 'feat: Add export support' }],
+      { throwOnError: true },
+    );
+    expect(
+      result.llm.new_section_markdown.match(/- Add export support/g),
+    ).toHaveLength(1);
+    expect(result.fallbackReasons.join('\n')).not.toContain(
+      'LLM classification failed',
+    );
+  });
+
   test('records omitted classification IDs and renders their fallback', async () => {
     const classifyChanges = jest.fn(async () => ({
       assignments: {
