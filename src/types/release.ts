@@ -12,6 +12,24 @@ export type ReleaseItem = {
   url?: string;
 };
 
+/** Stable identity assigned to a release change before classification. */
+export type ReleaseChangeId =
+  `pr:${number}` | `commit:${string}` | `release-note:${number}`;
+
+/** Source record from which a canonical release change was derived. */
+export type ReleaseChangeOrigin =
+  | { kind: 'pull-request'; number: number }
+  | { kind: 'commit'; sha: string }
+  | { kind: 'release-note'; index: number };
+
+/** Canonical release item with identity independent of its editable title. */
+export type ReleaseChange = ReleaseItem & {
+  /** Stable identifier used to reconcile classification and rendering. */
+  id: ReleaseChangeId;
+  /** Original source used to derive the stable identifier. */
+  origin: ReleaseChangeOrigin;
+};
+
 /** Additional sections surfaced from release notes. */
 export type ReleaseSection = {
   /** Section heading text (e.g., "Breaking Changes"). */

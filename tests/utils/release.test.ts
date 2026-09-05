@@ -2,6 +2,7 @@
 import { test, expect, describe } from '@jest/globals';
 import {
   buildReleaseItemsFromPullRequests,
+  identifyReleaseItems,
   parseReleaseNotes,
   buildSectionFromRelease,
 } from '@/utils/release.js';
@@ -35,6 +36,8 @@ describe('release utils', () => {
 
     expect(items).toEqual([
       {
+        id: 'pr:138',
+        origin: { kind: 'pull-request', number: 138 },
         title: 'add opt-in WHY extraction',
         rawTitle: 'feat: add opt-in WHY extraction',
         author: 'nyaomaru',
@@ -57,14 +60,37 @@ describe('release utils', () => {
 
     expect(items).toEqual([
       {
+        id: 'pr:138',
+        origin: { kind: 'pull-request', number: 138 },
         title: 'add opt-in WHY extraction',
         rawTitle: 'feat: add opt-in WHY extraction',
         pr: 138,
       },
       {
+        id: 'commit:def',
+        origin: { kind: 'commit', sha: 'def' },
         title: 'recognize punctuated WHY headings',
         rawTitle: 'fix: recognize punctuated WHY headings',
       },
+    ]);
+  });
+
+  test('assigns distinct stable IDs to duplicate release-note titles', () => {
+    const changes = identifyReleaseItems([
+      { title: 'Improve output' },
+      { title: 'Improve output' },
+      { title: 'Fix rendering', pr: 42 },
+    ]);
+
+    expect(changes.map(({ id }) => id)).toEqual([
+      'release-note:0',
+      'release-note:1',
+      'pr:42',
+    ]);
+    expect(changes.map(({ origin }) => origin)).toEqual([
+      { kind: 'release-note', index: 0 },
+      { kind: 'release-note', index: 1 },
+      { kind: 'pull-request', number: 42 },
     ]);
   });
 

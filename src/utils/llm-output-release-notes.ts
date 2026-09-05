@@ -1,6 +1,7 @@
 import { fetchPRInfo } from '@/lib/github.js';
 import {
   buildReleaseItemsFromPullRequests,
+  identifyReleaseItems,
   parseReleaseNotes,
   buildSectionFromRelease,
 } from '@/utils/release.js';
@@ -25,6 +26,7 @@ import {
   resolvePrFromTitles,
 } from '@/utils/llm-output-common.js';
 import { isError } from '@/utils/is.js';
+import type { ReleaseChange } from '@/types/release.js';
 
 /**
  * Fill missing PR numbers/URLs/authors for release note items when possible.
@@ -36,13 +38,7 @@ async function enrichReleaseItems(params: {
   token?: string;
   githubApiBase: string;
   titleToPr: BuildChangelogLlmOutputParams['titleToPr'];
-  items: Array<{
-    title: string;
-    rawTitle?: string;
-    pr?: number;
-    url?: string;
-    author?: string;
-  }>;
+  items: ReleaseChange[];
 }): Promise<void> {
   const { owner, repo, token, githubApiBase, titleToPr, items } = params;
 
@@ -99,16 +95,17 @@ export async function buildOutputFromReleaseNotes(
   } = params;
 
   const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
+  let releaseChanges = identifyReleaseItems(parsedRelease.items);
   let usedPullRequestMetadata = false;
-  if (!parsedRelease.items.length && !parsedRelease.sections?.length) {
-    parsedRelease.items = buildReleaseItemsFromPullRequests(
+  if (!releaseChanges.length && !parsedRelease.sections?.length) {
+    releaseChanges = buildReleaseItemsFromPullRequests(
       params.commitList,
       params.pullRequestsBySha ?? {},
     );
-    usedPullRequestMetadata = parsedRelease.items.length > 0;
+    usedPullRequestMetadata = releaseChanges.length > 0;
   }
   const hasAdditionalSections = Boolean(parsedRelease.sections?.length);
-  if (!parsedRelease.items.length && !hasAdditionalSections) return null;
+  if (!releaseChanges.length && !hasAdditionalSections) return null;
 
   fallbackReasons.push(
     usedPullRequestMetadata
@@ -123,10 +120,10 @@ export async function buildOutputFromReleaseNotes(
     token,
     githubApiBase,
     titleToPr,
-    items: parsedRelease.items,
+    items: releaseChanges,
   });
 
-  const titlesForLLM = buildTitlesForClassification(parsedRelease.items);
+  const titlesForLLM = buildTitlesForClassification(releaseChanges);
   let categories: Record<string, string[]> = {};
   if (titlesForLLM.length) {
     if (noAi) {
@@ -148,13 +145,13 @@ export async function buildOutputFromReleaseNotes(
       }
     }
     // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.
-    categories = tuneCategoriesByTitle(parsedRelease.items, categories);
+    categories = tuneCategoriesByTitle(releaseChanges, categories);
   }
 
   const section = buildSectionFromRelease({
     version,
     date,
-    items: parsedRelease.items,
+    items: releaseChanges,
     categories,
     fullChangelog: parsedRelease.fullChangelog,
     sections: parsedRelease.sections,
