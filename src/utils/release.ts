@@ -3,6 +3,7 @@
 export { buildReleaseItemsFromPullRequests } from '@/utils/release-items.js';
 export {
   buildReleaseChangeId,
+  deduplicateReleaseChangesByPullRequest,
   identifyReleaseItems,
 } from '@/utils/release-items.js';
 export { parseReleaseNotes } from '@/utils/release-notes.js';

@@ -1,6 +1,7 @@
 import { fetchPRInfo } from '@/lib/github.js';
 import {
   buildReleaseItemsFromPullRequests,
+  deduplicateReleaseChangesByPullRequest,
   identifyReleaseItems,
   parseReleaseNotes,
   buildSectionFromRelease,
@@ -123,6 +124,7 @@ export async function buildOutputFromReleaseNotes(
     titleToPr,
     items: releaseChanges,
   });
+  releaseChanges = deduplicateReleaseChangesByPullRequest(releaseChanges);
 
   const changesForClassification =
     buildChangesForClassification(releaseChanges);

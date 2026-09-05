@@ -2,6 +2,7 @@
 import { test, expect, describe } from '@jest/globals';
 import {
   buildReleaseItemsFromPullRequests,
+  deduplicateReleaseChangesByPullRequest,
   identifyReleaseItems,
   parseReleaseNotes,
   buildSectionFromRelease,
@@ -115,6 +116,30 @@ describe('release utils', () => {
         origin: { kind: 'pull-request', number: 42 },
         title: 'Add export support',
         rawTitle: 'feat: Add export support',
+        author: 'alice',
+        pr: 42,
+        url: 'https://github.com/acme/repo/pull/42',
+      },
+    ]);
+  });
+
+  test('deduplicates PRs discovered after initial identification', () => {
+    const changes = identifyReleaseItems([
+      { title: 'Add export support' },
+      {
+        title: 'Explicit export entry',
+        author: 'alice',
+        pr: 42,
+        url: 'https://github.com/acme/repo/pull/42',
+      },
+    ]);
+    changes[0].pr = 42;
+
+    expect(deduplicateReleaseChangesByPullRequest(changes)).toEqual([
+      {
+        id: 'release-note:0',
+        origin: { kind: 'release-note', index: 0 },
+        title: 'Add export support',
         author: 'alice',
         pr: 42,
         url: 'https://github.com/acme/repo/pull/42',

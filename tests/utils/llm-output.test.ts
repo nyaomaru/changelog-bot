@@ -169,6 +169,37 @@ describe('llm-output', () => {
     );
   });
 
+  test('deduplicates PRs resolved from titles before classification', async () => {
+    const classifyChanges = jest.fn(async () => ({
+      assignments: { 'release-note:0': 'Added' },
+      diagnostics: [],
+    }));
+
+    const result = await buildChangelogLlmOutput(
+      buildBaseParams({
+        releaseBody: [
+          "## What's Changed",
+          '- Add export support by @alice',
+          '- Add export support by @alice',
+        ].join('\n'),
+        titleToPr: { 'add export support': 42 },
+        provider: { ...mockProvider, classifyChanges },
+        hasProviderKey: true,
+      }),
+    );
+
+    expect(classifyChanges).toHaveBeenCalledWith(
+      [{ id: 'release-note:0', title: 'Add export support' }],
+      { throwOnError: true },
+    );
+    expect(
+      result.llm.new_section_markdown.match(/- Add export support/g),
+    ).toHaveLength(1);
+    expect(result.llm.new_section_markdown).toContain(
+      '[#42](https://github.com/octo/repo/pull/42)',
+    );
+  });
+
   test('records omitted classification IDs and renders their fallback', async () => {
     const classifyChanges = jest.fn(async () => ({
       assignments: {

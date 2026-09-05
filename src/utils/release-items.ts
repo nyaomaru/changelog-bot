@@ -42,38 +42,53 @@ export function buildReleaseChangeId(
 export function identifyReleaseItems(
   items: readonly ReleaseItem[],
 ): ReleaseChange[] {
-  const changes: ReleaseChange[] = [];
-  const changesByPrNumber = new Map<number, ReleaseChange>();
-
-  items.forEach((item, itemIndex) => {
+  const changes = items.map((item, itemIndex) => {
     const origin: ReleaseChangeOrigin =
       item.pr !== undefined
         ? { kind: 'pull-request', number: item.pr }
         : { kind: 'release-note', index: itemIndex };
-    const existingPrChange =
-      origin.kind === 'pull-request'
-        ? changesByPrNumber.get(origin.number)
-        : undefined;
-    if (existingPrChange) {
-      // WHY: A generated release body may mention one PR more than once. Keep
-      // the first display entry while retaining metadata found on later rows.
-      existingPrChange.author ??= item.author;
-      existingPrChange.url ??= item.url;
-      return;
-    }
-
-    const change: ReleaseChange = {
+    return {
       ...item,
       id: buildReleaseChangeId(origin),
       origin,
     };
-    changes.push(change);
-    if (origin.kind === 'pull-request') {
-      changesByPrNumber.set(origin.number, change);
-    }
   });
 
-  return changes;
+  return deduplicateReleaseChangesByPullRequest(changes);
+}
+
+/**
+ * Deduplicate canonical changes by their final enriched pull request number.
+ * WHY: Title-based enrichment runs after initial identification and can reveal
+ * that separately parsed release-note rows refer to the same pull request.
+ * @param changes Canonical changes after any available PR enrichment.
+ * @returns Source-ordered changes containing at most one entry per PR number.
+ */
+export function deduplicateReleaseChangesByPullRequest(
+  changes: readonly ReleaseChange[],
+): ReleaseChange[] {
+  const deduplicatedChanges: ReleaseChange[] = [];
+  const changesByPrNumber = new Map<number, ReleaseChange>();
+
+  for (const change of changes) {
+    if (change.pr === undefined) {
+      deduplicatedChanges.push(change);
+      continue;
+    }
+
+    const existingChange = changesByPrNumber.get(change.pr);
+    if (existingChange) {
+      // Keep the first display entry while retaining metadata found later.
+      existingChange.author ??= change.author;
+      existingChange.url ??= change.url;
+      continue;
+    }
+
+    changesByPrNumber.set(change.pr, change);
+    deduplicatedChanges.push(change);
+  }
+
+  return deduplicatedChanges;
 }
 
 /**
