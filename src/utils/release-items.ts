@@ -23,6 +23,12 @@ export function buildReleaseChangeId(
       return `commit:${origin.sha}`;
     case 'release-note':
       return `release-note:${origin.index}`;
+    default: {
+      const exhaustiveOrigin: never = origin;
+      throw new Error(
+        `Unsupported release-change origin: ${JSON.stringify(exhaustiveOrigin)}`,
+      );
+    }
   }
 }
 
