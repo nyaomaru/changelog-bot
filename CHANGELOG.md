@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.13] - 2026-09-05
+
+### Changed
+
+- introduce canonical release change identity by @nyaomaru in [#190](https://github.com/nyaomaru/changelog-bot/pull/190)
+- classify release changes by stable ID by @nyaomaru in [#192](https://github.com/nyaomaru/changelog-bot/pull/192)
+
+### Docs
+
+- 0.6.12 by [bot] by @github-actions in [#188](https://github.com/nyaomaru/changelog-bot/pull/188)
+
+### Chore
+
+- version bump by @nyaomaru in [#191](https://github.com/nyaomaru/changelog-bot/pull/191)
+- bump the minor-and-patch group with 9 updates by [bot] by @dependabot in [#189](https://github.com/nyaomaru/changelog-bot/pull/189)
+
+### New Contributors
+
+* @dependabot[bot] made their first contribution in https://github.com/nyaomaru/changelog-bot/pull/189
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.6.12...v0.6.13
+
+[v0.6.13]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.13
+
 ## [v0.6.12] - 2026-08-29
 
 ### Changed
