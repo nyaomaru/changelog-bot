@@ -29,4 +29,21 @@ describe('fallbackSection', () => {
     expect(md).toContain('- Add amazing feature (#101)');
     expect(md).toContain('- Correct bug (#202)');
   });
+
+  test('places scoped and unscoped breaking commits before their base types', () => {
+    const md = fallbackSection({
+      version: '1.0.0',
+      date: '2026-09-05',
+      logs: [
+        'abc1234 feat(core)!: Replace the output contract',
+        'def5678 fix!: Remove legacy parsing',
+      ].join('\n'),
+    });
+
+    expect(md).toContain('### Breaking Changes');
+    expect(md).toContain('- Replace the output contract');
+    expect(md).toContain('- Remove legacy parsing');
+    expect(md).not.toContain('### Added');
+    expect(md).not.toContain('### Fixed');
+  });
 });

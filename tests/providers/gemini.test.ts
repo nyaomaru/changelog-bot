@@ -189,7 +189,7 @@ describe('GeminiProvider', () => {
         { id: 'release-note:0', title: 'Add Gemini support' },
       ]),
     ).resolves.toEqual({
-      assignments: { 'release-note:0': 'Chore' },
+      assignments: { 'release-note:0': 'Added' },
       diagnostics: [
         'Gemini classify output did not match schema; used deterministic fallback for all changes',
       ],

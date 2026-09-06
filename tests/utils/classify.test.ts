@@ -26,7 +26,7 @@ describe('classifyChanges', () => {
     global.fetch = originalFetch;
   });
 
-  test('falls back to Chore when no API key', async () => {
+  test('uses deterministic classification when no API key', async () => {
     const config = loadAppConfig({}).providers.openai;
     const out = await classifyChanges(
       [{ id: 'release-note:0', title: 'Add login' }],
@@ -34,16 +34,16 @@ describe('classifyChanges', () => {
       config,
     );
 
-    expect(out.assignments).toEqual({ 'release-note:0': 'Chore' });
+    expect(out.assignments).toEqual({ 'release-note:0': 'Added' });
   });
 
-  test('falls back to Chore when provider config is omitted', async () => {
+  test('uses deterministic classification when provider config is omitted', async () => {
     const out = await classifyChanges(
       [{ id: 'release-note:0', title: 'Add login' }],
       PROVIDER_OPENAI,
     );
 
-    expect(out.assignments).toEqual({ 'release-note:0': 'Chore' });
+    expect(out.assignments).toEqual({ 'release-note:0': 'Added' });
   });
 
   test('classifies via OpenAI with mocked fetch', async () => {

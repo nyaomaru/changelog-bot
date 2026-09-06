@@ -28,3 +28,19 @@ export type ClassificationResult = {
   /** Non-fatal reconciliation notices suitable for dry-run diagnostics. */
   diagnostics: string[];
 };
+
+/** Source strength behind a deterministic category decision. */
+export type ClassificationSignal =
+  | 'breaking'
+  | 'conventional'
+  | 'strong-semantic'
+  | 'weak-semantic'
+  | 'fallback';
+
+/** Category selected by the canonical deterministic classifier. */
+export type DeterministicClassification = {
+  /** Selected changelog category. */
+  category: BucketName;
+  /** Highest-precedence signal responsible for the selection. */
+  signal: ClassificationSignal;
+};

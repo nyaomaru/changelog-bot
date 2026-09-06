@@ -33,7 +33,7 @@ describe('classifyChangesWithFallback', () => {
     });
 
     expect(result).toEqual({
-      assignments: { 'release-note:0': 'Chore' },
+      assignments: { 'release-note:0': 'Fixed' },
       diagnostics: [],
     });
     expect(request).not.toHaveBeenCalled();
@@ -53,6 +53,25 @@ describe('classifyChangesWithFallback', () => {
     });
   });
 
+  test('applies hard source rules to a provider assignment', async () => {
+    const result = await classifyChangesWithFallback({
+      changes: [
+        {
+          id: 'release-note:0',
+          title: 'feat(core)!: replace output',
+        },
+      ],
+      hasApiKey: true,
+      request: async () => JSON.stringify({ 'release-note:0': 'Added' }),
+      invalidResponseMessage: 'Invalid response',
+    });
+
+    expect(result).toEqual({
+      assignments: { 'release-note:0': 'Breaking Changes' },
+      diagnostics: [],
+    });
+  });
+
   test('falls back when the provider request fails', async () => {
     const result = await classifyChangesWithFallback({
       changes,
@@ -64,7 +83,7 @@ describe('classifyChangesWithFallback', () => {
     });
 
     expect(result).toEqual({
-      assignments: { 'release-note:0': 'Chore' },
+      assignments: { 'release-note:0': 'Fixed' },
       diagnostics: [
         'Invalid response; used deterministic fallback for all changes',
       ],
@@ -92,7 +111,7 @@ describe('classifyChangesWithFallback', () => {
     expect(result).toEqual({
       assignments: {
         'release-note:0': 'Fixed',
-        'release-note:1': 'Chore',
+        'release-note:1': 'Added',
       },
       diagnostics: [
         'Classification response omitted 1 change ID(s): release-note:1; used deterministic fallback',

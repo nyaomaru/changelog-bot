@@ -11,6 +11,7 @@ import {
 } from '@/constants/changelog.js';
 import {
   CHORE_PREFIX_FLEX_RE,
+  CONVENTIONAL_BREAKING_PREFIX_RE,
   DOCS_PREFIX_FLEX_RE,
   FEAT_PREFIX_FLEX_RE,
   FIX_PREFIX_FLEX_RE,
@@ -29,7 +30,6 @@ import {
   WEIGHT_LEVEL,
 } from '@/constants/category-scoring.js';
 import {
-  BREAKING_PREFIX_MARKER_RE,
   BUMP_OR_UPGRADE_RE,
   COMBO_ADD_TO_IMPROVE_RE,
   COMBO_FIX_BY_ADDING_RE,
@@ -49,7 +49,7 @@ type ScoreDeltas = Partial<Record<BucketName, number>>;
  * @returns True when the first line contains a breaking prefix marker.
  */
 function hasBreakingMarkerInPrefix(rawTitle: string): boolean {
-  return BREAKING_PREFIX_MARKER_RE.test(rawTitle.split('\n')[0] || '');
+  return CONVENTIONAL_BREAKING_PREFIX_RE.test(rawTitle.split('\n')[0] || '');
 }
 
 /**

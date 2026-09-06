@@ -6,7 +6,7 @@ import {
   parseReleaseNotes,
   buildSectionFromRelease,
 } from '@/utils/release.js';
-import { tuneCategoryAssignmentsByTitle } from '@/utils/category-tune.js';
+import { applyDeterministicClassification } from '@/utils/deterministic-classification.js';
 import { buildChangesForClassification } from '@/utils/classify-pre.js';
 import {
   fallbackCategoryAssignments,
@@ -162,8 +162,7 @@ export async function buildOutputFromReleaseNotes(
         }
       }
     }
-    // Heuristic tuning: ensure typing/contract corrections are grouped under Fixed.
-    assignments = tuneCategoryAssignmentsByTitle(
+    assignments = applyDeterministicClassification(
       releaseChanges,
       assignments,
       changesForClassification,

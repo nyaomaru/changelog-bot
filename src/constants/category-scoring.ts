@@ -42,8 +42,7 @@ export const WEIGHT = {
 
 /** Keyword signal represented by a default-weight string or explicit weight. */
 export type WeightedKeyword =
-  | string
-  | { readonly keyword: string; readonly weight: number };
+  string | { readonly keyword: string; readonly weight: number };
 
 /** Default keyword and prefix weights used by the scoring heuristic. */
 export const CATEGORY_WEIGHTS = {
@@ -219,11 +218,3 @@ export const NEGATIVE_ATTENUATION_WEIGHT = 1;
 
 /** Maximum title length in words eligible for n-gram expansion. */
 export const NGRAM_MAX_WORDS = 50;
-
-/** Thresholds for interpreting category scores. */
-export const SCORE_THRESHOLDS = {
-  fixed: 4,
-  changed: 4,
-  added: 4,
-  breaking: 6,
-} as const;
