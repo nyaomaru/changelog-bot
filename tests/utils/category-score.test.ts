@@ -47,6 +47,14 @@ describe('category-score', () => {
     expect(bestCategory(s)).toBe('Breaking Changes');
   });
 
+  test.each([
+    'security!: patch an authentication bypass',
+    'deps(runtime)!: require a newer runtime',
+  ])('custom breaking type contributes a breaking score for %s', (title) => {
+    const scores = scoreCategories(title);
+    expect(scores['Breaking Changes']).toBeGreaterThan(0);
+  });
+
   test('negative uncertainty signal attenuates strongest main category', () => {
     const baseline = scoreCategories('fix: prevent crash in parser');
     const attenuated = scoreCategories(

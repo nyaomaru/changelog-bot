@@ -257,6 +257,40 @@ describe('llm-output', () => {
     expect(result.llm.new_section_markdown).toContain('- Add feature');
   });
 
+  test('no-ai applies breaking precedence to scoped conventional titles', async () => {
+    const result = await buildChangelogLlmOutput(
+      buildBaseParams({
+        releaseBody:
+          "## What's Changed\n- feat(core)!: Replace the output contract\n",
+        noAi: true,
+      }),
+    );
+
+    expect(result.llm.new_section_markdown).toContain(
+      '### Breaking Changes\n\n- Replace the output contract',
+    );
+    expect(result.llm.new_section_markdown).not.toContain('### Added');
+  });
+
+  test('provider output cannot override a breaking source marker', async () => {
+    const classifyChanges = jest.fn(async () => ({
+      assignments: { 'release-note:0': 'Added' },
+      diagnostics: [],
+    }));
+    const result = await buildChangelogLlmOutput(
+      buildBaseParams({
+        releaseBody: "## What's Changed\n- fix(api)!: Remove legacy parsing\n",
+        provider: { ...mockProvider, classifyChanges },
+        hasProviderKey: true,
+      }),
+    );
+
+    expect(result.llm.new_section_markdown).toContain(
+      '### Breaking Changes\n\n- Remove legacy parsing',
+    );
+    expect(result.llm.new_section_markdown).not.toContain('### Fixed');
+  });
+
   test('require-provider fails when the selected provider has no key', async () => {
     await expect(
       buildChangelogLlmOutput(

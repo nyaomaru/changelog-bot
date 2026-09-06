@@ -26,7 +26,8 @@ function providerFromConfig(
 
 /**
  * Classify canonical changes using the selected LLM provider.
- * Falls back to classifying all as `Chore` when no API key is present or on failure.
+ * Falls back to the canonical deterministic classifier when no API key is
+ * present or the provider fails.
  * WHY: Provider-specific request details live in provider adapters; this helper
  * centralizes provider selection for callers that only have a provider name.
  * @param changes Stable IDs and normalized titles to classify.

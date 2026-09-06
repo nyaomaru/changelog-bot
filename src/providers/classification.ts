@@ -1,10 +1,14 @@
-import { SECTION_CHORE, SECTION_ORDER } from '@/constants/changelog.js';
+import { SECTION_ORDER } from '@/constants/changelog.js';
 import type {
   CategoryAssignments,
   ClassificationChange,
   ClassificationResult,
 } from '@/types/changelog.js';
 import type { ClassifyChangesOptions } from '@/types/provider.js';
+import {
+  applyDeterministicTitleClassification,
+  classifyChangesDeterministically,
+} from '@/utils/deterministic-classification.js';
 import { isBucketName, isRecord } from '@/utils/is.js';
 
 /** Strict-mode error carrying assignments recovered from an incomplete response. */
@@ -67,14 +71,12 @@ export function buildClassificationAssignmentsJsonSchema(
 /**
  * Return the deterministic fallback used when classification is unavailable.
  * @param changes Changes that could not be classified by a provider.
- * @returns Assignments placing every change under Chore.
+ * @returns Complete assignments produced by the canonical classifier.
  */
 export function fallbackCategoryAssignments(
   changes: ClassificationChange[],
 ): CategoryAssignments {
-  return Object.fromEntries(
-    changes.map(({ id }) => [id, SECTION_CHORE]),
-  ) as CategoryAssignments;
+  return classifyChangesDeterministically(changes);
 }
 
 /**
@@ -107,8 +109,9 @@ export function parseCategoryAssignments(
     const missingIds = changes
       .map(({ id }) => id)
       .filter((changeId) => assignments[changeId] === undefined);
+    const fallbackAssignments = classifyChangesDeterministically(changes);
     for (const changeId of missingIds) {
-      assignments[changeId] = SECTION_CHORE;
+      assignments[changeId] = fallbackAssignments[changeId];
     }
 
     const diagnostics = missingIds.length
@@ -153,6 +156,10 @@ export async function classifyChangesWithFallback(params: {
   try {
     const result = parseCategoryAssignments(await request(), changes);
     if (!result) throw new Error(invalidResponseMessage);
+    result.assignments = applyDeterministicTitleClassification(
+      changes,
+      result.assignments,
+    );
     if (options.throwOnError && result.diagnostics.length) {
       throw new IncompleteClassificationError(invalidResponseMessage, result);
     }

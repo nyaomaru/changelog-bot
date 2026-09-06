@@ -18,8 +18,6 @@ import {
 import { isNullable } from '@/utils/is.js';
 import { normalizeTitle } from '@/utils/title-normalize.js';
 
-export { SCORE_THRESHOLDS } from '@/constants/category-scoring.js';
-
 type ScoreDeltas = Partial<Record<BucketName, number>>;
 
 /**

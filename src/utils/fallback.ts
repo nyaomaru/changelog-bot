@@ -1,19 +1,10 @@
-import {
-  SECTION_ORDER,
-  SECTION_ADDED,
-  SECTION_CHANGED,
-  SECTION_CHORE,
-  SECTION_DOCS,
-  SECTION_FIXED,
-  SECTION_TEST,
-  SECTION_REVERTED,
-  SECTION_BREAKING_CHANGES,
-} from '@/constants/changelog.js';
+import { SECTION_ORDER } from '@/constants/changelog.js';
 import type { BucketName } from '@/types/changelog.js';
 import {
   CONVENTIONAL_PREFIX_RE,
   INLINE_PR_NUMBER_RE,
 } from '@/constants/conventional.js';
+import { classifyTitleDeterministically } from '@/utils/deterministic-classification.js';
 
 /**
  * Format a bullet entry with an optional PR reference suffix.
@@ -33,15 +24,6 @@ function formatBulletWithPrRef(title: string, prNumbers?: number[]) {
 // make the classification/stripping logic easier to maintain.
 const PR_REF_REGEX = INLINE_PR_NUMBER_RE;
 const TYPE_SCOPE_REGEX = CONVENTIONAL_PREFIX_RE;
-const BREAKING_MARKER_REGEX = /!:\s*/; // conventional `type!:` marker
-const TYPE_TO_SECTION_REGEX = {
-  Added: /^feat(\(|:)/i,
-  Fixed: /^fix(\(|:)/i,
-  Changed: /^(refactor|perf|style)(\(|:)/i,
-  Docs: /^docs(\(|:)/i,
-  Test: /^test(\(|:)/i,
-  Reverted: /^revert(\(|:)/i,
-} as const;
 
 // BucketName centralized in types/changelog.ts
 
@@ -87,25 +69,6 @@ function parseLogLine(line: string): { sha: string; subject: string } {
 }
 
 /**
- * Determine the target changelog section for a commit subject.
- * @param subject Commit subject line.
- * @returns Section bucket name.
- */
-function detectBucket(subject: string): BucketName {
-  const lower = subject.toLowerCase();
-  if (TYPE_TO_SECTION_REGEX.Added.test(lower)) return SECTION_ADDED;
-  if (TYPE_TO_SECTION_REGEX.Fixed.test(lower)) return SECTION_FIXED;
-  if (TYPE_TO_SECTION_REGEX.Changed.test(lower)) return SECTION_CHANGED;
-  if (TYPE_TO_SECTION_REGEX.Docs.test(lower)) return SECTION_DOCS;
-  // Map build/ci to Chore (we do not emit a Build section)
-  if (/^(build|ci)(\(|:)/i.test(lower)) return SECTION_CHORE;
-  if (TYPE_TO_SECTION_REGEX.Test.test(lower)) return SECTION_TEST;
-  if (TYPE_TO_SECTION_REGEX.Reverted.test(lower)) return SECTION_REVERTED;
-  if (BREAKING_MARKER_REGEX.test(subject)) return SECTION_BREAKING_CHANGES;
-  return SECTION_CHORE;
-}
-
-/**
  * Remove conventional commit prefix from a subject line.
  * @param subject Commit subject line.
  * @returns Subject without `type(scope):` prefix.
@@ -136,8 +99,8 @@ function extractPrNumbers(
 }
 
 /**
- * Build a conservative changelog section when LLM classification fails or is unavailable.
- * Heuristically groups commit messages by conventional commit prefix.
+ * Build a deterministic changelog section when LLM output is unavailable.
+ * Uses the same canonical classification precedence as release-note output.
  */
 export function fallbackSection(params: FallbackSectionParams): string {
   const { version, date, logs, prMapBySha: providedPrMap } = params;
@@ -149,7 +112,7 @@ export function fallbackSection(params: FallbackSectionParams): string {
   for (const logLine of lines) {
     const { sha, subject } = parseLogLine(logLine);
     const normalizedTitle = normalizeSubject(subject);
-    const bucket = detectBucket(subject);
+    const bucket = classifyTitleDeterministically(subject).category;
     const prNumbers = extractPrNumbers(sha, subject, prMapBySha);
 
     buckets[bucket].push(formatBulletWithPrRef(normalizedTitle, prNumbers));

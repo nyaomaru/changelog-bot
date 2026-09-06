@@ -11,22 +11,22 @@ function releaseNoteChange(index, title, rawTitle) {
   };
 }
 
-describe('classify-pre with scoring', () => {
-  test('guides to refactor for improvement titles', () => {
+describe('classification input', () => {
+  test('preserves improvement titles without manufacturing a prefix', () => {
     const items = [
       releaseNoteChange(0, 'add pre-processing to improve classification'),
     ];
     const out = buildChangesForClassification(items);
-    expect(out[0].title).toMatch(/^refactor:/);
+    expect(out[0].title).toBe('add pre-processing to improve classification');
     expect(out[0].id).toBe('release-note:0');
   });
 
-  test('guides to fix for tighten type', () => {
+  test('preserves implicit fix titles without manufacturing a prefix', () => {
     const items = [
       releaseNoteChange(0, 'tighten option type to prevent misuse'),
     ];
     const out = buildChangesForClassification(items);
-    expect(out[0].title).toMatch(/^fix:/);
+    expect(out[0].title).toBe('tighten option type to prevent misuse');
   });
 
   test('keeps explicit feat', () => {
