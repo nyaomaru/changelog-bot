@@ -26,6 +26,8 @@ describe('deterministic classification', () => {
     'feat(core)!: replace the output contract',
     'fix!: remove legacy parsing',
     'fix(api)!: remove legacy parsing',
+    'security!: patch an authentication bypass',
+    'deps(runtime)!: require a newer runtime',
   ])('prioritizes the breaking marker in %s', (title) => {
     expect(classifyTitleDeterministically(title)).toEqual({
       category: 'Breaking Changes',
