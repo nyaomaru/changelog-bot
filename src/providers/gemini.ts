@@ -1,6 +1,6 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
-import type { ClassifyChangesOptions, Provider } from '@/types/provider.js';
+import type { ClassifyChangesOptions } from '@/types/provider.js';
 import type {
   ClassificationChange,
   ClassificationResult,
@@ -29,6 +29,7 @@ import {
   WHY_EXTRACTION_SYSTEM_PROMPT,
   whyExtractionJsonSchema,
 } from '@/providers/why.js';
+import { ProviderBase } from '@/providers/base.js';
 
 const SYSTEM_GEMINI_CLASSIFY =
   'Classify each release change into one provided category. Return a JSON object mapping every change ID to its category. Do not rewrite IDs.';
@@ -73,22 +74,11 @@ function extractGeminiText(response: GeminiResponse): string {
 }
 
 /** Gemini provider adapter backed by the Google AI generateContent REST API. */
-export class GeminiProvider implements Provider {
+export class GeminiProvider extends ProviderBase {
   name = PROVIDER_GEMINI;
-  modelName: string;
-  supports: Provider['supports'];
-
-  private readonly apiKey?: string;
 
   constructor(config: ProviderRuntimeConfig) {
-    this.apiKey = config.apiKey;
-    this.modelName = config.model;
-    this.supports = {
-      jsonMode: true,
-      streaming: false,
-      reasoning: false,
-      maxOutputTokens: LLM_GENERATE_MAX_TOKENS,
-    } as const;
+    super(config);
   }
 
   async generate(input: LLMInput): Promise<LLMOutput> {
