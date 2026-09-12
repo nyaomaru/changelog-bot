@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.14] - 2026-09-12
+
+### Added
+
+- Release: 0.6.14 by [bot] by @github-actions in [#199](https://github.com/nyaomaru/changelog-bot/pull/199)
+
+### Changed
+
+- consolidate deterministic classification by @nyaomaru in [#195](https://github.com/nyaomaru/changelog-bot/pull/195)
+- share common provider configuration by @nyaomaru in [#197](https://github.com/nyaomaru/changelog-bot/pull/197)
+
+### Docs
+
+- 0.6.13 by [bot] by @github-actions in [#194](https://github.com/nyaomaru/changelog-bot/pull/194)
+
+### Chore
+
+- bump the minor-and-patch group with 5 updates by [bot] by @dependabot in [#196](https://github.com/nyaomaru/changelog-bot/pull/196)
+- override browserslist to patched version by @nyaomaru in [#198](https://github.com/nyaomaru/changelog-bot/pull/198)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.6.13...v0.6.14
+
+[v0.6.14]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.6.14
+
 ## [v0.6.13] - 2026-09-05
 
 ### Changed
