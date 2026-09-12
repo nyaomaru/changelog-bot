@@ -1,6 +1,6 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
-import type { ClassifyChangesOptions, Provider } from '@/types/provider.js';
+import type { ClassifyChangesOptions } from '@/types/provider.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
@@ -30,6 +30,7 @@ import {
   whyExtractionJsonSchema,
 } from '@/providers/why.js';
 import { WhyExtractionOutputSchema } from '@/schema/why.js';
+import { ProviderBase } from '@/providers/base.js';
 
 const SYSTEM_ANTHROPIC_CLASSIFY =
   'Classify each release change into one provided category. Return a JSON object mapping every change ID to its category. Do not rewrite IDs.';
@@ -57,22 +58,11 @@ function extractAnthropicClassificationResponse(json: unknown): string {
   return '';
 }
 
-export class AnthropicProvider implements Provider {
+export class AnthropicProvider extends ProviderBase {
   name = PROVIDER_ANTHROPIC;
-  modelName: string;
-  supports: Provider['supports'];
-
-  private readonly apiKey?: string;
 
   constructor(config: ProviderRuntimeConfig) {
-    this.apiKey = config.apiKey;
-    this.modelName = config.model;
-    this.supports = {
-      jsonMode: true,
-      streaming: false,
-      reasoning: false,
-      maxOutputTokens: LLM_GENERATE_MAX_TOKENS,
-    } as const;
+    super(config);
   }
 
   async generate(input: LLMInput): Promise<LLMOutput> {

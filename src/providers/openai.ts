@@ -1,6 +1,6 @@
 import type { LLMInput, LLMOutput } from '@/types/llm.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
-import type { ClassifyChangesOptions, Provider } from '@/types/provider.js';
+import type { ClassifyChangesOptions } from '@/types/provider.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 import { outputSchema } from '@/utils/output-json-schema.js';
 import { extractJsonObject } from '@/utils/json-extract.js';
@@ -29,6 +29,7 @@ import {
   parseWhyExtractionOutput,
   WHY_EXTRACTION_SYSTEM_PROMPT,
 } from '@/providers/why.js';
+import { ProviderBase } from '@/providers/base.js';
 
 /** Subset of the OpenAI Responses API response payload we rely on. */
 type OpenAIResponse = {
@@ -104,22 +105,13 @@ function buildOpenAiResponsePayload(
   return payload;
 }
 
-export class OpenAIProvider implements Provider {
+export class OpenAIProvider extends ProviderBase {
   name = PROVIDER_OPENAI;
-  modelName: string;
-  supports: Provider['supports'];
-
-  private readonly apiKey?: string;
 
   constructor(config: ProviderRuntimeConfig) {
-    this.apiKey = config.apiKey;
-    this.modelName = config.model;
-    this.supports = {
-      jsonMode: true,
-      streaming: false,
-      reasoning: isReasoningModel(this.modelName),
-      maxOutputTokens: LLM_GENERATE_MAX_TOKENS,
-    } as const;
+    super(config, {
+      reasoning: isReasoningModel(config.model),
+    });
   }
 
   async generate(input: LLMInput): Promise<LLMOutput> {
