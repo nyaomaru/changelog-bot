@@ -92,6 +92,11 @@ export function formatDryRunDiagnostics(input: DryRunDiagnosticsInput): string {
       `WHY notes rendered: ${input.why.notesRendered}`,
       `WHY fallback reasons: ${whyFallbackReasonText}`,
     );
+    for (const selection of input.why.selectionDiagnostics) {
+      lines.push(
+        `WHY selection #${selection.prNumber}: ${selection.selectedOption}, probability=${selection.selectionProbability}, confidence=${selection.confidence}, mapped=${selection.mappedConfidence}`,
+      );
+    }
   }
 
   return lines.join('\n');

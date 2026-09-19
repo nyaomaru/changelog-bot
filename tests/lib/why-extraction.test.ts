@@ -61,6 +61,25 @@ function provider(): Provider {
 describe('runWhyExtraction', () => {
   test('fetches trusted PR bodies and renders accepted WHY notes', async () => {
     const selectedProvider = provider();
+    jest.mocked(selectedProvider.extractWhyNotes).mockResolvedValue({
+      items: [
+        {
+          prNumber: 12,
+          why: 'Draft releases publish later and need the same changelog path.',
+          confidence: 'high',
+        },
+      ],
+      selectionDiagnostics: [
+        {
+          prNumber: 12,
+          selectedOption: 'candidate_0',
+          selectedCandidateIndex: 0,
+          selectionProbability: 0.91,
+          confidence: 0.88,
+          mappedConfidence: 'high',
+        },
+      ],
+    });
     const fetchPRDetails = jest.fn<FetchPRDetails>(async () => ({
       number: 12,
       title: 'Restore draft release handling',
@@ -111,6 +130,9 @@ describe('runWhyExtraction', () => {
     expect(result.llm.pr_body).not.toContain('Generated without LLM');
     expect(result.diagnostics.notesRendered).toBe(1);
     expect(result.diagnostics.aiUsed).toBe(true);
+    expect(result.diagnostics.selectionDiagnostics).toEqual([
+      expect.objectContaining({ prNumber: 12, mappedConfidence: 'high' }),
+    ]);
   });
 
   test('skips WHY only when provider fails without fail-on-llm-error', async () => {

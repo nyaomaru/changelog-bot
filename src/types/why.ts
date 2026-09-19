@@ -4,6 +4,22 @@ export type WhyConfidence = 'low' | 'medium' | 'high';
 /** Implementation selected for optional WHY enrichment. */
 export type WhyEngine = 'llm' | 'jev';
 
+/** Raw decision data emitted by a non-generative WHY extractor. */
+export type WhySelectionDiagnostic = {
+  /** Pull request associated with the decision. */
+  prNumber: number;
+  /** Option selected by the extractor, such as `candidate_0` or `none`. */
+  selectedOption: string;
+  /** Index of the selected input candidate, when a candidate was chosen. */
+  selectedCandidateIndex?: number;
+  /** Probability assigned to the selected option. */
+  selectionProbability: number;
+  /** Extractor-reported certainty for the full decision distribution. */
+  confidence: number;
+  /** Compatibility bucket derived from the raw decision signals. */
+  mappedConfidence: WhyConfidence;
+};
+
 /** Deterministic trust bucket computed before and after provider calls. */
 export type WhyTrustBucket = 'none' | 'low' | 'medium' | 'high';
 
@@ -63,6 +79,8 @@ export type WhyExtractionResult = {
 export type WhyExtractionOutput = {
   /** Extracted WHY notes. Omit uncertain PRs instead of guessing. */
   items: WhyExtractionResult[];
+  /** Optional raw selection details for experimental decision engines. */
+  selectionDiagnostics?: WhySelectionDiagnostic[];
 };
 
 /** WHY note accepted for rendering. */
@@ -81,6 +99,8 @@ export type WhyDiagnostics = {
   enabled: boolean;
   /** Extraction engine selected for this run. */
   engine: WhyEngine;
+  /** Raw decision details, populated by experimental decision engines. */
+  selectionDiagnostics: WhySelectionDiagnostic[];
   /** Whether the WHY extraction provider call completed successfully. */
   aiUsed: boolean;
   /** Number of candidate PRs found in eligible changelog sections. */

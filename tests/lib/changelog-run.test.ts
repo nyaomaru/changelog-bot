@@ -170,6 +170,8 @@ describe('executeChangelogRun', () => {
           llm: params.llm,
           diagnostics: {
             enabled: true,
+            engine: 'llm',
+            selectionDiagnostics: [],
             aiUsed: false,
             targetsFound: 0,
             prBodiesFetched: 0,

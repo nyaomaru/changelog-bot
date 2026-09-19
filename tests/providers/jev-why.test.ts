@@ -67,6 +67,16 @@ describe('JevWhyExtractor', () => {
           confidence: 'high',
         },
       ],
+      selectionDiagnostics: [
+        {
+          prNumber: 123,
+          selectedOption: 'candidate_0',
+          selectedCandidateIndex: 0,
+          selectionProbability: 0.91,
+          confidence: 0.88,
+          mappedConfidence: 'high',
+        },
+      ],
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.typesafe.ai/v1/systemone',
@@ -122,6 +132,15 @@ describe('JevWhyExtractor', () => {
 
     await expect(extractor.extractWhyNotes(WHY_INPUT)).resolves.toEqual({
       items: [],
+      selectionDiagnostics: [
+        {
+          prNumber: 123,
+          selectedOption: 'none',
+          selectionProbability: 0.92,
+          confidence: 0.89,
+          mappedConfidence: 'high',
+        },
+      ],
     });
   });
 });

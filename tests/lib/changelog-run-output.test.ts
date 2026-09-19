@@ -48,6 +48,8 @@ const initialLlm: LLMOutput = {
 
 const whyDiagnostics = {
   enabled: true,
+  engine: 'llm' as const,
+  selectionDiagnostics: [],
   aiUsed: true,
   targetsFound: 1,
   prBodiesFetched: 1,

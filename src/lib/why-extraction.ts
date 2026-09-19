@@ -60,6 +60,7 @@ function createEmptyDiagnostics(
   return {
     enabled,
     engine,
+    selectionDiagnostics: [],
     aiUsed: false,
     targetsFound: 0,
     prBodiesFetched: 0,
@@ -148,6 +149,8 @@ export async function runWhyExtraction(
       whyLabel: cli.whyLabel,
       items: boundedItems,
     });
+    diagnostics.selectionDiagnostics =
+      providerOutput.selectionDiagnostics ?? [];
     diagnostics.aiUsed = true;
   } catch (error) {
     const message = isError(error) ? error.message : String(error);

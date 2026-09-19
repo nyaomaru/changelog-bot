@@ -125,6 +125,7 @@ export class JevWhyExtractor implements WhyExtractor {
     }
 
     const items = [];
+    const selectionDiagnostics = [];
     for (const item of input.items) {
       const answer = parsedResponse.data.answers[questionId(item.prNumber)];
       if (!answer) {
@@ -132,7 +133,19 @@ export class JevWhyExtractor implements WhyExtractor {
           `TypeSafe API omitted an answer for PR #${item.prNumber}`,
         );
       }
-      if (answer.choice === 'none') continue;
+      const selectionProbability = answer.probabilities[answer.choice] ?? 0;
+      const certainty = Math.min(answer.confidence, selectionProbability);
+      const mappedConfidence = confidenceBucket(certainty);
+      if (answer.choice === 'none') {
+        selectionDiagnostics.push({
+          prNumber: item.prNumber,
+          selectedOption: answer.choice,
+          selectionProbability,
+          confidence: answer.confidence,
+          mappedConfidence,
+        });
+        continue;
+      }
 
       const selectedIndex = Number.parseInt(
         answer.choice.replace(/^candidate_/, ''),
@@ -147,10 +160,14 @@ export class JevWhyExtractor implements WhyExtractor {
 
       // WHY: A confident distribution is not enough when the winning option is
       // itself unlikely, so preserve the weaker of the two signals.
-      const certainty = Math.min(
-        answer.confidence,
-        answer.probabilities[answer.choice] ?? 0,
-      );
+      selectionDiagnostics.push({
+        prNumber: item.prNumber,
+        selectedOption: answer.choice,
+        selectedCandidateIndex: selectedIndex,
+        selectionProbability,
+        confidence: answer.confidence,
+        mappedConfidence,
+      });
       items.push({
         prNumber: item.prNumber,
         why: selectedCandidate,
@@ -158,7 +175,7 @@ export class JevWhyExtractor implements WhyExtractor {
       });
     }
 
-    return { items };
+    return { items, selectionDiagnostics };
   }
 
   private async request(body: unknown): Promise<unknown> {
