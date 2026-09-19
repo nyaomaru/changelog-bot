@@ -147,4 +147,46 @@ describe('JevWhyExtractor', () => {
       ],
     });
   });
+
+  test('maps the initial medium threshold to a 0.60 Noul probability', async () => {
+    global.fetch = jest.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model: 'jev-latest',
+          answers: {
+            pr_123_candidate_0_is_explicit_why: {
+              type: 'noul',
+              noul: 0.6,
+            },
+            pr_123_candidate_1_is_explicit_why: {
+              type: 'noul',
+              noul: 0.42,
+            },
+          },
+          usage: { input_tokens: 123, output_tokens: 4 },
+        }),
+      ),
+    );
+    const extractor = new JevWhyExtractor({
+      apiKey: 'typesafe-test',
+      model: 'jev-latest',
+    });
+
+    await expect(extractor.extractWhyNotes(WHY_INPUT)).resolves.toEqual(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            prNumber: 123,
+            confidence: 'medium',
+          }),
+        ],
+        selectionDiagnostics: [
+          expect.objectContaining({
+            selectionProbability: 0.6,
+            mappedConfidence: 'medium',
+          }),
+        ],
+      }),
+    );
+  });
 });

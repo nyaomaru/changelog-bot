@@ -164,6 +164,10 @@ retries TypeSafe's retryable `429` and `529` responses with exponential backoff.
 `--no-ai` still disables this experimental path, and missing TypeSafe credentials
 skip WHY extraction with a diagnostic reason.
 
+Jev maps an explicit-rationale probability of `0.50` or greater to `low`, `0.60`
+or greater to `medium` (the default), and `0.80` or greater to `high`. These
+experimental thresholds may change as the evaluation corpus grows.
+
 ### Force a specific model (example: gpt-4o-mini)
 
 ```sh
