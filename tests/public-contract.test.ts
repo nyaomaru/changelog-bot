@@ -200,4 +200,21 @@ describe('public contract parity', () => {
 
     expect(uniqueSorted(workflowInputsAsActionNames)).toEqual(actionInputs);
   });
+
+  test('forwards the WHY engine and TypeSafe credential through CI wrappers', () => {
+    const actionYaml = readRepoFile('action.yml');
+    const workflowYaml = readRepoFile('.github/workflows/changelog.yaml');
+
+    expect(actionYaml).toContain(
+      "INPUT_WHY_ENGINE: ${{ inputs['why-engine'] }}",
+    );
+    expect(actionYaml).toContain('CMD+=(--why-engine "${INPUT_WHY_ENGINE}")');
+    expect(workflowYaml).toContain('why-engine: ${{ inputs.why_engine }}');
+    expect(workflowYaml).toContain(
+      'TYPESAFE_API_KEY:\n        required: false',
+    );
+    expect(workflowYaml).toContain(
+      'TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}',
+    );
+  });
 });

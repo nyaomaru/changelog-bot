@@ -164,6 +164,10 @@ retries TypeSafe's retryable `429` and `529` responses with exponential backoff.
 `--no-ai` still disables this experimental path, and missing TypeSafe credentials
 skip WHY extraction with a diagnostic reason.
 
+The composite Action accepts `why-engine: jev`; the reusable workflow accepts
+`why_engine: jev`. Pass `TYPESAFE_API_KEY` through the Action step environment
+or reusable-workflow secret respectively.
+
 Jev maps an explicit-rationale probability of `0.50` or greater to `low`, `0.60`
 or greater to `medium` (the default), and `0.80` or greater to `high`. These
 experimental thresholds may change as the evaluation corpus grows.
@@ -448,12 +452,14 @@ jobs:
       # require_provider: 'true'
       # no_ai: 'true'
       # why: 'true'
+      # why_engine: jev
       # why_label: Reason
     secrets:
       REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
 ```
 
 ### Public contract: CLI, Action, reusable workflow, and config
@@ -483,7 +489,7 @@ precedence are treated as the public compatibility contract.
 | Require provider key    | `--require-provider` / `--no-require-provider`       | `require-provider`         | `require_provider`         | `requireProvider`, default `false`                          |
 | Deterministic mode      | `--no-ai` / `--ai`                                   | `no-ai`                    | `no_ai`                    | `noAi`, default `false`                                     |
 | WHY extraction          | `--why` / `--no-why`                                 | `why`                      | `why`                      | `why`, default `false`                                      |
-| WHY engine              | `--why-engine`                                       | none                       | none                       | `whyEngine`, default `llm`; experimental `jev` is CLI-only  |
+| WHY engine              | `--why-engine`                                       | `why-engine`               | `why_engine`               | `whyEngine`, default `llm`; experimental `jev`              |
 | WHY PR limit            | `--why-max-prs`                                      | `why-max-prs`              | `why_max_prs`              | `whyMaxPrs`, default `30`                                   |
 | WHY chars per PR        | `--why-max-chars-per-pr`                             | `why-max-chars-per-pr`     | `why_max_chars_per_pr`     | `whyMaxCharsPerPr`, default `800`                           |
 | WHY confidence          | `--why-confidence`                                   | `why-confidence`           | `why_confidence`           | `whyConfidence`, default `medium`                           |
