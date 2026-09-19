@@ -14,6 +14,14 @@ export type ProviderRuntimeConfigMap = Record<
   ProviderRuntimeConfig
 >;
 
+/** Runtime configuration for TypeSafe's Jev decision API. */
+export type TypeSafeRuntimeConfig = {
+  /** API key used to authorize Jev decision requests. */
+  apiKey?: string;
+  /** Jev model identifier resolved for the run. */
+  model: string;
+};
+
 /** Runtime configuration for GitHub and repository integration. */
 export type GitHubRuntimeConfig = {
   /** Personal access token used for GitHub API calls when present. */
@@ -36,4 +44,6 @@ export type AppConfig = {
   github: GitHubRuntimeConfig;
   /** Provider API keys and model names. */
   providers: ProviderRuntimeConfigMap;
+  /** Jev API configuration used only by the experimental WHY engine. */
+  typesafe: TypeSafeRuntimeConfig;
 };

@@ -1,6 +1,9 @@
 /** Confidence levels accepted from the WHY extraction model. */
 export type WhyConfidence = 'low' | 'medium' | 'high';
 
+/** Implementation selected for optional WHY enrichment. */
+export type WhyEngine = 'llm' | 'jev';
+
 /** Deterministic trust bucket computed before and after provider calls. */
 export type WhyTrustBucket = 'none' | 'low' | 'medium' | 'high';
 
@@ -76,6 +79,8 @@ export type WhyNote = WhyExtractionResult & {
 export type WhyDiagnostics = {
   /** Whether WHY extraction was requested. */
   enabled: boolean;
+  /** Extraction engine selected for this run. */
+  engine: WhyEngine;
   /** Whether the WHY extraction provider call completed successfully. */
   aiUsed: boolean;
   /** Number of candidate PRs found in eligible changelog sections. */

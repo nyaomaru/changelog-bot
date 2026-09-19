@@ -3,6 +3,7 @@ import type { AppConfig, ProviderRuntimeConfig } from '@/types/config.js';
 import type { CommitLite } from '@/types/commit.js';
 import type { PullRef } from '@/types/github.js';
 import type { Provider } from '@/types/provider.js';
+import type { WhyExtractor } from '@/types/why-extractor.js';
 import type { CustomInstructionsResolution } from '@/lib/customization.js';
 import type { ChangelogRunDependencies } from '@/lib/changelog-run-dependencies.js';
 import type { ReleasePlan } from '@/lib/release-context.js';
@@ -10,6 +11,7 @@ import {
   resolvePullRequestsBySha,
   resolveReleaseBody,
 } from '@/lib/release-data.js';
+import { resolveWhyExtractor } from '@/utils/why-extractor.js';
 
 /** Git, GitHub, configuration, and customization inputs for generation. */
 export type ChangelogRunInput = {
@@ -27,6 +29,10 @@ export type ChangelogRunInput = {
   token?: string;
   /** Whether the selected provider has an API key. */
   hasProviderKey: boolean;
+  /** Adapter selected only for optional WHY enrichment. */
+  whyExtractor: WhyExtractor;
+  /** Whether the selected WHY extractor has an API key. */
+  hasWhyExtractorKey: boolean;
   /** Pull request metadata keyed by commit SHA. */
   pullRequestsBySha: Record<string, PullRef[]>;
   /** Release notes resolved from CLI input or GitHub. */
@@ -84,6 +90,8 @@ export async function resolveChangelogRunInput({
     repo,
     appConfig,
   );
+  const { extractor: whyExtractor, hasApiKey: hasWhyExtractorKey } =
+    resolveWhyExtractor(cli, appConfig, provider, hasProviderKey);
 
   // WHY: These GitHub lookups depend on the same resolved credentials but not
   // on each other, so running them together avoids unnecessary network latency.
@@ -134,6 +142,8 @@ export async function resolveChangelogRunInput({
     commitList,
     token,
     hasProviderKey,
+    whyExtractor,
+    hasWhyExtractorKey,
     pullRequestsBySha,
     releaseBody,
     prNumbersBySha,

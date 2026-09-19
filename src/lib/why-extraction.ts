@@ -3,6 +3,7 @@ import type { fetchPRDetails } from '@/lib/github.js';
 import type { CliOptions } from '@/schema/cli.js';
 import type { LLMOutput } from '@/types/llm.js';
 import type { Provider } from '@/types/provider.js';
+import type { WhyExtractor } from '@/types/why-extractor.js';
 import type { WhyDiagnostics } from '@/types/why.js';
 import {
   applyWhyNotesToSection,
@@ -25,10 +26,14 @@ type RunWhyExtractionParams = {
   cli: CliOptions;
   /** Generated changelog output before WHY notes are applied. */
   llm: LLMOutput;
-  /** Selected provider implementation. */
+  /** Main LLM provider, retained as the default WHY extractor. */
   provider: Provider;
-  /** Whether the selected provider has an API key. */
+  /** Whether the main LLM provider has an API key. */
   hasProviderKey: boolean;
+  /** Adapter selected only for optional WHY enrichment. */
+  whyExtractor?: WhyExtractor;
+  /** Whether the selected WHY extractor has an API key. */
+  hasWhyExtractorKey?: boolean;
   /** Repository owner or org. */
   owner: string;
   /** Repository name. */
@@ -48,9 +53,13 @@ type RunWhyExtractionResult = {
   diagnostics: WhyDiagnostics;
 };
 
-function createEmptyDiagnostics(enabled: boolean): WhyDiagnostics {
+function createEmptyDiagnostics(
+  enabled: boolean,
+  engine: WhyDiagnostics['engine'],
+): WhyDiagnostics {
   return {
     enabled,
+    engine,
     aiUsed: false,
     targetsFound: 0,
     prBodiesFetched: 0,
@@ -70,16 +79,18 @@ export async function runWhyExtraction(
   params: RunWhyExtractionParams,
 ): Promise<RunWhyExtractionResult> {
   const { cli, llm } = params;
-  const diagnostics = createEmptyDiagnostics(cli.why);
+  const diagnostics = createEmptyDiagnostics(cli.why, cli.whyEngine);
+  const whyExtractor = params.whyExtractor ?? params.provider;
+  const hasWhyExtractorKey = params.hasWhyExtractorKey ?? params.hasProviderKey;
   if (!cli.why) return { llm, diagnostics };
 
   if (cli.noAi) {
     diagnostics.fallbackReasons.push('WHY extraction skipped: --no-ai is set');
     return { llm, diagnostics };
   }
-  if (!params.hasProviderKey) {
+  if (!hasWhyExtractorKey) {
     diagnostics.fallbackReasons.push(
-      `WHY extraction skipped: missing API key for ${params.provider.name}`,
+      `WHY extraction skipped: missing API key for ${whyExtractor.name}`,
     );
     return { llm, diagnostics };
   }
@@ -132,7 +143,7 @@ export async function runWhyExtraction(
 
   let providerOutput;
   try {
-    providerOutput = await params.provider.extractWhyNotes({
+    providerOutput = await whyExtractor.extractWhyNotes({
       language: cli.language,
       whyLabel: cli.whyLabel,
       items: boundedItems,
@@ -147,8 +158,8 @@ export async function runWhyExtraction(
     return { llm, diagnostics };
   }
 
-  // WHY: A successful WHY request means the final output did use an LLM,
-  // even when confidence filtering later rejects every returned note.
+  // WHY: A successful WHY request means the final output did use AI, even when
+  // confidence filtering later rejects every returned note.
   const prBodyAfterAiUse = removeFallbackNote(llm.pr_body);
   const llmAfterAiUse: LLMOutput =
     prBodyAfterAiUse === llm.pr_body

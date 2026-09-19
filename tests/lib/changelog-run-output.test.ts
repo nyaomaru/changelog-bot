@@ -19,6 +19,7 @@ const cli = {
   requireProvider: false,
   noAi: false,
   why: true,
+  whyEngine: 'llm',
   whyMaxPrs: 30,
   whyMaxCharsPerPr: 800,
   whyConfidence: 'medium',

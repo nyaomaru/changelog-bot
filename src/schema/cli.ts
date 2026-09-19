@@ -33,6 +33,7 @@ export const CliOptionsSchema = z
     requireProvider: z.boolean().default(false),
     noAi: z.boolean().default(false),
     why: z.boolean().default(false),
+    whyEngine: z.enum(['llm', 'jev']).default('llm'),
     whyMaxPrs: z.number().int().nonnegative().default(DEFAULT_WHY_MAX_PRS),
     whyMaxCharsPerPr: z
       .number()

@@ -27,6 +27,7 @@ const cli: CliOptions = {
   requireProvider: false,
   noAi: false,
   why: false,
+  whyEngine: 'llm',
   whyMaxPrs: 30,
   whyMaxCharsPerPr: 800,
   whyConfidence: 'medium',
@@ -44,6 +45,7 @@ const appConfig: AppConfig = {
     anthropic: { apiKey: undefined, model: 'mock-anthropic' },
     gemini: { apiKey: undefined, model: 'mock-gemini' },
   },
+  typesafe: { apiKey: undefined, model: 'jev-latest' },
 };
 
 const provider: Provider = {

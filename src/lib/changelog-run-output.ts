@@ -1,6 +1,7 @@
 import type { CliOptions } from '@/schema/cli.js';
 import type { LLMOutput } from '@/types/llm.js';
 import type { Provider } from '@/types/provider.js';
+import type { WhyExtractor } from '@/types/why-extractor.js';
 import type { WhyDiagnostics } from '@/types/why.js';
 import type { ChangelogRunDependencies } from '@/lib/changelog-run-dependencies.js';
 
@@ -19,6 +20,10 @@ export type FinalizeChangelogRunOutputParams = {
   provider: Provider;
   /** Whether the selected provider has an API key. */
   hasProviderKey: boolean;
+  /** Adapter selected only for optional WHY enrichment. */
+  whyExtractor: WhyExtractor;
+  /** Whether the selected WHY extractor has an API key. */
+  hasWhyExtractorKey: boolean;
   /** Repository owner or organization. */
   owner: string;
   /** Repository name. */
@@ -80,6 +85,8 @@ export async function finalizeChangelogRunOutput(
     llm: finalized.llm,
     provider: params.provider,
     hasProviderKey: params.hasProviderKey,
+    whyExtractor: params.whyExtractor,
+    hasWhyExtractorKey: params.hasWhyExtractorKey,
     owner: params.owner,
     repo: params.repo,
     token: params.token,

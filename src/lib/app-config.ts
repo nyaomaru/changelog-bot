@@ -49,6 +49,10 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       repoFullName: runtimeEnv.REPO_FULL_NAME || runtimeEnv.GITHUB_REPOSITORY,
     },
     providers,
+    typesafe: {
+      apiKey: runtimeEnv.TYPESAFE_API_KEY,
+      model: runtimeEnv.TYPESAFE_MODEL || 'jev-latest',
+    },
   };
 }
 

@@ -24,6 +24,7 @@ export const CliConfigFileSchema = z
     requireProvider: z.boolean().optional(),
     noAi: z.boolean().optional(),
     why: z.boolean().optional(),
+    whyEngine: z.enum(['llm', 'jev']).optional(),
     whyMaxPrs: z.number().int().nonnegative().optional(),
     whyMaxCharsPerPr: z.number().int().positive().optional(),
     whyConfidence: z.enum(['low', 'medium', 'high']).optional(),
