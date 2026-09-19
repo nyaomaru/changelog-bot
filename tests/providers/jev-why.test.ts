@@ -28,6 +28,7 @@ describe('JevWhyExtractor', () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
+    jest.useRealTimers();
   });
 
   test('renders the candidate with the strongest explicit-WHY probability', async () => {
@@ -188,5 +189,58 @@ describe('JevWhyExtractor', () => {
         ],
       }),
     );
+  });
+
+  test('honors Retry-After before retrying a throttled TypeSafe request', async () => {
+    jest.useFakeTimers();
+    const successfulResponse = new Response(
+      JSON.stringify({
+        model: 'jev-latest',
+        answers: {
+          pr_123_candidate_0_is_explicit_why: {
+            type: 'noul',
+            noul: 0.42,
+          },
+          pr_123_candidate_1_is_explicit_why: {
+            type: 'noul',
+            noul: 0.91,
+          },
+        },
+        usage: { input_tokens: 123, output_tokens: 4 },
+      }),
+    );
+    const fetchMock = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response('Request throttled', {
+          status: 429,
+          headers: { 'Retry-After': '3' },
+        }),
+      )
+      .mockResolvedValueOnce(successfulResponse);
+    global.fetch = fetchMock;
+    const extractor = new JevWhyExtractor({
+      apiKey: 'typesafe-test',
+      model: 'jev-latest',
+    });
+
+    const extraction = extractor.extractWhyNotes(WHY_INPUT);
+
+    await jest.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await jest.advanceTimersByTimeAsync(2_999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await jest.advanceTimersByTimeAsync(1);
+
+    await expect(extraction).resolves.toEqual(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            why: WHY_INPUT.items[0]?.candidates[1],
+          }),
+        ],
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

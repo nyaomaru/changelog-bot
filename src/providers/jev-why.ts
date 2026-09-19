@@ -61,6 +61,23 @@ function retryDelay(attempt: number): number {
 }
 
 /**
+ * Parses a TypeSafe Retry-After header into a delay in milliseconds.
+ * @param retryAfterHeader Retry-After value returned by the API.
+ * @returns Requested delay, or undefined when the header is absent or invalid.
+ */
+function retryAfterDelay(retryAfterHeader: string | null): number | undefined {
+  if (!retryAfterHeader) return undefined;
+
+  const normalizedHeader = retryAfterHeader.trim();
+  if (/^\d+$/.test(normalizedHeader)) {
+    return Number(normalizedHeader) * 1_000;
+  }
+
+  const retryAt = Date.parse(normalizedHeader);
+  return Number.isNaN(retryAt) ? undefined : Math.max(0, retryAt - Date.now());
+}
+
+/**
  * Select PR-description evidence with Jev without asking it to generate prose.
  * @param config API key and model resolved for this run.
  */
@@ -196,9 +213,13 @@ export class JevWhyExtractor implements WhyExtractor {
           `TypeSafe API request failed (${response.status})${errorDetail}`,
         );
       }
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, retryDelay(attempt));
-      });
+      // WHY: TypeSafe may extend throttling or capacity windows beyond our
+      // local exponential backoff. Honoring its Retry-After hint avoids
+      // consuming all attempts before that window expires.
+      const delay =
+        retryAfterDelay(response.headers.get('Retry-After')) ??
+        retryDelay(attempt);
+      await new Promise<void>((resolve) => setTimeout(resolve, delay));
     }
 
     throw new Error('TypeSafe API request exhausted retries');
