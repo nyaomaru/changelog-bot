@@ -85,6 +85,7 @@ export async function executeChangelogRun(params: {
   const finalizedOutput = await finalizeChangelogRunOutput({
     cli,
     llm: llmOutput.llm,
+    changelogAiUsed: llmOutput.aiUsed,
     provider,
     hasProviderKey,
     whyExtractor,

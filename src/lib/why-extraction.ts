@@ -26,6 +26,8 @@ type RunWhyExtractionParams = {
   cli: CliOptions;
   /** Generated changelog output before WHY notes are applied. */
   llm: LLMOutput;
+  /** Whether changelog generation completed through the selected LLM provider. */
+  changelogAiUsed: boolean;
   /** Main LLM provider, retained as the default WHY extractor. */
   provider: Provider;
   /** Whether the main LLM provider has an API key. */
@@ -161,13 +163,16 @@ export async function runWhyExtraction(
     return { llm, diagnostics };
   }
 
-  // WHY: A successful WHY request means the final output did use AI, even when
-  // confidence filtering later rejects every returned note.
-  const prBodyAfterAiUse = removeFallbackNote(llm.pr_body);
-  const llmAfterAiUse: LLMOutput =
-    prBodyAfterAiUse === llm.pr_body
-      ? llm
-      : { ...llm, pr_body: prBodyAfterAiUse };
+  // WHY: Jev may enrich a deterministic changelog, but that does not make the
+  // changelog-generation fallback note false. Only the generation stage can
+  // remove its own fallback annotation.
+  let llmAfterWhyEnrichment = llm;
+  if (params.changelogAiUsed) {
+    const prBodyAfterAiUse = removeFallbackNote(llm.pr_body);
+    if (prBodyAfterAiUse !== llm.pr_body) {
+      llmAfterWhyEnrichment = { ...llm, pr_body: prBodyAfterAiUse };
+    }
+  }
 
   const accepted = acceptWhyNotes(
     providerOutput,
@@ -181,7 +186,7 @@ export async function runWhyExtraction(
     diagnostics.fallbackReasons.push(
       'WHY extraction skipped: provider returned no trusted notes',
     );
-    return { llm: llmAfterAiUse, diagnostics };
+    return { llm: llmAfterWhyEnrichment, diagnostics };
   }
 
   const notesByPr = new Map(
@@ -190,15 +195,15 @@ export async function runWhyExtraction(
   diagnostics.notesRendered = acceptedNotes.length;
   return {
     llm: {
-      ...llmAfterAiUse,
+      ...llmAfterWhyEnrichment,
       new_section_markdown: applyWhyNotesToSection(
-        llmAfterAiUse.new_section_markdown,
+        llmAfterWhyEnrichment.new_section_markdown,
         notesByPr,
         cli.whyLabel,
         repository,
       ),
       pr_body: appendWhyPreview(
-        llmAfterAiUse.pr_body,
+        llmAfterWhyEnrichment.pr_body,
         acceptedNotes,
         cli.whyLabel,
       ),

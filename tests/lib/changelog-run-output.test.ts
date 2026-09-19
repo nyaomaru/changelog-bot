@@ -78,6 +78,7 @@ describe('finalizeChangelogRunOutput', () => {
     const result = await finalizeChangelogRunOutput({
       cli,
       llm: initialLlm,
+      changelogAiUsed: true,
       provider,
       hasProviderKey: true,
       owner: 'octo',
@@ -122,6 +123,7 @@ describe('finalizeChangelogRunOutput', () => {
     const result = await finalizeChangelogRunOutput({
       cli,
       llm: initialLlm,
+      changelogAiUsed: true,
       provider,
       hasProviderKey: true,
       owner: 'octo',

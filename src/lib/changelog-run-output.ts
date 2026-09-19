@@ -16,6 +16,8 @@ export type FinalizeChangelogRunOutputParams = {
   cli: CliOptions;
   /** Initial generated changelog and pull request payload. */
   llm: LLMOutput;
+  /** Whether changelog generation completed through the selected LLM provider. */
+  changelogAiUsed: boolean;
   /** Selected provider adapter. */
   provider: Provider;
   /** Whether the selected provider has an API key. */
@@ -83,6 +85,7 @@ export async function finalizeChangelogRunOutput(
   const whyOutput = await params.deps.runWhyExtraction({
     cli: params.cli,
     llm: finalized.llm,
+    changelogAiUsed: params.changelogAiUsed,
     provider: params.provider,
     hasProviderKey: params.hasProviderKey,
     whyExtractor: params.whyExtractor,
