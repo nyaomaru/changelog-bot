@@ -6,46 +6,48 @@ import type {
   WhyConfidence,
   WhyExtractionInput,
   WhyExtractionOutput,
+  WhySelectionDiagnostic,
 } from '@/types/why.js';
 
 const TYPESAFE_SYSTEM_ONE_URL = 'https://api.typesafe.ai/v1/systemone';
 const TYPESAFE_RETRYABLE_STATUS_CODES = new Set([429, 529]);
 const TYPESAFE_MAX_ATTEMPTS = 3;
 const TYPESAFE_RETRY_DELAY_MS = 250;
+const JEV_MIN_EXPLICIT_WHY_PROBABILITY = 0.5;
+const JEV_MEDIUM_CONFIDENCE_PROBABILITY = 0.65;
+const JEV_HIGH_CONFIDENCE_PROBABILITY = 0.85;
 
-const JevChoiceAnswerSchema = z.object({
-  type: z.literal('choice'),
-  choice: z.string(),
-  probabilities: z.record(z.string(), z.number().min(0).max(1)),
-  confidence: z.number().min(0).max(1),
+const JevNoulAnswerSchema = z.object({
+  type: z.literal('noul'),
+  noul: z.number().min(0).max(1),
 });
 
 const JevSystemOneResponseSchema = z.object({
   model: z.string(),
-  answers: z.record(z.string(), JevChoiceAnswerSchema),
+  answers: z.record(z.string(), JevNoulAnswerSchema),
   usage: z.object({
     input_tokens: z.number().int().nonnegative(),
     output_tokens: z.number().int().nonnegative(),
   }),
 });
 
-type JevChoiceQuestion = {
-  type: 'choice';
+type JevNoulQuestion = {
+  type: 'noul';
   instructions: string;
-  criteria: Record<string, string | null>;
+  criteria: { true: string; false: string };
 };
 
 function candidateOption(index: number): string {
   return `candidate_${index}`;
 }
 
-function questionId(prNumber: number): string {
-  return `pr_${prNumber}_why_candidate`;
+function questionId(prNumber: number, candidateIndex: number): string {
+  return `pr_${prNumber}_candidate_${candidateIndex}_is_explicit_why`;
 }
 
-function confidenceBucket(confidence: number): WhyConfidence {
-  if (confidence >= 0.75) return 'high';
-  if (confidence >= 0.5) return 'medium';
+function confidenceBucket(probability: number): WhyConfidence {
+  if (probability >= JEV_HIGH_CONFIDENCE_PROBABILITY) return 'high';
+  if (probability >= JEV_MEDIUM_CONFIDENCE_PROBABILITY) return 'medium';
   return 'low';
 }
 
@@ -74,7 +76,7 @@ export class JevWhyExtractor implements WhyExtractor {
   }
 
   /**
-   * Choose one explicit source candidate (or none) for every eligible PR.
+   * Score every source candidate for explicit rationale evidence, then select the best one.
    * @param input Preprocessed PR rationale candidates.
    * @returns WHY notes using only selected source candidates.
    */
@@ -83,23 +85,22 @@ export class JevWhyExtractor implements WhyExtractor {
   ): Promise<WhyExtractionOutput> {
     if (!this.apiKey) throw new Error('Missing TYPESAFE_API_KEY');
 
-    const questions: Record<string, JevChoiceQuestion> = {};
+    const questions: Record<string, JevNoulQuestion> = {};
     const state = {
-      task: 'Select one source candidate that explicitly states why the pull request change was made. Select none when the reason is unclear, implied, speculative, or only describes implementation details.',
+      task: 'Evaluate each supplied source candidate independently. A candidate passes only when it explicitly states why the pull request change was made; reject vague, implied, speculative, or implementation-only text.',
       language: input.language,
       pullRequests: input.items.map((item) => {
-        const criteria: Record<string, string | null> = {
-          none: 'No supplied candidate explicitly states a trustworthy reason.',
-        };
-        for (const [index, candidate] of item.candidates.entries()) {
-          criteria[candidateOption(index)] = candidate;
+        for (const [index] of item.candidates.entries()) {
+          questions[questionId(item.prNumber, index)] = {
+            type: 'noul',
+            instructions: `Does candidate ${candidateOption(index)} explicitly state why this pull request change was made?`,
+            criteria: {
+              true: 'The candidate directly states a concrete reason, motivation, problem, or intended outcome for the change.',
+              false:
+                'The candidate only describes what changed, implementation details, or an indirect/speculative reason.',
+            },
+          };
         }
-        questions[questionId(item.prNumber)] = {
-          type: 'choice',
-          instructions:
-            'Which supplied candidate is an explicit, evidence-backed WHY note for this pull request? Select none unless one candidate directly states the reason for the change.',
-          criteria,
-        };
         return {
           prNumber: item.prNumber,
           title: item.title,
@@ -125,53 +126,49 @@ export class JevWhyExtractor implements WhyExtractor {
     }
 
     const items = [];
-    const selectionDiagnostics = [];
+    const selectionDiagnostics: WhySelectionDiagnostic[] = [];
     for (const item of input.items) {
-      const answer = parsedResponse.data.answers[questionId(item.prNumber)];
-      if (!answer) {
-        throw new Error(
-          `TypeSafe API omitted an answer for PR #${item.prNumber}`,
-        );
-      }
-      const selectionProbability = answer.probabilities[answer.choice] ?? 0;
-      const certainty = Math.min(answer.confidence, selectionProbability);
-      const mappedConfidence = confidenceBucket(certainty);
-      if (answer.choice === 'none') {
-        selectionDiagnostics.push({
-          prNumber: item.prNumber,
-          selectedOption: answer.choice,
-          selectionProbability,
-          confidence: answer.confidence,
-          mappedConfidence,
-        });
-        continue;
-      }
-
-      const selectedIndex = Number.parseInt(
-        answer.choice.replace(/^candidate_/, ''),
-        10,
+      const candidateProbabilities = item.candidates.map(
+        (_, candidateIndex) => {
+          const answer =
+            parsedResponse.data.answers[
+              questionId(item.prNumber, candidateIndex)
+            ];
+          if (!answer) {
+            throw new Error(
+              `TypeSafe API omitted an answer for PR #${item.prNumber} candidate ${candidateIndex}`,
+            );
+          }
+          return { candidateIndex, probability: answer.noul };
+        },
       );
-      const selectedCandidate = item.candidates[selectedIndex];
-      if (!/^candidate_\d+$/.test(answer.choice) || !selectedCandidate) {
-        throw new Error(
-          `TypeSafe API returned an unknown candidate for PR #${item.prNumber}`,
-        );
-      }
-
-      // WHY: A confident distribution is not enough when the winning option is
-      // itself unlikely, so preserve the weaker of the two signals.
+      const bestCandidate = candidateProbabilities.reduce((best, candidate) =>
+        candidate.probability > best.probability ? candidate : best,
+      );
+      const selectedIndex = bestCandidate?.candidateIndex;
+      const selectionProbability = bestCandidate?.probability ?? 0;
+      const mappedConfidence = confidenceBucket(selectionProbability);
+      const selectedCandidate =
+        selectedIndex === undefined
+          ? undefined
+          : item.candidates[selectedIndex];
+      const accepted =
+        selectedCandidate !== undefined &&
+        selectionProbability >= JEV_MIN_EXPLICIT_WHY_PROBABILITY;
       selectionDiagnostics.push({
         prNumber: item.prNumber,
-        selectedOption: answer.choice,
-        selectedCandidateIndex: selectedIndex,
+        questionType: 'noul',
+        selectedOption: accepted ? candidateOption(selectedIndex) : 'none',
+        ...(accepted ? { selectedCandidateIndex: selectedIndex } : {}),
         selectionProbability,
-        confidence: answer.confidence,
         mappedConfidence,
+        candidateProbabilities,
       });
+      if (!accepted) continue;
       items.push({
         prNumber: item.prNumber,
         why: selectedCandidate,
-        confidence: confidenceBucket(certainty),
+        confidence: mappedConfidence,
       });
     }
 

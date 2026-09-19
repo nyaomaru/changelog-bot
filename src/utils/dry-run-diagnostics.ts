@@ -93,8 +93,18 @@ export function formatDryRunDiagnostics(input: DryRunDiagnosticsInput): string {
       `WHY fallback reasons: ${whyFallbackReasonText}`,
     );
     for (const selection of input.why.selectionDiagnostics) {
+      const candidateProbabilityText = selection.candidateProbabilities
+        .map(
+          (candidate) =>
+            `candidate_${candidate.candidateIndex}=${candidate.probability}`,
+        )
+        .join(', ');
+      const confidenceText =
+        selection.confidence === undefined
+          ? ''
+          : `, confidence=${selection.confidence}`;
       lines.push(
-        `WHY selection #${selection.prNumber}: ${selection.selectedOption}, probability=${selection.selectionProbability}, confidence=${selection.confidence}, mapped=${selection.mappedConfidence}`,
+        `WHY selection #${selection.prNumber}: ${selection.selectedOption}, probability=${selection.selectionProbability}${confidenceText}, mapped=${selection.mappedConfidence}, candidates=[${candidateProbabilityText}]`,
       );
     }
   }

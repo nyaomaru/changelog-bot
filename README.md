@@ -143,8 +143,9 @@ for example with `WHY:`, `because`, or `in order to`.
 ### Experiment with TypeSafe Jev for WHY selection
 
 Jev is an opt-in WHY-only engine; it is not a `--provider` value and does not
-generate the changelog itself. It selects one supplied PR-description candidate
-or `none`, then changelog-bot renders the selected source text without
+generate the changelog itself. It independently evaluates whether each supplied
+PR-description candidate explicitly states a reason, then renders the strongest
+accepted source text without
 paraphrasing it. This keeps the WHY note evidence-backed despite Jev's
 non-generative API.
 

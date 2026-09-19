@@ -8,16 +8,25 @@ export type WhyEngine = 'llm' | 'jev';
 export type WhySelectionDiagnostic = {
   /** Pull request associated with the decision. */
   prNumber: number;
+  /** Jev primitive used to evaluate the candidate set. */
+  questionType: 'choice' | 'noul';
   /** Option selected by the extractor, such as `candidate_0` or `none`. */
   selectedOption: string;
   /** Index of the selected input candidate, when a candidate was chosen. */
   selectedCandidateIndex?: number;
   /** Probability assigned to the selected option. */
   selectionProbability: number;
-  /** Extractor-reported certainty for the full decision distribution. */
-  confidence: number;
-  /** Compatibility bucket derived from the raw decision signals. */
+  /** Extractor-reported distribution certainty, when its primitive provides one. */
+  confidence?: number;
+  /** Compatibility bucket derived from the selected candidate probability. */
   mappedConfidence: WhyConfidence;
+  /** Per-candidate probability that its text explicitly states the WHY. */
+  candidateProbabilities: Array<{
+    /** Candidate index from the extractor input. */
+    candidateIndex: number;
+    /** Probability that the candidate explicitly states the change rationale. */
+    probability: number;
+  }>;
 };
 
 /** Deterministic trust bucket computed before and after provider calls. */

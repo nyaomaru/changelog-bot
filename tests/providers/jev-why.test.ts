@@ -30,21 +30,19 @@ describe('JevWhyExtractor', () => {
     global.fetch = originalFetch;
   });
 
-  test('renders only the source candidate selected by Jev', async () => {
+  test('renders the candidate with the strongest explicit-WHY probability', async () => {
     const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
           model: 'jev-latest',
           answers: {
-            pr_123_why_candidate: {
-              type: 'choice',
-              choice: 'candidate_0',
-              probabilities: {
-                none: 0.02,
-                candidate_0: 0.91,
-                candidate_1: 0.07,
-              },
-              confidence: 0.88,
+            pr_123_candidate_0_is_explicit_why: {
+              type: 'noul',
+              noul: 0.42,
+            },
+            pr_123_candidate_1_is_explicit_why: {
+              type: 'noul',
+              noul: 0.91,
             },
           },
           usage: { input_tokens: 123, output_tokens: 4 },
@@ -63,18 +61,22 @@ describe('JevWhyExtractor', () => {
       items: [
         {
           prNumber: 123,
-          why: WHY_INPUT.items[0]?.candidates[0],
+          why: WHY_INPUT.items[0]?.candidates[1],
           confidence: 'high',
         },
       ],
       selectionDiagnostics: [
         {
           prNumber: 123,
-          selectedOption: 'candidate_0',
-          selectedCandidateIndex: 0,
+          questionType: 'noul',
+          selectedOption: 'candidate_1',
+          selectedCandidateIndex: 1,
           selectionProbability: 0.91,
-          confidence: 0.88,
           mappedConfidence: 'high',
+          candidateProbabilities: [
+            { candidateIndex: 0, probability: 0.42 },
+            { candidateIndex: 1, probability: 0.91 },
+          ],
         },
       ],
     });
@@ -92,11 +94,11 @@ describe('JevWhyExtractor', () => {
       expect.objectContaining({
         model: 'jev-latest',
         questions: expect.objectContaining({
-          pr_123_why_candidate: expect.objectContaining({
-            type: 'choice',
+          pr_123_candidate_0_is_explicit_why: expect.objectContaining({
+            type: 'noul',
             criteria: expect.objectContaining({
-              none: expect.any(String),
-              candidate_0: WHY_INPUT.items[0]?.candidates[0],
+              true: expect.any(String),
+              false: expect.any(String),
             }),
           }),
         }),
@@ -104,21 +106,19 @@ describe('JevWhyExtractor', () => {
     );
   });
 
-  test('omits a PR when Jev selects none', async () => {
+  test('omits a PR when no candidate meets the minimum probability', async () => {
     global.fetch = jest.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
           model: 'jev-latest',
           answers: {
-            pr_123_why_candidate: {
-              type: 'choice',
-              choice: 'none',
-              probabilities: {
-                none: 0.92,
-                candidate_0: 0.06,
-                candidate_1: 0.02,
-              },
-              confidence: 0.89,
+            pr_123_candidate_0_is_explicit_why: {
+              type: 'noul',
+              noul: 0.42,
+            },
+            pr_123_candidate_1_is_explicit_why: {
+              type: 'noul',
+              noul: 0.37,
             },
           },
           usage: { input_tokens: 123, output_tokens: 4 },
@@ -135,10 +135,14 @@ describe('JevWhyExtractor', () => {
       selectionDiagnostics: [
         {
           prNumber: 123,
+          questionType: 'noul',
           selectedOption: 'none',
-          selectionProbability: 0.92,
-          confidence: 0.89,
-          mappedConfidence: 'high',
+          selectionProbability: 0.42,
+          mappedConfidence: 'low',
+          candidateProbabilities: [
+            { candidateIndex: 0, probability: 0.42 },
+            { candidateIndex: 1, probability: 0.37 },
+          ],
         },
       ],
     });
