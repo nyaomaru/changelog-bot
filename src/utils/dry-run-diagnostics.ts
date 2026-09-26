@@ -96,7 +96,7 @@ export function formatDryRunDiagnostics(input: DryRunDiagnosticsInput): string {
       const candidateProbabilityText = selection.candidateProbabilities
         .map(
           (candidate) =>
-            `candidate_${candidate.candidateIndex}=${candidate.probability}`,
+            `candidate_${candidate.candidateIndex}=${candidate.probability}${candidate.relevanceProbability === undefined ? '' : `/${candidate.relevanceProbability}`}`,
         )
         .join(', ');
       const confidenceText =

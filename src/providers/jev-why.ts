@@ -16,6 +16,7 @@ const TYPESAFE_RETRY_DELAY_MS = 250;
 const TYPESAFE_MAX_RETRY_AFTER_DELAY_MS = 30_000;
 const TYPESAFE_REQUEST_TIMEOUT_MS = 30_000;
 const JEV_MIN_EXPLICIT_WHY_PROBABILITY = 0.5;
+const JEV_MIN_CHANGE_RELEVANCE_PROBABILITY = 0.5;
 const JEV_MEDIUM_CONFIDENCE_PROBABILITY = 0.6;
 const JEV_HIGH_CONFIDENCE_PROBABILITY = 0.8;
 
@@ -55,8 +56,12 @@ function candidateId(prNumber: number, candidateIndex: number): string {
   return `pr_${prNumber}_candidate_${candidateIndex}`;
 }
 
-function questionId(candidate: string): string {
+function explicitWhyQuestionId(candidate: string): string {
   return `${candidate}_is_explicit_why`;
+}
+
+function changeRelevanceQuestionId(candidate: string): string {
+  return `${candidate}_matches_change`;
 }
 
 function confidenceBucket(probability: number): WhyConfidence {
@@ -111,7 +116,7 @@ export class JevWhyExtractor implements WhyExtractor {
   }
 
   /**
-   * Score every source candidate for explicit rationale evidence, then select the best one.
+   * Score each source candidate for explicit rationale and change relevance, then select the best one.
    * @param input Preprocessed PR rationale candidates.
    * @returns WHY notes using only selected source candidates.
    */
@@ -131,7 +136,7 @@ export class JevWhyExtractor implements WhyExtractor {
     > = {};
     const questions: Record<string, JevNoulQuestion> = {};
     const state = {
-      task: 'Evaluate each supplied source candidate independently. A candidate passes only when it explicitly states why its changelog change was made; reject vague, implied, speculative, or implementation-only text.',
+      task: 'Evaluate each supplied source candidate independently. A candidate passes only when it explicitly states why its changelog change was made and that reason applies to the identified changelog change; reject vague, implied, speculative, implementation-only, or unrelated text.',
       language: input.language,
       candidates,
     };
@@ -144,7 +149,7 @@ export class JevWhyExtractor implements WhyExtractor {
           changelogItem: item.itemText,
           text,
         };
-        questions[questionId(id)] = {
+        questions[explicitWhyQuestionId(id)] = {
           type: 'noul',
           instructions: {
             question:
@@ -155,6 +160,19 @@ export class JevWhyExtractor implements WhyExtractor {
             true: 'The candidate directly states a concrete reason, motivation, problem, or intended outcome for the change.',
             false:
               'The candidate only describes what changed, implementation details, or an indirect/speculative reason.',
+          },
+        };
+        questions[changeRelevanceQuestionId(id)] = {
+          type: 'noul',
+          instructions: {
+            question:
+              'Does the target candidate state a reason that applies to the identified changelog change?',
+            target: `candidates.${id}`,
+          },
+          criteria: {
+            true: 'The stated reason, motivation, problem, or intended outcome directly explains the PR title and changelog item.',
+            false:
+              'The candidate discusses a reason for another change, project, document, or workflow, even if that reason is explicit.',
           },
         };
       }
@@ -175,23 +193,39 @@ export class JevWhyExtractor implements WhyExtractor {
     for (const item of input.items) {
       const candidateProbabilities = item.candidates.map(
         (_, candidateIndex) => {
-          const answer =
+          const explicitWhyAnswer =
             parsedResponse.data.answers[
-              questionId(candidateId(item.prNumber, candidateIndex))
+              explicitWhyQuestionId(candidateId(item.prNumber, candidateIndex))
             ];
-          if (!answer) {
+          const changeRelevanceAnswer =
+            parsedResponse.data.answers[
+              changeRelevanceQuestionId(
+                candidateId(item.prNumber, candidateIndex),
+              )
+            ];
+          if (!explicitWhyAnswer || !changeRelevanceAnswer) {
             throw new Error(
               `TypeSafe API omitted an answer for PR #${item.prNumber} candidate ${candidateIndex}`,
             );
           }
-          return { candidateIndex, probability: answer.noul };
+          return {
+            candidateIndex,
+            probability: explicitWhyAnswer.noul,
+            relevanceProbability: changeRelevanceAnswer.noul,
+            combinedProbability: Math.min(
+              explicitWhyAnswer.noul,
+              changeRelevanceAnswer.noul,
+            ),
+          };
         },
       );
       const bestCandidate = candidateProbabilities.reduce((best, candidate) =>
-        candidate.probability > best.probability ? candidate : best,
+        candidate.combinedProbability > best.combinedProbability
+          ? candidate
+          : best,
       );
       const selectedIndex = bestCandidate?.candidateIndex;
-      const selectionProbability = bestCandidate?.probability ?? 0;
+      const selectionProbability = bestCandidate?.combinedProbability ?? 0;
       const mappedConfidence = confidenceBucket(selectionProbability);
       const selectedCandidate =
         selectedIndex === undefined
@@ -199,7 +233,9 @@ export class JevWhyExtractor implements WhyExtractor {
           : item.candidates[selectedIndex];
       const accepted =
         selectedCandidate !== undefined &&
-        selectionProbability >= JEV_MIN_EXPLICIT_WHY_PROBABILITY;
+        bestCandidate.probability >= JEV_MIN_EXPLICIT_WHY_PROBABILITY &&
+        bestCandidate.relevanceProbability >=
+          JEV_MIN_CHANGE_RELEVANCE_PROBABILITY;
       selectionDiagnostics.push({
         prNumber: item.prNumber,
         questionType: 'noul',
@@ -207,7 +243,13 @@ export class JevWhyExtractor implements WhyExtractor {
         ...(accepted ? { selectedCandidateIndex: selectedIndex } : {}),
         selectionProbability,
         mappedConfidence,
-        candidateProbabilities,
+        candidateProbabilities: candidateProbabilities.map(
+          ({ candidateIndex, probability, relevanceProbability }) => ({
+            candidateIndex,
+            probability,
+            relevanceProbability,
+          }),
+        ),
       });
       if (!accepted) continue;
       items.push({
