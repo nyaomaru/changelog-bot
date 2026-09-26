@@ -406,4 +406,44 @@ describe('JevWhyExtractor', () => {
 
     await rejection;
   });
+
+  test('keeps the timeout active while consuming a response body', async () => {
+    jest.useFakeTimers();
+    let signal: AbortSignal | null | undefined;
+    const stalledResponse = {
+      ok: true,
+      text: jest.fn(
+        () =>
+          new Promise<string>((_resolve, reject) => {
+            signal?.addEventListener(
+              'abort',
+              () => reject(new Error('response body aborted')),
+              { once: true },
+            );
+          }),
+      ),
+    } as unknown as Response;
+    const fetchMock = jest
+      .fn<typeof fetch>()
+      .mockImplementation((_input, init) => {
+        signal = init?.signal;
+        return Promise.resolve(stalledResponse);
+      });
+    global.fetch = fetchMock;
+    const extractor = new JevWhyExtractor({
+      apiKey: 'typesafe-test',
+      model: 'jev-latest',
+    });
+
+    const extraction = extractor.extractWhyNotes(WHY_INPUT);
+    const rejection = expect(extraction).rejects.toThrow(
+      'TypeSafe API request timed out after 30 seconds',
+    );
+
+    await jest.advanceTimersByTimeAsync(29_999);
+    expect(stalledResponse.text).toHaveBeenCalledTimes(1);
+    await jest.advanceTimersByTimeAsync(1);
+
+    await rejection;
+  });
 });

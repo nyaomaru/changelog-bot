@@ -41,6 +41,11 @@ type JevNoulQuestion = {
   criteria: { true: string; false: string };
 };
 
+type TypeSafeResponse = {
+  response: Response;
+  body: string;
+};
+
 function candidateOption(index: number): string {
   return `candidate_${index}`;
 }
@@ -216,23 +221,27 @@ export class JevWhyExtractor implements WhyExtractor {
 
   private async request(body: unknown): Promise<unknown> {
     for (let attempt = 0; attempt < TYPESAFE_MAX_ATTEMPTS; attempt += 1) {
-      const response = await this.fetchWithTimeout(body);
-      if (response.ok) return response.json();
+      const typeSafeResponse = await this.fetchWithTimeout(body);
+      if (typeSafeResponse.response.ok) {
+        return JSON.parse(typeSafeResponse.body);
+      }
 
-      const errorDetail = readErrorDetail(await response.text());
+      const errorDetail = readErrorDetail(typeSafeResponse.body);
       if (
-        !TYPESAFE_RETRYABLE_STATUS_CODES.has(response.status) ||
+        !TYPESAFE_RETRYABLE_STATUS_CODES.has(
+          typeSafeResponse.response.status,
+        ) ||
         attempt === TYPESAFE_MAX_ATTEMPTS - 1
       ) {
         throw new Error(
-          `TypeSafe API request failed (${response.status})${errorDetail}`,
+          `TypeSafe API request failed (${typeSafeResponse.response.status})${errorDetail}`,
         );
       }
       // WHY: TypeSafe may extend throttling or capacity windows beyond our
       // local exponential backoff. Honor its Retry-After hint, but cap it so
       // an upstream value cannot keep a workflow running until its timeout.
       const delay =
-        retryAfterDelay(response.headers.get('Retry-After')) ??
+        retryAfterDelay(typeSafeResponse.response.headers.get('Retry-After')) ??
         retryDelay(attempt);
       await new Promise<void>((resolve) => setTimeout(resolve, delay));
     }
@@ -240,7 +249,7 @@ export class JevWhyExtractor implements WhyExtractor {
     throw new Error('TypeSafe API request exhausted retries');
   }
 
-  private async fetchWithTimeout(body: unknown): Promise<Response> {
+  private async fetchWithTimeout(body: unknown): Promise<TypeSafeResponse> {
     const controller = new AbortController();
     let timedOut = false;
     const timeout = setTimeout(() => {
@@ -249,7 +258,7 @@ export class JevWhyExtractor implements WhyExtractor {
     }, TYPESAFE_REQUEST_TIMEOUT_MS);
 
     try {
-      return await fetch(TYPESAFE_SYSTEM_ONE_URL, {
+      const response = await fetch(TYPESAFE_SYSTEM_ONE_URL, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
@@ -258,6 +267,7 @@ export class JevWhyExtractor implements WhyExtractor {
         body: JSON.stringify(body),
         signal: controller.signal,
       });
+      return { response, body: await response.text() };
     } catch (error) {
       if (timedOut) {
         throw new Error(
