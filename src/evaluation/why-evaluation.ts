@@ -38,6 +38,24 @@ export type WhyEvaluationMetrics = {
   exactSourceSelectionRate: number | null;
   /** Returned notes whose PR number is not part of the corpus. */
   unexpectedSelections: number;
+  /** Per-case decisions used to diagnose metric changes. */
+  outcomes: WhyEvaluationOutcome[];
+};
+
+/** Expected and observed result for one labeled PR candidate set. */
+export type WhyEvaluationOutcome = {
+  /** Stable corpus case identifier. */
+  id: string;
+  /** PR number supplied to the extractor. */
+  prNumber: number;
+  /** Labeled candidate index, or null when no candidate should be selected. */
+  expectedSelectedCandidateIndex: number | null;
+  /** Whether the extractor returned a WHY note for this PR. */
+  selected: boolean;
+  /** Index of an exactly preserved source candidate, when one was returned. */
+  selectedCandidateIndex: number | null;
+  /** Whether the returned note is the expected source candidate. */
+  matchesExpectedSource: boolean;
 };
 
 function ratio(numerator: number, denominator: number): number | null {
@@ -80,17 +98,32 @@ export function evaluateWhySelections(
   let falsePositives = 0;
   let falseNegatives = 0;
   let exactSourceSelections = 0;
+  const outcomes: WhyEvaluationOutcome[] = [];
   for (const evaluationCase of cases) {
     const expectedIndex = evaluationCase.expectedSelectedCandidateIndex;
     const expectedSelection = expectedIndex !== null;
     const predicted = outputByPrNumber.get(evaluationCase.item.prNumber);
     const predictedSelection = predicted !== undefined;
+    const selectedCandidateIndex = predicted
+      ? evaluationCase.item.candidates.indexOf(predicted.why)
+      : -1;
+    const matchesExpectedSource =
+      expectedIndex !== null && selectedCandidateIndex === expectedIndex;
+    outcomes.push({
+      id: evaluationCase.id,
+      prNumber: evaluationCase.item.prNumber,
+      expectedSelectedCandidateIndex: expectedIndex,
+      selected: predictedSelection,
+      selectedCandidateIndex:
+        selectedCandidateIndex === -1 ? null : selectedCandidateIndex,
+      matchesExpectedSource,
+    });
     if (expectedSelection) expectedSelections += 1;
     if (predictedSelection) predictedSelections += 1;
 
     if (expectedSelection && predictedSelection) {
       truePositives += 1;
-      if (predicted.why === evaluationCase.item.candidates[expectedIndex]) {
+      if (matchesExpectedSource) {
         exactSourceSelections += 1;
       }
       continue;
@@ -122,5 +155,6 @@ export function evaluateWhySelections(
     exactSourceSelections,
     exactSourceSelectionRate: ratio(exactSourceSelections, expectedSelections),
     unexpectedSelections,
+    outcomes,
   };
 }

@@ -178,9 +178,9 @@ experimental thresholds may change as the evaluation corpus grows.
 
 `pnpm eval:why` runs the labeled WHY corpus through Jev and one existing LLM
 provider, then prints precision, recall, F1, exact source-selection rate,
-latency, and failures as JSON. Set `TYPESAFE_API_KEY` and the selected provider
-key; `WHY_EVALUATION_PROVIDER` optionally selects `openai`, `anthropic`, or
-`gemini` and defaults to `openai`.
+per-case selections, latency, and failures as JSON. Set `TYPESAFE_API_KEY` and
+the selected provider key; `WHY_EVALUATION_PROVIDER` optionally selects
+`openai`, `anthropic`, or `gemini` and defaults to `openai`.
 
 The corpus includes repository PR material and boundary fixtures, including an
 explicit but unrelated rationale. It is intended to guide threshold and

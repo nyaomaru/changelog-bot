@@ -81,6 +81,24 @@ describe('evaluateWhySelections', () => {
       exactSourceSelections: 1,
       exactSourceSelectionRate: 1,
       unexpectedSelections: 1,
+      outcomes: [
+        {
+          id: 'positive',
+          prNumber: 1,
+          expectedSelectedCandidateIndex: 0,
+          selected: true,
+          selectedCandidateIndex: 0,
+          matchesExpectedSource: true,
+        },
+        {
+          id: 'negative',
+          prNumber: 2,
+          expectedSelectedCandidateIndex: null,
+          selected: true,
+          selectedCandidateIndex: 0,
+          matchesExpectedSource: false,
+        },
+      ],
     });
   });
 });
