@@ -446,4 +446,62 @@ describe('JevWhyExtractor', () => {
 
     await rejection;
   });
+
+  test('retries a throttled response without waiting for its stalled body', async () => {
+    jest.useFakeTimers();
+    let throttledResponseSignal: AbortSignal | null | undefined;
+    const throttledResponse = {
+      ok: false,
+      status: 429,
+      headers: new Headers({ 'Retry-After': '0' }),
+      text: jest.fn(
+        () =>
+          new Promise<string>((_resolve, reject) => {
+            throttledResponseSignal?.addEventListener(
+              'abort',
+              () => reject(new Error('response body aborted')),
+              { once: true },
+            );
+          }),
+      ),
+    } as unknown as Response;
+    const fetchMock = jest
+      .fn<typeof fetch>()
+      .mockImplementationOnce((_input, init) => {
+        throttledResponseSignal = init?.signal;
+        return Promise.resolve(throttledResponse);
+      })
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            model: 'jev-latest',
+            answers: {
+              pr_123_candidate_0_is_explicit_why: {
+                type: 'noul',
+                noul: 0.42,
+              },
+              pr_123_candidate_1_is_explicit_why: {
+                type: 'noul',
+                noul: 0.91,
+              },
+            },
+            usage: { input_tokens: 123, output_tokens: 4 },
+          }),
+        ),
+      );
+    global.fetch = fetchMock;
+    const extractor = new JevWhyExtractor({
+      apiKey: 'typesafe-test',
+      model: 'jev-latest',
+    });
+
+    const extraction = extractor.extractWhyNotes(WHY_INPUT);
+
+    await jest.advanceTimersByTimeAsync(0);
+
+    await expect(extraction).resolves.toEqual(expect.any(Object));
+    expect(throttledResponse.text).not.toHaveBeenCalled();
+    expect(throttledResponseSignal?.aborted).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

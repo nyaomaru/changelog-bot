@@ -43,7 +43,8 @@ type JevNoulQuestion = {
 
 type TypeSafeResponse = {
   response: Response;
-  body: string;
+  readBody: () => Promise<string>;
+  discardBody: () => void;
 };
 
 function candidateOption(index: number): string {
@@ -223,26 +224,26 @@ export class JevWhyExtractor implements WhyExtractor {
     for (let attempt = 0; attempt < TYPESAFE_MAX_ATTEMPTS; attempt += 1) {
       const typeSafeResponse = await this.fetchWithTimeout(body);
       if (typeSafeResponse.response.ok) {
-        return JSON.parse(typeSafeResponse.body);
+        return JSON.parse(await typeSafeResponse.readBody());
       }
 
-      const errorDetail = readErrorDetail(typeSafeResponse.body);
-      if (
-        !TYPESAFE_RETRYABLE_STATUS_CODES.has(
-          typeSafeResponse.response.status,
-        ) ||
-        attempt === TYPESAFE_MAX_ATTEMPTS - 1
-      ) {
+      const retryable = TYPESAFE_RETRYABLE_STATUS_CODES.has(
+        typeSafeResponse.response.status,
+      );
+      if (!retryable || attempt === TYPESAFE_MAX_ATTEMPTS - 1) {
+        const errorDetail = readErrorDetail(await typeSafeResponse.readBody());
         throw new Error(
           `TypeSafe API request failed (${typeSafeResponse.response.status})${errorDetail}`,
         );
       }
       // WHY: TypeSafe may extend throttling or capacity windows beyond our
-      // local exponential backoff. Honor its Retry-After hint, but cap it so
-      // an upstream value cannot keep a workflow running until its timeout.
+      // local exponential backoff. Decide to retry from headers before
+      // consuming a possibly stalled error body, then discard it so an
+      // upstream response cannot keep a workflow running until its timeout.
       const delay =
         retryAfterDelay(typeSafeResponse.response.headers.get('Retry-After')) ??
         retryDelay(attempt);
+      typeSafeResponse.discardBody();
       await new Promise<void>((resolve) => setTimeout(resolve, delay));
     }
 
@@ -267,8 +268,30 @@ export class JevWhyExtractor implements WhyExtractor {
         body: JSON.stringify(body),
         signal: controller.signal,
       });
-      return { response, body: await response.text() };
+      return {
+        response,
+        readBody: async () => {
+          try {
+            return await response.text();
+          } catch (error) {
+            if (timedOut) {
+              throw new Error(
+                `TypeSafe API request timed out after ${TYPESAFE_REQUEST_TIMEOUT_MS / 1_000} seconds`,
+                { cause: error },
+              );
+            }
+            throw error;
+          } finally {
+            clearTimeout(timeout);
+          }
+        },
+        discardBody: () => {
+          controller.abort();
+          clearTimeout(timeout);
+        },
+      };
     } catch (error) {
+      clearTimeout(timeout);
       if (timedOut) {
         throw new Error(
           `TypeSafe API request timed out after ${TYPESAFE_REQUEST_TIMEOUT_MS / 1_000} seconds`,
@@ -276,8 +299,6 @@ export class JevWhyExtractor implements WhyExtractor {
         );
       }
       throw error;
-    } finally {
-      clearTimeout(timeout);
     }
   }
 }
