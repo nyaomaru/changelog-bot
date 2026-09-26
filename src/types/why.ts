@@ -1,6 +1,34 @@
 /** Confidence levels accepted from the WHY extraction model. */
 export type WhyConfidence = 'low' | 'medium' | 'high';
 
+/** Implementation selected for optional WHY enrichment. */
+export type WhyEngine = 'llm' | 'jev';
+
+/** Raw decision data emitted by a non-generative WHY extractor. */
+export type WhySelectionDiagnostic = {
+  /** Pull request associated with the decision. */
+  prNumber: number;
+  /** Jev primitive used to evaluate the candidate set. */
+  questionType: 'choice' | 'noul';
+  /** Option selected by the extractor, such as `candidate_0` or `none`. */
+  selectedOption: string;
+  /** Index of the selected input candidate, when a candidate was chosen. */
+  selectedCandidateIndex?: number;
+  /** Probability assigned to the selected option. */
+  selectionProbability: number;
+  /** Extractor-reported distribution certainty, when its primitive provides one. */
+  confidence?: number;
+  /** Compatibility bucket derived from the selected candidate probability. */
+  mappedConfidence: WhyConfidence;
+  /** Per-candidate probability that its text explicitly states the WHY. */
+  candidateProbabilities: Array<{
+    /** Candidate index from the extractor input. */
+    candidateIndex: number;
+    /** Probability that the candidate explicitly states the change rationale. */
+    probability: number;
+  }>;
+};
+
 /** Deterministic trust bucket computed before and after provider calls. */
 export type WhyTrustBucket = 'none' | 'low' | 'medium' | 'high';
 
@@ -60,6 +88,8 @@ export type WhyExtractionResult = {
 export type WhyExtractionOutput = {
   /** Extracted WHY notes. Omit uncertain PRs instead of guessing. */
   items: WhyExtractionResult[];
+  /** Optional raw selection details for experimental decision engines. */
+  selectionDiagnostics?: WhySelectionDiagnostic[];
 };
 
 /** WHY note accepted for rendering. */
@@ -76,6 +106,10 @@ export type WhyNote = WhyExtractionResult & {
 export type WhyDiagnostics = {
   /** Whether WHY extraction was requested. */
   enabled: boolean;
+  /** Extraction engine selected for this run. */
+  engine: WhyEngine;
+  /** Raw decision details, populated by experimental decision engines. */
+  selectionDiagnostics: WhySelectionDiagnostic[];
   /** Whether the WHY extraction provider call completed successfully. */
   aiUsed: boolean;
   /** Number of candidate PRs found in eligible changelog sections. */

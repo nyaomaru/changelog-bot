@@ -43,6 +43,7 @@ describe('cli-args', () => {
     expect(out.requireProvider).toBe(false);
     expect(out.noAi).toBe(false);
     expect(out.why).toBe(false);
+    expect(out.whyEngine).toBe('llm');
     expect(out.whyMaxPrs).toBe(DEFAULT_WHY_MAX_PRS);
     expect(out.whyMaxCharsPerPr).toBe(DEFAULT_WHY_MAX_CHARS_PER_PR);
     expect(out.whyConfidence).toBe(DEFAULT_WHY_CONFIDENCE);
@@ -79,6 +80,8 @@ describe('cli-args', () => {
       '--require-provider',
       '--ai',
       '--why',
+      '--why-engine',
+      'jev',
       '--why-max-prs',
       '12',
       '--why-max-chars-per-pr',
@@ -105,6 +108,7 @@ describe('cli-args', () => {
     expect(out.requireProvider).toBe(true);
     expect(out.noAi).toBe(false);
     expect(out.why).toBe(true);
+    expect(out.whyEngine).toBe('jev');
     expect(out.whyMaxPrs).toBe(12);
     expect(out.whyMaxCharsPerPr).toBe(600);
     expect(out.whyConfidence).toBe('high');
@@ -140,6 +144,7 @@ describe('cli-args', () => {
           dryRunJsonReport: true,
           noAi: true,
           why: true,
+          whyEngine: 'jev',
           whyLabel: 'Reason',
         }),
         'utf8',
@@ -153,6 +158,7 @@ describe('cli-args', () => {
       expect(out.dryRunJsonReport).toBe(true);
       expect(out.noAi).toBe(true);
       expect(out.why).toBe(true);
+      expect(out.whyEngine).toBe('jev');
       expect(out.whyLabel).toBe('Reason');
     } finally {
       rmSync(cwd, { recursive: true, force: true });

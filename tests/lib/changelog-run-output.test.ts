@@ -19,6 +19,7 @@ const cli = {
   requireProvider: false,
   noAi: false,
   why: true,
+  whyEngine: 'llm',
   whyMaxPrs: 30,
   whyMaxCharsPerPr: 800,
   whyConfidence: 'medium',
@@ -47,6 +48,8 @@ const initialLlm: LLMOutput = {
 
 const whyDiagnostics = {
   enabled: true,
+  engine: 'llm' as const,
+  selectionDiagnostics: [],
   aiUsed: true,
   targetsFound: 1,
   prBodiesFetched: 1,
@@ -75,6 +78,7 @@ describe('finalizeChangelogRunOutput', () => {
     const result = await finalizeChangelogRunOutput({
       cli,
       llm: initialLlm,
+      changelogAiUsed: true,
       provider,
       hasProviderKey: true,
       owner: 'octo',
@@ -119,6 +123,7 @@ describe('finalizeChangelogRunOutput', () => {
     const result = await finalizeChangelogRunOutput({
       cli,
       llm: initialLlm,
+      changelogAiUsed: true,
       provider,
       hasProviderKey: true,
       owner: 'octo',

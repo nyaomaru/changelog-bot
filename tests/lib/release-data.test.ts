@@ -21,6 +21,7 @@ const cli: CliOptions = {
   requireProvider: false,
   noAi: false,
   why: false,
+  whyEngine: 'llm',
   whyMaxPrs: 30,
   whyMaxCharsPerPr: 800,
   whyConfidence: 'medium',

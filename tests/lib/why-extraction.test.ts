@@ -20,6 +20,7 @@ const cli: CliOptions = {
   requireProvider: false,
   noAi: false,
   why: true,
+  whyEngine: 'llm',
   whyMaxPrs: 30,
   whyMaxCharsPerPr: 800,
   whyConfidence: 'medium',
@@ -60,6 +61,27 @@ function provider(): Provider {
 describe('runWhyExtraction', () => {
   test('fetches trusted PR bodies and renders accepted WHY notes', async () => {
     const selectedProvider = provider();
+    jest.mocked(selectedProvider.extractWhyNotes).mockResolvedValue({
+      items: [
+        {
+          prNumber: 12,
+          why: 'Draft releases publish later and need the same changelog path.',
+          confidence: 'high',
+        },
+      ],
+      selectionDiagnostics: [
+        {
+          prNumber: 12,
+          questionType: 'choice',
+          selectedOption: 'candidate_0',
+          selectedCandidateIndex: 0,
+          selectionProbability: 0.91,
+          confidence: 0.88,
+          mappedConfidence: 'high',
+          candidateProbabilities: [{ candidateIndex: 0, probability: 0.91 }],
+        },
+      ],
+    });
     const fetchPRDetails = jest.fn<FetchPRDetails>(async () => ({
       number: 12,
       title: 'Restore draft release handling',
@@ -87,6 +109,7 @@ describe('runWhyExtraction', () => {
           'Note: Generated without LLM. Reason: provider unavailable.',
         ].join('\n'),
       },
+      changelogAiUsed: true,
       provider: selectedProvider,
       hasProviderKey: true,
       owner: 'octo',
@@ -110,6 +133,9 @@ describe('runWhyExtraction', () => {
     expect(result.llm.pr_body).not.toContain('Generated without LLM');
     expect(result.diagnostics.notesRendered).toBe(1);
     expect(result.diagnostics.aiUsed).toBe(true);
+    expect(result.diagnostics.selectionDiagnostics).toEqual([
+      expect.objectContaining({ prNumber: 12, mappedConfidence: 'high' }),
+    ]);
   });
 
   test('skips WHY only when provider fails without fail-on-llm-error', async () => {
@@ -130,6 +156,7 @@ describe('runWhyExtraction', () => {
           'Note: Generated without LLM. Reason: provider unavailable.',
         ].join('\n'),
       },
+      changelogAiUsed: false,
       provider: selectedProvider,
       hasProviderKey: true,
       owner: 'octo',
@@ -150,6 +177,42 @@ describe('runWhyExtraction', () => {
     );
     expect(result.diagnostics.aiUsed).toBe(false);
     expect(result.llm.pr_body).toContain('Generated without LLM');
+  });
+
+  test('preserves a generation fallback note after independent WHY enrichment', async () => {
+    const selectedProvider = provider();
+
+    const result = await runWhyExtraction({
+      cli,
+      llm: {
+        new_section_markdown:
+          '### Fixed\n\n- Restore draft release handling [#12](https://github.com/octo/repo/pull/12)',
+        pr_title: 'docs(changelog): 1.2.3',
+        pr_body: [
+          'Generated changelog.',
+          '',
+          'Note: Generated without LLM. Reason: Missing API key for provider: openai.',
+        ].join('\n'),
+      },
+      changelogAiUsed: false,
+      provider: selectedProvider,
+      hasProviderKey: true,
+      owner: 'octo',
+      repo: 'repo',
+      token: 'token',
+      githubApiBase: 'https://api.github.com',
+      fetchPRDetails: jest.fn<FetchPRDetails>(async () => ({
+        number: 12,
+        title: 'Restore draft release handling',
+        body: '## Why\nBecause draft releases can be published later and need coverage.',
+        author: 'alice',
+      })),
+    });
+
+    expect(result.diagnostics.aiUsed).toBe(true);
+    expect(result.diagnostics.notesRendered).toBe(1);
+    expect(result.llm.pr_body).toContain('Generated without LLM');
+    expect(result.llm.pr_body).toContain('### WHY preview');
   });
 
   test('requires high confidence for weakly structured non-English candidates', async () => {
@@ -176,6 +239,7 @@ describe('runWhyExtraction', () => {
           'Note: Generated without LLM.',
         ].join('\n'),
       },
+      changelogAiUsed: true,
       provider: selectedProvider,
       hasProviderKey: true,
       owner: 'octo',
@@ -211,6 +275,7 @@ describe('runWhyExtraction', () => {
     const result = await runWhyExtraction({
       cli,
       llm,
+      changelogAiUsed: true,
       provider: selectedProvider,
       hasProviderKey: true,
       owner: 'octo',

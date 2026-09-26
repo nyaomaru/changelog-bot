@@ -61,6 +61,7 @@ Using it in CI? Jump to [GitHub Actions integration](#github-actions-integration
 | `--require-provider`     | Fail when the selected provider API key is missing    | `false`                                |
 | `--no-ai`                | Skip all provider calls and use deterministic output  | `false`                                |
 | `--why`                  | Extract short WHY notes from PR descriptions          | `false`                                |
+| `--why-engine`           | WHY engine (`llm` or experimental `jev`)              | `llm`                                  |
 | `--why-max-prs`          | Maximum PRs to inspect for WHY extraction             | `30`                                   |
 | `--why-max-chars-per-pr` | Maximum candidate characters sent per PR              | `800`                                  |
 | `--why-confidence`       | Minimum WHY confidence (`low`, `medium`, `high`)      | `medium`                               |
@@ -139,6 +140,40 @@ or unclear evidence is still omitted rather than guessed. A `Description`
 section can also supply WHY evidence when its prose explicitly marks the reason,
 for example with `WHY:`, `because`, or `in order to`.
 
+### Experiment with TypeSafe Jev for WHY selection
+
+Jev is an opt-in WHY-only engine; it is not a `--provider` value and does not
+generate the changelog itself. It independently evaluates whether each supplied
+PR-description candidate explicitly states a reason, then renders the strongest
+accepted source text without
+paraphrasing it. This keeps the WHY note evidence-backed despite Jev's
+non-generative API.
+
+```sh
+export TYPESAFE_API_KEY=ts-xxxx
+pnpm dlx @nyaomaru/changelog-bot \
+  --release-tag HEAD \
+  --release-name 1.2.3 \
+  --why \
+  --why-engine jev \
+  --dry-run
+```
+
+`TYPESAFE_MODEL` optionally overrides the default `jev-latest`. The engine
+retries TypeSafe's retryable `429` and `529` responses with local exponential
+backoff, honoring server retry hints up to 30 seconds. Each request also times
+out after 30 seconds.
+`--no-ai` still disables this experimental path, and missing TypeSafe credentials
+skip WHY extraction with a diagnostic reason.
+
+The composite Action accepts `why-engine: jev`; the reusable workflow accepts
+`why_engine: jev`. Pass `TYPESAFE_API_KEY` through the Action step environment
+or reusable-workflow secret respectively.
+
+Jev maps an explicit-rationale probability of `0.50` or greater to `low`, `0.60`
+or greater to `medium` (the default), and `0.80` or greater to `high`. These
+experimental thresholds may change as the evaluation corpus grows.
+
 ### Force a specific model (example: gpt-4o-mini)
 
 ```sh
@@ -198,7 +233,7 @@ Config files use camelCase keys matching the CLI options:
 `repoPath`, `changelogPath`, `baseBranch`, `provider`, `releaseTag`,
 `releaseName`, `releaseBody`, `language`, `instructions`,
 `instructionsFile`, `dryRun`, `dryRunJsonReport`, `failOnLlmError`,
-`requireProvider`, `noAi`, `why`, `whyMaxPrs`, `whyMaxCharsPerPr`,
+`requireProvider`, `noAi`, `why`, `whyEngine`, `whyMaxPrs`, `whyMaxCharsPerPr`,
 `whyConfidence`, and `whyLabel`. Unknown keys are rejected so typos fail fast.
 
 ### From source (local checkout)
@@ -218,10 +253,12 @@ Bring your own keys and tokens as needed—`changelog-bot` only asks for what it
   - `OPENAI_API_KEY` (optional)
   - `ANTHROPIC_API_KEY` (optional)
   - `GEMINI_API_KEY` (optional)
+  - `TYPESAFE_API_KEY` (optional; required only with `--why-engine jev`)
   - `REPO_FULL_NAME` (optional, `owner/repo`; used for link resolution)
   - `OPENAI_MODEL` (optional; defaults to `gpt-4o-mini`)
   - `ANTHROPIC_MODEL` (optional; defaults to `claude-3-5-sonnet-20240620`)
   - `GEMINI_MODEL` (optional; defaults to `gemini-3.5-flash`)
+  - `TYPESAFE_MODEL` (optional; defaults to `jev-latest`)
 
 ### Fallback behavior (when AI is unavailable)
 
@@ -419,12 +456,14 @@ jobs:
       # require_provider: 'true'
       # no_ai: 'true'
       # why: 'true'
+      # why_engine: jev
       # why_label: Reason
     secrets:
       REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
 ```
 
 ### Public contract: CLI, Action, reusable workflow, and config
@@ -454,6 +493,7 @@ precedence are treated as the public compatibility contract.
 | Require provider key    | `--require-provider` / `--no-require-provider`       | `require-provider`         | `require_provider`         | `requireProvider`, default `false`                          |
 | Deterministic mode      | `--no-ai` / `--ai`                                   | `no-ai`                    | `no_ai`                    | `noAi`, default `false`                                     |
 | WHY extraction          | `--why` / `--no-why`                                 | `why`                      | `why`                      | `why`, default `false`                                      |
+| WHY engine              | `--why-engine`                                       | `why-engine`               | `why_engine`               | `whyEngine`, default `llm`; experimental `jev`              |
 | WHY PR limit            | `--why-max-prs`                                      | `why-max-prs`              | `why_max_prs`              | `whyMaxPrs`, default `30`                                   |
 | WHY chars per PR        | `--why-max-chars-per-pr`                             | `why-max-chars-per-pr`     | `why_max_chars_per_pr`     | `whyMaxCharsPerPr`, default `800`                           |
 | WHY confidence          | `--why-confidence`                                   | `why-confidence`           | `why_confidence`           | `whyConfidence`, default `medium`                           |

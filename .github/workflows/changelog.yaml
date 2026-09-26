@@ -60,6 +60,9 @@ on:
       why:
         required: false
         type: string
+      why_engine:
+        required: false
+        type: string
       why_max_prs:
         required: false
         type: string
@@ -86,6 +89,8 @@ on:
       ANTHROPIC_API_KEY:
         required: false
       GEMINI_API_KEY:
+        required: false
+      TYPESAFE_API_KEY:
         required: false
 
 jobs:
@@ -119,6 +124,7 @@ jobs:
           require-provider: ${{ inputs.require_provider }}
           no-ai: ${{ inputs.no_ai }}
           why: ${{ inputs.why }}
+          why-engine: ${{ inputs.why_engine }}
           why-max-prs: ${{ inputs.why_max_prs }}
           why-max-chars-per-pr: ${{ inputs.why_max_chars_per_pr }}
           why-confidence: ${{ inputs.why_confidence }}
@@ -131,3 +137,4 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}

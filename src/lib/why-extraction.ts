@@ -3,6 +3,7 @@ import type { fetchPRDetails } from '@/lib/github.js';
 import type { CliOptions } from '@/schema/cli.js';
 import type { LLMOutput } from '@/types/llm.js';
 import type { Provider } from '@/types/provider.js';
+import type { WhyExtractor } from '@/types/why-extractor.js';
 import type { WhyDiagnostics } from '@/types/why.js';
 import {
   applyWhyNotesToSection,
@@ -25,10 +26,16 @@ type RunWhyExtractionParams = {
   cli: CliOptions;
   /** Generated changelog output before WHY notes are applied. */
   llm: LLMOutput;
-  /** Selected provider implementation. */
+  /** Whether changelog generation completed through the selected LLM provider. */
+  changelogAiUsed: boolean;
+  /** Main LLM provider, retained as the default WHY extractor. */
   provider: Provider;
-  /** Whether the selected provider has an API key. */
+  /** Whether the main LLM provider has an API key. */
   hasProviderKey: boolean;
+  /** Adapter selected only for optional WHY enrichment. */
+  whyExtractor?: WhyExtractor;
+  /** Whether the selected WHY extractor has an API key. */
+  hasWhyExtractorKey?: boolean;
   /** Repository owner or org. */
   owner: string;
   /** Repository name. */
@@ -48,9 +55,14 @@ type RunWhyExtractionResult = {
   diagnostics: WhyDiagnostics;
 };
 
-function createEmptyDiagnostics(enabled: boolean): WhyDiagnostics {
+function createEmptyDiagnostics(
+  enabled: boolean,
+  engine: WhyDiagnostics['engine'],
+): WhyDiagnostics {
   return {
     enabled,
+    engine,
+    selectionDiagnostics: [],
     aiUsed: false,
     targetsFound: 0,
     prBodiesFetched: 0,
@@ -70,16 +82,18 @@ export async function runWhyExtraction(
   params: RunWhyExtractionParams,
 ): Promise<RunWhyExtractionResult> {
   const { cli, llm } = params;
-  const diagnostics = createEmptyDiagnostics(cli.why);
+  const diagnostics = createEmptyDiagnostics(cli.why, cli.whyEngine);
+  const whyExtractor = params.whyExtractor ?? params.provider;
+  const hasWhyExtractorKey = params.hasWhyExtractorKey ?? params.hasProviderKey;
   if (!cli.why) return { llm, diagnostics };
 
   if (cli.noAi) {
     diagnostics.fallbackReasons.push('WHY extraction skipped: --no-ai is set');
     return { llm, diagnostics };
   }
-  if (!params.hasProviderKey) {
+  if (!hasWhyExtractorKey) {
     diagnostics.fallbackReasons.push(
-      `WHY extraction skipped: missing API key for ${params.provider.name}`,
+      `WHY extraction skipped: missing API key for ${whyExtractor.name}`,
     );
     return { llm, diagnostics };
   }
@@ -132,11 +146,13 @@ export async function runWhyExtraction(
 
   let providerOutput;
   try {
-    providerOutput = await params.provider.extractWhyNotes({
+    providerOutput = await whyExtractor.extractWhyNotes({
       language: cli.language,
       whyLabel: cli.whyLabel,
       items: boundedItems,
     });
+    diagnostics.selectionDiagnostics =
+      providerOutput.selectionDiagnostics ?? [];
     diagnostics.aiUsed = true;
   } catch (error) {
     const message = isError(error) ? error.message : String(error);
@@ -147,13 +163,16 @@ export async function runWhyExtraction(
     return { llm, diagnostics };
   }
 
-  // WHY: A successful WHY request means the final output did use an LLM,
-  // even when confidence filtering later rejects every returned note.
-  const prBodyAfterAiUse = removeFallbackNote(llm.pr_body);
-  const llmAfterAiUse: LLMOutput =
-    prBodyAfterAiUse === llm.pr_body
-      ? llm
-      : { ...llm, pr_body: prBodyAfterAiUse };
+  // WHY: Jev may enrich a deterministic changelog, but that does not make the
+  // changelog-generation fallback note false. Only the generation stage can
+  // remove its own fallback annotation.
+  let llmAfterWhyEnrichment = llm;
+  if (params.changelogAiUsed) {
+    const prBodyAfterAiUse = removeFallbackNote(llm.pr_body);
+    if (prBodyAfterAiUse !== llm.pr_body) {
+      llmAfterWhyEnrichment = { ...llm, pr_body: prBodyAfterAiUse };
+    }
+  }
 
   const accepted = acceptWhyNotes(
     providerOutput,
@@ -167,7 +186,7 @@ export async function runWhyExtraction(
     diagnostics.fallbackReasons.push(
       'WHY extraction skipped: provider returned no trusted notes',
     );
-    return { llm: llmAfterAiUse, diagnostics };
+    return { llm: llmAfterWhyEnrichment, diagnostics };
   }
 
   const notesByPr = new Map(
@@ -176,15 +195,15 @@ export async function runWhyExtraction(
   diagnostics.notesRendered = acceptedNotes.length;
   return {
     llm: {
-      ...llmAfterAiUse,
+      ...llmAfterWhyEnrichment,
       new_section_markdown: applyWhyNotesToSection(
-        llmAfterAiUse.new_section_markdown,
+        llmAfterWhyEnrichment.new_section_markdown,
         notesByPr,
         cli.whyLabel,
         repository,
       ),
       pr_body: appendWhyPreview(
-        llmAfterAiUse.pr_body,
+        llmAfterWhyEnrichment.pr_body,
         acceptedNotes,
         cli.whyLabel,
       ),

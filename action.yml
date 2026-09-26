@@ -65,6 +65,9 @@ inputs:
   why:
     description: "If 'true', extract short WHY notes from PR descriptions"
     required: false
+  why-engine:
+    description: 'WHY extraction engine to use (llm|jev)'
+    required: false
   why-max-prs:
     description: 'Maximum number of PRs to inspect for WHY extraction'
     required: false
@@ -122,6 +125,7 @@ runs:
         INPUT_REQUIRE_PROVIDER: ${{ inputs['require-provider'] }}
         INPUT_NO_AI: ${{ inputs['no-ai'] }}
         INPUT_WHY: ${{ inputs.why }}
+        INPUT_WHY_ENGINE: ${{ inputs['why-engine'] }}
         INPUT_WHY_MAX_PRS: ${{ inputs['why-max-prs'] }}
         INPUT_WHY_MAX_CHARS_PER_PR: ${{ inputs['why-max-chars-per-pr'] }}
         INPUT_WHY_CONFIDENCE: ${{ inputs['why-confidence'] }}
@@ -207,6 +211,9 @@ runs:
         elif [ "${INPUT_WHY:-}" = "false" ]; then
           CMD+=(--no-why)
         fi
+        if [ -n "${INPUT_WHY_ENGINE:-}" ]; then
+          CMD+=(--why-engine "${INPUT_WHY_ENGINE}")
+        fi
         if [ -n "${INPUT_WHY_MAX_PRS:-}" ]; then
           CMD+=(--why-max-prs "${INPUT_WHY_MAX_PRS}")
         fi
@@ -230,3 +237,4 @@ runs:
 #     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 #     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 #     GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+#     TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}

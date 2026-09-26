@@ -57,6 +57,10 @@ export async function parseCliArgs(
     .option('require-provider', { type: 'boolean' })
     .option('ai', { type: 'boolean' })
     .option('why', { type: 'boolean' })
+    .option('why-engine', {
+      type: 'string',
+      choices: ['llm', 'jev'] as const,
+    })
     .option('why-max-prs', { type: 'number' })
     .option('why-max-chars-per-pr', { type: 'number' })
     .option('why-confidence', {
@@ -89,6 +93,7 @@ export async function parseCliArgs(
     requireProvider: parsed['require-provider'],
     noAi: isUndefined(parsed.ai) ? undefined : !parsed.ai,
     why: parsed.why,
+    whyEngine: parsed['why-engine'],
     whyMaxPrs: parsed['why-max-prs'],
     whyMaxCharsPerPr: parsed['why-max-chars-per-pr'],
     whyConfidence: parsed['why-confidence'],

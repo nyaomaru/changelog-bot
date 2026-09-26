@@ -18,10 +18,12 @@ export const EnvSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
+  TYPESAFE_API_KEY: z.string().min(1).optional(),
   REPO_FULL_NAME: z.string().min(1).optional(),
   OPENAI_MODEL: z.string().optional(),
   ANTHROPIC_MODEL: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),
+  TYPESAFE_MODEL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
