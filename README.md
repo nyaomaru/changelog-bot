@@ -144,9 +144,9 @@ for example with `WHY:`, `because`, or `in order to`.
 
 Jev is an opt-in WHY-only engine; it is not a `--provider` value and does not
 generate the changelog itself. It independently evaluates whether each supplied
-PR-description candidate explicitly states a reason, then renders the strongest
-accepted source text without
-paraphrasing it. This keeps the WHY note evidence-backed despite Jev's
+PR-description candidate explicitly states a reason and whether that reason
+applies to the changelog change, then renders the strongest accepted source text
+without paraphrasing it. This keeps the WHY note evidence-backed despite Jev's
 non-generative API.
 
 ```sh
@@ -170,9 +170,35 @@ The composite Action accepts `why-engine: jev`; the reusable workflow accepts
 `why_engine: jev`. Pass `TYPESAFE_API_KEY` through the Action step environment
 or reusable-workflow secret respectively.
 
-Jev maps an explicit-rationale probability of `0.50` or greater to `low`, `0.60`
-or greater to `medium` (the default), and `0.80` or greater to `high`. These
-experimental thresholds may change as the evaluation corpus grows.
+Jev accepts a candidate only when both its explicit-rationale probability and
+its change-relevance probability are at least `0.50`. It maps the lower of those
+two probabilities to `low` at `0.50` or greater, `medium` at `0.60` or greater
+(the default), and `high` at `0.80` or greater. These experimental thresholds
+may change as the evaluation corpus grows.
+
+### Evaluate Jev WHY selection
+
+`pnpm eval:why` runs the labeled WHY corpus through Jev and one existing LLM
+provider, then prints precision, recall, F1, source-candidate preservation,
+per-case selections, latency, failures, and API-reported token usage as JSON.
+Preservation measures
+whether an engine returned the original candidate verbatim; it is diagnostic for
+Jev and not a quality comparison with LLM-generated paraphrases. Set
+`TYPESAFE_API_KEY` and the selected provider key; `WHY_EVALUATION_PROVIDER`
+optionally selects `openai`, `anthropic`, or `gemini` and defaults to `openai`.
+
+Token usage supports cost comparison against each provider's current billing
+rate. The runner deliberately does not estimate currency because model prices
+and account contracts can differ.
+
+For Jev, the report also includes Brier score, mean probability for labeled
+positive and negative candidates, and the precision / recall / F1 trade-off at
+the experimental `0.50`, `0.60`, and `0.80` thresholds. A case may label more
+than one candidate as acceptable when each is valid source evidence.
+
+The corpus includes repository PR material and boundary fixtures, including an
+explicit but unrelated rationale. It is intended to guide threshold and
+relevance changes; it does not claim that either engine is production-ready.
 
 ### Force a specific model (example: gpt-4o-mini)
 

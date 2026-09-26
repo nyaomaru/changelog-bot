@@ -30,6 +30,7 @@ import {
   WHY_EXTRACTION_SYSTEM_PROMPT,
 } from '@/providers/why.js';
 import { ProviderBase } from '@/providers/base.js';
+import type { WhyExtractionUsage } from '@/types/why-extractor.js';
 
 /** Subset of the OpenAI Responses API response payload we rely on. */
 type OpenAIResponse = {
@@ -43,6 +44,13 @@ type OpenAIResponse = {
       text?: string;
     }>;
   }>;
+  /** Token accounting reported by the API. */
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    prompt_tokens?: number;
+    completion_tokens?: number;
+  };
 };
 
 const SYSTEM_OPENAI_CLASSIFY =
@@ -73,6 +81,24 @@ function extractOpenAiClassificationResponse(json: unknown): string {
  */
 function extractOpenAiResponseText(response: OpenAIResponse): string {
   return response.output_text || response.output?.[0]?.content?.[0]?.text || '';
+}
+
+/**
+ * Normalize OpenAI token accounting when the API includes it.
+ * @param response OpenAI response payload.
+ * @returns Input and output token counts, or undefined when omitted by the API.
+ */
+function extractOpenAiWhyUsage(
+  response: OpenAIResponse,
+): WhyExtractionUsage | undefined {
+  const inputTokens =
+    response.usage?.input_tokens ?? response.usage?.prompt_tokens;
+  const outputTokens =
+    response.usage?.output_tokens ?? response.usage?.completion_tokens;
+  if (typeof inputTokens !== 'number' || typeof outputTokens !== 'number') {
+    return undefined;
+  }
+  return { inputTokens, outputTokens };
 }
 
 /**
@@ -107,6 +133,7 @@ function buildOpenAiResponsePayload(
 
 export class OpenAIProvider extends ProviderBase {
   name = PROVIDER_OPENAI;
+  lastWhyExtractionUsage?: WhyExtractionUsage;
 
   constructor(config: ProviderRuntimeConfig) {
     super(config, {
@@ -188,6 +215,7 @@ export class OpenAIProvider extends ProviderBase {
   async extractWhyNotes(
     input: WhyExtractionInput,
   ): Promise<WhyExtractionOutput> {
+    this.lastWhyExtractionUsage = undefined;
     if (!input.items.length) return { items: [] };
 
     const userPrompt = JSON.stringify(buildWhyExtractionPrompt(input));
@@ -204,6 +232,7 @@ export class OpenAIProvider extends ProviderBase {
         { Authorization: `Bearer ${this.apiKey ?? ''}` },
         'OpenAI WHY extraction error',
       );
+      this.lastWhyExtractionUsage = extractOpenAiWhyUsage(response);
       return parseWhyExtractionOutput(extractOpenAiResponseText(response));
     }
 
@@ -221,12 +250,13 @@ export class OpenAIProvider extends ProviderBase {
       response_format: { type: 'json_object' },
     } as const;
 
-    const json = await postJson<unknown>(
+    const json = await postJson<OpenAIResponse>(
       OPENAI_CHAT_API,
       payload,
       { Authorization: `Bearer ${this.apiKey ?? ''}` },
       'OpenAI WHY extraction error',
     );
+    this.lastWhyExtractionUsage = extractOpenAiWhyUsage(json);
     return parseWhyExtractionOutput(extractOpenAiClassificationResponse(json));
   }
 }

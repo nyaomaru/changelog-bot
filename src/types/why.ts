@@ -26,6 +26,8 @@ export type WhySelectionDiagnostic = {
     candidateIndex: number;
     /** Probability that the candidate explicitly states the change rationale. */
     probability: number;
+    /** Probability that the candidate's reason applies to this changelog change. */
+    relevanceProbability?: number;
   }>;
 };
 
