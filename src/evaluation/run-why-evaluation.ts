@@ -2,7 +2,10 @@ import { performance } from 'node:perf_hooks';
 
 import { PROVIDER_NAMES, PROVIDER_OPENAI } from '@/constants/provider.js';
 import { WHY_EVALUATION_CORPUS } from '@/evaluation/why-corpus.js';
-import { evaluateWhySelections } from '@/evaluation/why-evaluation.js';
+import {
+  evaluateJevConfidence,
+  evaluateWhySelections,
+} from '@/evaluation/why-evaluation.js';
 import { loadAppConfig } from '@/lib/app-config.js';
 import { JevWhyExtractor } from '@/providers/jev-why.js';
 import type { ProviderName } from '@/types/llm.js';
@@ -20,6 +23,7 @@ type EvaluationEngineReport = {
   status: 'completed' | 'failed' | 'skipped';
   latencyMs?: number;
   metrics?: ReturnType<typeof evaluateWhySelections>;
+  confidence?: ReturnType<typeof evaluateJevConfidence>;
   tokenUsage?: WhyExtractionUsage;
   inputCharacters: number;
   error?: string;
@@ -65,6 +69,14 @@ async function evaluateEngine(
       status: 'completed',
       latencyMs: performance.now() - startedAt,
       metrics: evaluateWhySelections(WHY_EVALUATION_CORPUS, output.items),
+      ...(engine === 'jev'
+        ? {
+            confidence: evaluateJevConfidence(
+              WHY_EVALUATION_CORPUS,
+              output.selectionDiagnostics ?? [],
+            ),
+          }
+        : {}),
       ...(tokenUsage ? { tokenUsage } : {}),
       inputCharacters,
     };

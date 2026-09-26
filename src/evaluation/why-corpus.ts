@@ -117,6 +117,91 @@ export const WHY_EVALUATION_CORPUS: WhyEvaluationCase[] = [
     expectedSelectedCandidateIndex: null,
   },
   {
+    id: 'pr-155-template-extraction-implementation-list',
+    sourcePullRequest: 155,
+    item: {
+      prNumber: 155,
+      title: 'Improve WHY template extraction',
+      itemText: 'Improve WHY template extraction',
+      sectionTitle: 'Added',
+      trustScore: 8,
+      trustBucket: 'medium',
+      requiresHighConfidence: false,
+      candidates: [
+        'Recognize PR template WHY label blocks, support question-style headings and collapsible Why sections, and filter placeholder/template noise before sending candidates to the provider.',
+      ],
+    },
+    expectedSelectedCandidateIndex: null,
+  },
+  {
+    id: 'pr-128-release-heading-implementation-list',
+    sourcePullRequest: 128,
+    item: {
+      prNumber: 128,
+      title: 'Normalize nested release-note headings',
+      itemText: 'Normalize nested release-note headings',
+      sectionTitle: 'Fixed',
+      trustScore: 8,
+      trustBucket: 'medium',
+      requiresHighConfidence: false,
+      candidates: [
+        'Normalize stray prefixes before release-note headings, preserve H2 section boundaries, and demote nested headings while rendering CHANGELOG.md.',
+      ],
+    },
+    expectedSelectedCandidateIndex: null,
+  },
+  {
+    id: 'pr-122-config-implementation-list',
+    sourcePullRequest: 122,
+    item: {
+      prNumber: 122,
+      title: 'Add config file support',
+      itemText: 'Add config file support',
+      sectionTitle: 'Added',
+      trustScore: 8,
+      trustBucket: 'medium',
+      requiresHighConfidence: false,
+      candidates: [
+        'Load changelog-bot.config.json by default, let CLI flags override it, validate unknown keys strictly, and pass config-path through Action inputs.',
+      ],
+    },
+    expectedSelectedCandidateIndex: null,
+  },
+  {
+    id: 'pr-131-reliability-controls-implementation-list',
+    sourcePullRequest: 131,
+    item: {
+      prNumber: 131,
+      title: 'Add reliability controls',
+      itemText: 'Add reliability controls',
+      sectionTitle: 'Added',
+      trustScore: 8,
+      trustBucket: 'medium',
+      requiresHighConfidence: false,
+      candidates: [
+        'Add --no-ai, --require-provider, and --fail-on-llm-error; add dry-run diagnostics; strengthen mocked integration coverage; and document the options.',
+      ],
+    },
+    expectedSelectedCandidateIndex: null,
+  },
+  {
+    id: 'pr-135-optional-label-permission-outcome',
+    sourcePullRequest: 135,
+    item: {
+      prNumber: 135,
+      title: 'Make PR labeling permission optional',
+      itemText: 'Make PR labeling permission optional',
+      sectionTitle: 'Fixed',
+      trustScore: 9,
+      trustBucket: 'high',
+      requiresHighConfidence: false,
+      candidates: [
+        'Keep changelog PR creation successful when label application is denied because the workflow lacks issues: write permission.',
+      ],
+    },
+    expectedSelectedCandidateIndex: 0,
+  },
+  {
     id: 'fixture-japanese-explicit-rationale',
     item: {
       prNumber: 90_001,

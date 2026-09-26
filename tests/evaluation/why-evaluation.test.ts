@@ -1,7 +1,10 @@
 import { describe, expect, test } from '@jest/globals';
 
 import { WHY_EVALUATION_CORPUS } from '@/evaluation/why-corpus.js';
-import { evaluateWhySelections } from '@/evaluation/why-evaluation.js';
+import {
+  evaluateJevConfidence,
+  evaluateWhySelections,
+} from '@/evaluation/why-evaluation.js';
 import type { WhyEvaluationCase } from '@/evaluation/why-evaluation.js';
 
 const CASES: WhyEvaluationCase[] = [
@@ -50,6 +53,10 @@ describe('evaluateWhySelections', () => {
           ],
         ).toBeDefined();
       }
+      for (const candidateIndex of evaluationCase.acceptableCandidateIndexes ??
+        []) {
+        expect(evaluationCase.item.candidates[candidateIndex]).toBeDefined();
+      }
     }
   });
 
@@ -97,6 +104,70 @@ describe('evaluateWhySelections', () => {
           selected: true,
           selectedCandidateIndex: 0,
           preservesExpectedCandidate: false,
+        },
+      ],
+    });
+  });
+
+  test('reports Jev probability calibration proxies and threshold trade-offs', () => {
+    const metrics = evaluateJevConfidence(CASES, [
+      {
+        prNumber: 1,
+        questionType: 'noul',
+        selectedOption: 'candidate_0',
+        selectedCandidateIndex: 0,
+        selectionProbability: 0.9,
+        mappedConfidence: 'high',
+        candidateProbabilities: [
+          { candidateIndex: 0, probability: 0.9, relevanceProbability: 0.9 },
+        ],
+      },
+      {
+        prNumber: 2,
+        questionType: 'noul',
+        selectedOption: 'candidate_0',
+        selectedCandidateIndex: 0,
+        selectionProbability: 0.7,
+        mappedConfidence: 'medium',
+        candidateProbabilities: [
+          { candidateIndex: 0, probability: 0.7, relevanceProbability: 0.7 },
+        ],
+      },
+    ]);
+
+    expect(metrics.brierScore).toBeCloseTo(0.25);
+    expect({ ...metrics, brierScore: 0.25 }).toEqual({
+      candidateCount: 2,
+      brierScore: 0.25,
+      meanPositiveProbability: 0.9,
+      meanNegativeProbability: 0.7,
+      thresholds: [
+        {
+          threshold: 0.5,
+          truePositives: 1,
+          falsePositives: 1,
+          falseNegatives: 0,
+          precision: 0.5,
+          recall: 1,
+          f1: 2 / 3,
+        },
+        {
+          threshold: 0.6,
+          truePositives: 1,
+          falsePositives: 1,
+          falseNegatives: 0,
+          precision: 0.5,
+          recall: 1,
+          f1: 2 / 3,
+        },
+        {
+          threshold: 0.8,
+          truePositives: 1,
+          falsePositives: 0,
+          falseNegatives: 0,
+          precision: 1,
+          recall: 1,
+          f1: 1,
         },
       ],
     });

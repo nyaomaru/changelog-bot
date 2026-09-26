@@ -191,6 +191,11 @@ Token usage supports cost comparison against each provider's current billing
 rate. The runner deliberately does not estimate currency because model prices
 and account contracts can differ.
 
+For Jev, the report also includes Brier score, mean probability for labeled
+positive and negative candidates, and the precision / recall / F1 trade-off at
+the experimental `0.50`, `0.60`, and `0.80` thresholds. A case may label more
+than one candidate as acceptable when each is valid source evidence.
+
 The corpus includes repository PR material and boundary fixtures, including an
 explicit but unrelated rationale. It is intended to guide threshold and
 relevance changes; it does not claim that either engine is production-ready.

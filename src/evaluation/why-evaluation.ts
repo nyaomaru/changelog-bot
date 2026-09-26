@@ -1,4 +1,8 @@
-import type { WhyExtractionItem, WhyExtractionResult } from '@/types/why.js';
+import type {
+  WhyExtractionItem,
+  WhyExtractionResult,
+  WhySelectionDiagnostic,
+} from '@/types/why.js';
 
 /** One labeled candidate set used to compare WHY extractors. */
 export type WhyEvaluationCase = {
@@ -10,6 +14,8 @@ export type WhyEvaluationCase = {
   item: WhyExtractionItem;
   /** Expected accepted candidate index, or null when no WHY note is valid. */
   expectedSelectedCandidateIndex: number | null;
+  /** Other candidate indexes that are also valid WHY evidence for this case. */
+  acceptableCandidateIndexes?: readonly number[];
 };
 
 /** Precision, recall, and source-selection metrics for one extractor run. */
@@ -58,8 +64,89 @@ export type WhyEvaluationOutcome = {
   preservesExpectedCandidate: boolean;
 };
 
+/** Selection quality after applying one candidate probability threshold. */
+export type WhyThresholdMetrics = {
+  /** Probability required to accept a candidate. */
+  threshold: number;
+  /** Correctly accepted PR candidate sets. */
+  truePositives: number;
+  /** Incorrectly accepted PR candidate sets. */
+  falsePositives: number;
+  /** Positive PR candidate sets omitted at this threshold. */
+  falseNegatives: number;
+  /** Fraction of accepted candidate sets that should be accepted. */
+  precision: number | null;
+  /** Fraction of positive candidate sets accepted at this threshold. */
+  recall: number | null;
+  /** Harmonic mean of precision and recall. */
+  f1: number | null;
+};
+
+/** Candidate-probability quality and threshold trade-offs for a Jev run. */
+export type JevConfidenceMetrics = {
+  /** Number of labeled source candidates evaluated by Jev. */
+  candidateCount: number;
+  /** Mean squared error between combined probability and candidate labels. */
+  brierScore: number | null;
+  /** Mean combined probability for accepted source candidates. */
+  meanPositiveProbability: number | null;
+  /** Mean combined probability for rejected source candidates. */
+  meanNegativeProbability: number | null;
+  /** Acceptance metrics at the experimental probability thresholds. */
+  thresholds: WhyThresholdMetrics[];
+};
+
 function ratio(numerator: number, denominator: number): number | null {
   return denominator === 0 ? null : numerator / denominator;
+}
+
+function expectedCandidateIndexes(
+  evaluationCase: WhyEvaluationCase,
+): readonly number[] {
+  if (evaluationCase.acceptableCandidateIndexes) {
+    return evaluationCase.acceptableCandidateIndexes;
+  }
+  return evaluationCase.expectedSelectedCandidateIndex === null
+    ? []
+    : [evaluationCase.expectedSelectedCandidateIndex];
+}
+
+function thresholdMetrics(
+  cases: readonly WhyEvaluationCase[],
+  diagnosticsByPrNumber: ReadonlyMap<number, WhySelectionDiagnostic>,
+  threshold: number,
+): WhyThresholdMetrics {
+  let truePositives = 0;
+  let falsePositives = 0;
+  let falseNegatives = 0;
+  for (const evaluationCase of cases) {
+    const diagnostic = diagnosticsByPrNumber.get(evaluationCase.item.prNumber);
+    if (!diagnostic) {
+      throw new Error(
+        `Jev confidence evaluation is missing diagnostics for PR #${evaluationCase.item.prNumber}`,
+      );
+    }
+    const expectedSelection =
+      expectedCandidateIndexes(evaluationCase).length > 0;
+    const selected = diagnostic.selectionProbability >= threshold;
+    if (expectedSelection && selected) truePositives += 1;
+    if (!expectedSelection && selected) falsePositives += 1;
+    if (expectedSelection && !selected) falseNegatives += 1;
+  }
+  const precision = ratio(truePositives, truePositives + falsePositives);
+  const recall = ratio(truePositives, truePositives + falseNegatives);
+  return {
+    threshold,
+    truePositives,
+    falsePositives,
+    falseNegatives,
+    precision,
+    recall,
+    f1:
+      precision === null || recall === null || precision + recall === 0
+        ? null
+        : (2 * precision * recall) / (precision + recall),
+  };
 }
 
 /**
@@ -101,14 +188,16 @@ export function evaluateWhySelections(
   const outcomes: WhyEvaluationOutcome[] = [];
   for (const evaluationCase of cases) {
     const expectedIndex = evaluationCase.expectedSelectedCandidateIndex;
-    const expectedSelection = expectedIndex !== null;
+    const expectedIndexes = expectedCandidateIndexes(evaluationCase);
+    const expectedSelection = expectedIndexes.length > 0;
     const predicted = outputByPrNumber.get(evaluationCase.item.prNumber);
     const predictedSelection = predicted !== undefined;
     const selectedCandidateIndex = predicted
       ? evaluationCase.item.candidates.indexOf(predicted.why)
       : -1;
     const preservesExpectedCandidate =
-      expectedIndex !== null && selectedCandidateIndex === expectedIndex;
+      selectedCandidateIndex !== -1 &&
+      expectedIndexes.includes(selectedCandidateIndex);
     outcomes.push({
       id: evaluationCase.id,
       prNumber: evaluationCase.item.prNumber,
@@ -159,5 +248,62 @@ export function evaluateWhySelections(
     ),
     unexpectedSelections,
     outcomes,
+  };
+}
+
+/**
+ * Evaluate Jev's raw candidate probabilities independently of the active threshold.
+ * @param cases Labeled candidate sets sent to Jev.
+ * @param diagnostics Jev decision diagnostics returned for the same candidate sets.
+ * @returns Probability calibration proxy and acceptance trade-offs.
+ */
+export function evaluateJevConfidence(
+  cases: readonly WhyEvaluationCase[],
+  diagnostics: readonly WhySelectionDiagnostic[],
+): JevConfidenceMetrics {
+  const diagnosticsByPrNumber = new Map<number, WhySelectionDiagnostic>();
+  for (const diagnostic of diagnostics) {
+    diagnosticsByPrNumber.set(diagnostic.prNumber, diagnostic);
+  }
+
+  const positiveProbabilities: number[] = [];
+  const negativeProbabilities: number[] = [];
+  let squaredErrorSum = 0;
+  let candidateCount = 0;
+  for (const evaluationCase of cases) {
+    const diagnostic = diagnosticsByPrNumber.get(evaluationCase.item.prNumber);
+    if (!diagnostic) {
+      throw new Error(
+        `Jev confidence evaluation is missing diagnostics for PR #${evaluationCase.item.prNumber}`,
+      );
+    }
+    const expectedIndexes = expectedCandidateIndexes(evaluationCase);
+    for (const candidate of diagnostic.candidateProbabilities) {
+      const probability = Math.min(
+        candidate.probability,
+        candidate.relevanceProbability ?? candidate.probability,
+      );
+      const expected = expectedIndexes.includes(candidate.candidateIndex)
+        ? 1
+        : 0;
+      squaredErrorSum += (probability - expected) ** 2;
+      candidateCount += 1;
+      if (expected === 1) positiveProbabilities.push(probability);
+      else negativeProbabilities.push(probability);
+    }
+  }
+
+  const mean = (values: readonly number[]): number | null =>
+    values.length === 0
+      ? null
+      : values.reduce((sum, value) => sum + value, 0) / values.length;
+  return {
+    candidateCount,
+    brierScore: ratio(squaredErrorSum, candidateCount),
+    meanPositiveProbability: mean(positiveProbabilities),
+    meanNegativeProbability: mean(negativeProbabilities),
+    thresholds: [0.5, 0.6, 0.8].map((threshold) =>
+      thresholdMetrics(cases, diagnosticsByPrNumber, threshold),
+    ),
   };
 }
