@@ -32,10 +32,10 @@ export type WhyEvaluationMetrics = {
   recall: number | null;
   /** Harmonic mean of precision and recall. */
   f1: number | null;
-  /** Positive cases whose returned text is the expected source candidate. */
-  exactSourceSelections: number;
-  /** Exact source selection rate among labeled positive cases. */
-  exactSourceSelectionRate: number | null;
+  /** Positive cases whose returned text preserves the expected source candidate. */
+  exactCandidatePreservations: number;
+  /** Source-candidate preservation rate among labeled positive cases. */
+  exactCandidatePreservationRate: number | null;
   /** Returned notes whose PR number is not part of the corpus. */
   unexpectedSelections: number;
   /** Per-case decisions used to diagnose metric changes. */
@@ -54,8 +54,8 @@ export type WhyEvaluationOutcome = {
   selected: boolean;
   /** Index of an exactly preserved source candidate, when one was returned. */
   selectedCandidateIndex: number | null;
-  /** Whether the returned note is the expected source candidate. */
-  matchesExpectedSource: boolean;
+  /** Whether the returned note preserves the expected source candidate. */
+  preservesExpectedCandidate: boolean;
 };
 
 function ratio(numerator: number, denominator: number): number | null {
@@ -97,7 +97,7 @@ export function evaluateWhySelections(
   let truePositives = 0;
   let falsePositives = 0;
   let falseNegatives = 0;
-  let exactSourceSelections = 0;
+  let exactCandidatePreservations = 0;
   const outcomes: WhyEvaluationOutcome[] = [];
   for (const evaluationCase of cases) {
     const expectedIndex = evaluationCase.expectedSelectedCandidateIndex;
@@ -107,7 +107,7 @@ export function evaluateWhySelections(
     const selectedCandidateIndex = predicted
       ? evaluationCase.item.candidates.indexOf(predicted.why)
       : -1;
-    const matchesExpectedSource =
+    const preservesExpectedCandidate =
       expectedIndex !== null && selectedCandidateIndex === expectedIndex;
     outcomes.push({
       id: evaluationCase.id,
@@ -116,15 +116,15 @@ export function evaluateWhySelections(
       selected: predictedSelection,
       selectedCandidateIndex:
         selectedCandidateIndex === -1 ? null : selectedCandidateIndex,
-      matchesExpectedSource,
+      preservesExpectedCandidate,
     });
     if (expectedSelection) expectedSelections += 1;
     if (predictedSelection) predictedSelections += 1;
 
     if (expectedSelection && predictedSelection) {
       truePositives += 1;
-      if (matchesExpectedSource) {
-        exactSourceSelections += 1;
+      if (preservesExpectedCandidate) {
+        exactCandidatePreservations += 1;
       }
       continue;
     }
@@ -152,8 +152,11 @@ export function evaluateWhySelections(
     precision,
     recall,
     f1,
-    exactSourceSelections,
-    exactSourceSelectionRate: ratio(exactSourceSelections, expectedSelections),
+    exactCandidatePreservations,
+    exactCandidatePreservationRate: ratio(
+      exactCandidatePreservations,
+      expectedSelections,
+    ),
     unexpectedSelections,
     outcomes,
   };

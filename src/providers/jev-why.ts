@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 import type { TypeSafeRuntimeConfig } from '@/types/config.js';
-import type { WhyExtractor } from '@/types/why-extractor.js';
+import type {
+  WhyExtractionUsage,
+  WhyExtractor,
+} from '@/types/why-extractor.js';
 import type {
   WhyConfidence,
   WhyExtractionInput,
@@ -106,6 +109,7 @@ function retryAfterDelay(retryAfterHeader: string | null): number | undefined {
  */
 export class JevWhyExtractor implements WhyExtractor {
   readonly name = 'jev';
+  lastWhyExtractionUsage?: WhyExtractionUsage;
 
   private readonly apiKey?: string;
   private readonly model: string;
@@ -124,6 +128,7 @@ export class JevWhyExtractor implements WhyExtractor {
     input: WhyExtractionInput,
   ): Promise<WhyExtractionOutput> {
     if (!this.apiKey) throw new Error('Missing TYPESAFE_API_KEY');
+    this.lastWhyExtractionUsage = undefined;
 
     const candidates: Record<
       string,
@@ -187,6 +192,10 @@ export class JevWhyExtractor implements WhyExtractor {
     if (!parsedResponse.success) {
       throw new Error('TypeSafe API returned an invalid Jev response');
     }
+    this.lastWhyExtractionUsage = {
+      inputTokens: parsedResponse.data.usage.input_tokens,
+      outputTokens: parsedResponse.data.usage.output_tokens,
+    };
 
     const items = [];
     const selectionDiagnostics: WhySelectionDiagnostic[] = [];

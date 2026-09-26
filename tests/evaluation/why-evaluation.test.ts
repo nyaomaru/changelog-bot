@@ -53,7 +53,7 @@ describe('evaluateWhySelections', () => {
     }
   });
 
-  test('reports acceptance and exact source-selection metrics', () => {
+  test('reports acceptance and exact candidate-preservation metrics', () => {
     const metrics = evaluateWhySelections(CASES, [
       {
         prNumber: 1,
@@ -78,8 +78,8 @@ describe('evaluateWhySelections', () => {
       precision: 0.5,
       recall: 1,
       f1: 2 / 3,
-      exactSourceSelections: 1,
-      exactSourceSelectionRate: 1,
+      exactCandidatePreservations: 1,
+      exactCandidatePreservationRate: 1,
       unexpectedSelections: 1,
       outcomes: [
         {
@@ -88,7 +88,7 @@ describe('evaluateWhySelections', () => {
           expectedSelectedCandidateIndex: 0,
           selected: true,
           selectedCandidateIndex: 0,
-          matchesExpectedSource: true,
+          preservesExpectedCandidate: true,
         },
         {
           id: 'negative',
@@ -96,7 +96,7 @@ describe('evaluateWhySelections', () => {
           expectedSelectedCandidateIndex: null,
           selected: true,
           selectedCandidateIndex: 0,
-          matchesExpectedSource: false,
+          preservesExpectedCandidate: false,
         },
       ],
     });

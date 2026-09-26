@@ -7,7 +7,11 @@ import { loadAppConfig } from '@/lib/app-config.js';
 import { JevWhyExtractor } from '@/providers/jev-why.js';
 import type { ProviderName } from '@/types/llm.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
-import type { WhyExtractor } from '@/types/why-extractor.js';
+import type {
+  UsageReportingWhyExtractor,
+  WhyExtractionUsage,
+  WhyExtractor,
+} from '@/types/why-extractor.js';
 import { providerFactory } from '@/utils/provider.js';
 
 type EvaluationEngineReport = {
@@ -16,6 +20,7 @@ type EvaluationEngineReport = {
   status: 'completed' | 'failed' | 'skipped';
   latencyMs?: number;
   metrics?: ReturnType<typeof evaluateWhySelections>;
+  tokenUsage?: WhyExtractionUsage;
   inputCharacters: number;
   error?: string;
 };
@@ -52,12 +57,15 @@ async function evaluateEngine(
   const startedAt = performance.now();
   try {
     const output: WhyExtractionOutput = await extractor.extractWhyNotes(input);
+    const tokenUsage = (extractor as UsageReportingWhyExtractor)
+      .lastWhyExtractionUsage;
     return {
       engine,
       model,
       status: 'completed',
       latencyMs: performance.now() - startedAt,
       metrics: evaluateWhySelections(WHY_EVALUATION_CORPUS, output.items),
+      ...(tokenUsage ? { tokenUsage } : {}),
       inputCharacters,
     };
   } catch (error) {
