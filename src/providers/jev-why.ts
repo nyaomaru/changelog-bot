@@ -13,6 +13,7 @@ const TYPESAFE_SYSTEM_ONE_URL = 'https://api.typesafe.ai/v1/systemone';
 const TYPESAFE_RETRYABLE_STATUS_CODES = new Set([429, 529]);
 const TYPESAFE_MAX_ATTEMPTS = 3;
 const TYPESAFE_RETRY_DELAY_MS = 250;
+const TYPESAFE_MAX_RETRY_AFTER_DELAY_MS = 30_000;
 const JEV_MIN_EXPLICIT_WHY_PROBABILITY = 0.5;
 const JEV_MEDIUM_CONFIDENCE_PROBABILITY = 0.6;
 const JEV_HIGH_CONFIDENCE_PROBABILITY = 0.8;
@@ -63,18 +64,22 @@ function retryDelay(attempt: number): number {
 /**
  * Parses a TypeSafe Retry-After header into a delay in milliseconds.
  * @param retryAfterHeader Retry-After value returned by the API.
- * @returns Requested delay, or undefined when the header is absent or invalid.
+ * @returns Requested delay capped at 30 seconds, or undefined when the header is absent or invalid.
  */
 function retryAfterDelay(retryAfterHeader: string | null): number | undefined {
   if (!retryAfterHeader) return undefined;
 
   const normalizedHeader = retryAfterHeader.trim();
+  let delay: number;
   if (/^\d+$/.test(normalizedHeader)) {
-    return Number(normalizedHeader) * 1_000;
+    delay = Number(normalizedHeader) * 1_000;
+  } else {
+    const retryAt = Date.parse(normalizedHeader);
+    if (Number.isNaN(retryAt)) return undefined;
+    delay = Math.max(0, retryAt - Date.now());
   }
 
-  const retryAt = Date.parse(normalizedHeader);
-  return Number.isNaN(retryAt) ? undefined : Math.max(0, retryAt - Date.now());
+  return Math.min(delay, TYPESAFE_MAX_RETRY_AFTER_DELAY_MS);
 }
 
 /**
@@ -214,8 +219,8 @@ export class JevWhyExtractor implements WhyExtractor {
         );
       }
       // WHY: TypeSafe may extend throttling or capacity windows beyond our
-      // local exponential backoff. Honoring its Retry-After hint avoids
-      // consuming all attempts before that window expires.
+      // local exponential backoff. Honor its Retry-After hint, but cap it so
+      // an upstream value cannot keep a workflow running until its timeout.
       const delay =
         retryAfterDelay(response.headers.get('Retry-After')) ??
         retryDelay(attempt);
