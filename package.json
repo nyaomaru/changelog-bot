@@ -13,6 +13,7 @@
     "start": "node dist/cli.js",
     "dev": "ts-node-esm src/cli.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "eval:why": "pnpm build && node dist/evaluation/run-why-evaluation.js",
     "format": "prettier --write .",
     "check:dist": "node scripts/check-dist-alias.mjs",
     "prepack": "pnpm build",
