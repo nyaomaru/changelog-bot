@@ -68,7 +68,7 @@ export type WhyEvaluationOutcome = {
 export type WhyThresholdMetrics = {
   /** Probability required to accept a candidate. */
   threshold: number;
-  /** Correctly accepted PR candidate sets. */
+  /** Correctly accepted PR candidate sets with an allowed source candidate. */
   truePositives: number;
   /** Incorrectly accepted PR candidate sets. */
   falsePositives: number;
@@ -126,12 +126,26 @@ function thresholdMetrics(
         `Jev confidence evaluation is missing diagnostics for PR #${evaluationCase.item.prNumber}`,
       );
     }
-    const expectedSelection =
-      expectedCandidateIndexes(evaluationCase).length > 0;
-    const selected = diagnostic.selectionProbability >= threshold;
-    if (expectedSelection && selected) truePositives += 1;
-    if (!expectedSelection && selected) falsePositives += 1;
-    if (expectedSelection && !selected) falseNegatives += 1;
+    const expectedIndexes = expectedCandidateIndexes(evaluationCase);
+    const expectedSelection = expectedIndexes.length > 0;
+    const selectedCandidate = diagnostic.candidateProbabilities.reduce(
+      (best, candidate) => {
+        const probability = Math.min(
+          candidate.probability,
+          candidate.relevanceProbability ?? candidate.probability,
+        );
+        return probability > best.probability
+          ? { candidateIndex: candidate.candidateIndex, probability }
+          : best;
+      },
+      { candidateIndex: -1, probability: -1 },
+    );
+    const selected = selectedCandidate.probability >= threshold;
+    const selectedExpectedCandidate =
+      selected && expectedIndexes.includes(selectedCandidate.candidateIndex);
+    if (selectedExpectedCandidate) truePositives += 1;
+    if (selected && !selectedExpectedCandidate) falsePositives += 1;
+    if (expectedSelection && !selectedExpectedCandidate) falseNegatives += 1;
   }
   const precision = ratio(truePositives, truePositives + falsePositives);
   const recall = ratio(truePositives, truePositives + falseNegatives);

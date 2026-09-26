@@ -172,4 +172,50 @@ describe('evaluateWhySelections', () => {
       ],
     });
   });
+
+  test('counts an invalid highest-probability candidate as both an incorrect selection and a miss', () => {
+    const metrics = evaluateJevConfidence(
+      [
+        {
+          id: 'wrong-candidate',
+          item: {
+            ...CASES[0]?.item,
+            candidates: [
+              'The lookup must use the merged pull request to avoid stale data.',
+              'This explicit reason applies to another change.',
+            ],
+          },
+          expectedSelectedCandidateIndex: 0,
+        },
+      ],
+      [
+        {
+          prNumber: 1,
+          questionType: 'noul',
+          selectedOption: 'candidate_1',
+          selectedCandidateIndex: 1,
+          selectionProbability: 0.9,
+          mappedConfidence: 'high',
+          candidateProbabilities: [
+            {
+              candidateIndex: 0,
+              probability: 0.65,
+              relevanceProbability: 0.65,
+            },
+            { candidateIndex: 1, probability: 0.9, relevanceProbability: 0.9 },
+          ],
+        },
+      ],
+    );
+
+    expect(metrics.thresholds[0]).toEqual({
+      threshold: 0.5,
+      truePositives: 0,
+      falsePositives: 1,
+      falseNegatives: 1,
+      precision: 0,
+      recall: 0,
+      f1: null,
+    });
+  });
 });
