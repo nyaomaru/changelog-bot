@@ -14,6 +14,7 @@ const TYPESAFE_RETRYABLE_STATUS_CODES = new Set([429, 529]);
 const TYPESAFE_MAX_ATTEMPTS = 3;
 const TYPESAFE_RETRY_DELAY_MS = 250;
 const TYPESAFE_MAX_RETRY_AFTER_DELAY_MS = 30_000;
+const TYPESAFE_REQUEST_TIMEOUT_MS = 30_000;
 const JEV_MIN_EXPLICIT_WHY_PROBABILITY = 0.5;
 const JEV_MEDIUM_CONFIDENCE_PROBABILITY = 0.6;
 const JEV_HIGH_CONFIDENCE_PROBABILITY = 0.8;
@@ -32,9 +33,11 @@ const JevSystemOneResponseSchema = z.object({
   }),
 });
 
+type JevInstruction = string | Record<string, unknown> | unknown[] | null;
+
 type JevNoulQuestion = {
   type: 'noul';
-  instructions: string;
+  instructions: JevInstruction;
   criteria: { true: string; false: string };
 };
 
@@ -42,8 +45,12 @@ function candidateOption(index: number): string {
   return `candidate_${index}`;
 }
 
-function questionId(prNumber: number, candidateIndex: number): string {
-  return `pr_${prNumber}_candidate_${candidateIndex}_is_explicit_why`;
+function candidateId(prNumber: number, candidateIndex: number): string {
+  return `pr_${prNumber}_candidate_${candidateIndex}`;
+}
+
+function questionId(candidate: string): string {
+  return `${candidate}_is_explicit_why`;
 }
 
 function confidenceBucket(probability: number): WhyConfidence {
@@ -107,35 +114,45 @@ export class JevWhyExtractor implements WhyExtractor {
   ): Promise<WhyExtractionOutput> {
     if (!this.apiKey) throw new Error('Missing TYPESAFE_API_KEY');
 
+    const candidates: Record<
+      string,
+      {
+        prNumber: number;
+        prTitle: string;
+        changelogItem: string;
+        text: string;
+      }
+    > = {};
     const questions: Record<string, JevNoulQuestion> = {};
     const state = {
-      task: 'Evaluate each supplied source candidate independently. A candidate passes only when it explicitly states why the pull request change was made; reject vague, implied, speculative, or implementation-only text.',
+      task: 'Evaluate each supplied source candidate independently. A candidate passes only when it explicitly states why its changelog change was made; reject vague, implied, speculative, or implementation-only text.',
       language: input.language,
-      pullRequests: input.items.map((item) => {
-        for (const [index] of item.candidates.entries()) {
-          questions[questionId(item.prNumber, index)] = {
-            type: 'noul',
-            instructions: `Does candidate ${candidateOption(index)} explicitly state why this pull request change was made?`,
-            criteria: {
-              true: 'The candidate directly states a concrete reason, motivation, problem, or intended outcome for the change.',
-              false:
-                'The candidate only describes what changed, implementation details, or an indirect/speculative reason.',
-            },
-          };
-        }
-        return {
-          prNumber: item.prNumber,
-          title: item.title,
-          changelogItem: item.itemText,
-          candidates: Object.fromEntries(
-            item.candidates.map((candidate, index) => [
-              candidateOption(index),
-              candidate,
-            ]),
-          ),
-        };
-      }),
+      candidates,
     };
+    for (const item of input.items) {
+      for (const [index, text] of item.candidates.entries()) {
+        const id = candidateId(item.prNumber, index);
+        candidates[id] = {
+          prNumber: item.prNumber,
+          prTitle: item.title,
+          changelogItem: item.itemText,
+          text,
+        };
+        questions[questionId(id)] = {
+          type: 'noul',
+          instructions: {
+            question:
+              'Does the target candidate explicitly state why this changelog change was made?',
+            target: `candidates.${id}`,
+          },
+          criteria: {
+            true: 'The candidate directly states a concrete reason, motivation, problem, or intended outcome for the change.',
+            false:
+              'The candidate only describes what changed, implementation details, or an indirect/speculative reason.',
+          },
+        };
+      }
+    }
 
     const response = await this.request({
       state,
@@ -154,7 +171,7 @@ export class JevWhyExtractor implements WhyExtractor {
         (_, candidateIndex) => {
           const answer =
             parsedResponse.data.answers[
-              questionId(item.prNumber, candidateIndex)
+              questionId(candidateId(item.prNumber, candidateIndex))
             ];
           if (!answer) {
             throw new Error(
@@ -199,14 +216,7 @@ export class JevWhyExtractor implements WhyExtractor {
 
   private async request(body: unknown): Promise<unknown> {
     for (let attempt = 0; attempt < TYPESAFE_MAX_ATTEMPTS; attempt += 1) {
-      const response = await fetch(TYPESAFE_SYSTEM_ONE_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
+      const response = await this.fetchWithTimeout(body);
       if (response.ok) return response.json();
 
       const errorDetail = readErrorDetail(await response.text());
@@ -228,5 +238,36 @@ export class JevWhyExtractor implements WhyExtractor {
     }
 
     throw new Error('TypeSafe API request exhausted retries');
+  }
+
+  private async fetchWithTimeout(body: unknown): Promise<Response> {
+    const controller = new AbortController();
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, TYPESAFE_REQUEST_TIMEOUT_MS);
+
+    try {
+      return await fetch(TYPESAFE_SYSTEM_ONE_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (timedOut) {
+        throw new Error(
+          `TypeSafe API request timed out after ${TYPESAFE_REQUEST_TIMEOUT_MS / 1_000} seconds`,
+          { cause: error },
+        );
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }

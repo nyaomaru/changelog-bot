@@ -94,9 +94,22 @@ describe('JevWhyExtractor', () => {
     expect(requestBody).toEqual(
       expect.objectContaining({
         model: 'jev-latest',
+        state: expect.objectContaining({
+          candidates: expect.objectContaining({
+            pr_123_candidate_0: expect.objectContaining({
+              prNumber: 123,
+              text: WHY_INPUT.items[0]?.candidates[0],
+            }),
+          }),
+        }),
         questions: expect.objectContaining({
           pr_123_candidate_0_is_explicit_why: expect.objectContaining({
             type: 'noul',
+            instructions: {
+              question:
+                'Does the target candidate explicitly state why this changelog change was made?',
+              target: 'candidates.pr_123_candidate_0',
+            },
             criteria: expect.objectContaining({
               true: expect.any(String),
               false: expect.any(String),
@@ -105,6 +118,82 @@ describe('JevWhyExtractor', () => {
         }),
       }),
     );
+  });
+
+  test('targets each candidate uniquely when multiple PRs use the same index', async () => {
+    const input: WhyExtractionInput = {
+      ...WHY_INPUT,
+      items: [
+        WHY_INPUT.items[0] as WhyExtractionInput['items'][number],
+        {
+          prNumber: 456,
+          title: 'Prevent stale version output',
+          itemText: 'Prevent stale version output',
+          sectionTitle: 'Fixed',
+          trustScore: 9,
+          trustBucket: 'high',
+          requiresHighConfidence: false,
+          candidates: [
+            'The version must come from the release ref to avoid stale output.',
+          ],
+        },
+      ],
+    };
+    const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model: 'jev-latest',
+          answers: {
+            pr_123_candidate_0_is_explicit_why: {
+              type: 'noul',
+              noul: 0.91,
+            },
+            pr_123_candidate_1_is_explicit_why: {
+              type: 'noul',
+              noul: 0.42,
+            },
+            pr_456_candidate_0_is_explicit_why: {
+              type: 'noul',
+              noul: 0.87,
+            },
+          },
+          usage: { input_tokens: 123, output_tokens: 4 },
+        }),
+      ),
+    );
+    global.fetch = fetchMock;
+    const extractor = new JevWhyExtractor({
+      apiKey: 'typesafe-test',
+      model: 'jev-latest',
+    });
+
+    await extractor.extractWhyNotes(input);
+
+    const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(requestBody.state.candidates).toMatchObject({
+      pr_123_candidate_0: expect.objectContaining({
+        prNumber: 123,
+        text: WHY_INPUT.items[0]?.candidates[0],
+      }),
+      pr_456_candidate_0: {
+        prNumber: 456,
+        prTitle: 'Prevent stale version output',
+        changelogItem: 'Prevent stale version output',
+        text: 'The version must come from the release ref to avoid stale output.',
+      },
+    });
+    expect(requestBody.questions).toMatchObject({
+      pr_123_candidate_0_is_explicit_why: {
+        instructions: expect.objectContaining({
+          target: 'candidates.pr_123_candidate_0',
+        }),
+      },
+      pr_456_candidate_0_is_explicit_why: {
+        instructions: expect.objectContaining({
+          target: 'candidates.pr_456_candidate_0',
+        }),
+      },
+    });
   });
 
   test('omits a PR when no candidate meets the minimum probability', async () => {
@@ -286,5 +375,35 @@ describe('JevWhyExtractor', () => {
 
     await expect(extraction).resolves.toEqual(expect.any(Object));
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('fails a request that does not respond before the timeout', async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest.fn<typeof fetch>().mockImplementation(
+      (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => reject(new Error('request aborted')),
+            { once: true },
+          );
+        }),
+    );
+    global.fetch = fetchMock;
+    const extractor = new JevWhyExtractor({
+      apiKey: 'typesafe-test',
+      model: 'jev-latest',
+    });
+
+    const extraction = extractor.extractWhyNotes(WHY_INPUT);
+    const rejection = expect(extraction).rejects.toThrow(
+      'TypeSafe API request timed out after 30 seconds',
+    );
+
+    await jest.advanceTimersByTimeAsync(29_999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await jest.advanceTimersByTimeAsync(1);
+
+    await rejection;
   });
 });

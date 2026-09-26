@@ -160,7 +160,9 @@ pnpm dlx @nyaomaru/changelog-bot \
 ```
 
 `TYPESAFE_MODEL` optionally overrides the default `jev-latest`. The engine
-retries TypeSafe's retryable `429` and `529` responses with exponential backoff.
+retries TypeSafe's retryable `429` and `529` responses with local exponential
+backoff, honoring server retry hints up to 30 seconds. Each request also times
+out after 30 seconds.
 `--no-ai` still disables this experimental path, and missing TypeSafe credentials
 skip WHY extraction with a diagnostic reason.
 
@@ -251,10 +253,12 @@ Bring your own keys and tokens as needed—`changelog-bot` only asks for what it
   - `OPENAI_API_KEY` (optional)
   - `ANTHROPIC_API_KEY` (optional)
   - `GEMINI_API_KEY` (optional)
+  - `TYPESAFE_API_KEY` (optional; required only with `--why-engine jev`)
   - `REPO_FULL_NAME` (optional, `owner/repo`; used for link resolution)
   - `OPENAI_MODEL` (optional; defaults to `gpt-4o-mini`)
   - `ANTHROPIC_MODEL` (optional; defaults to `claude-3-5-sonnet-20240620`)
   - `GEMINI_MODEL` (optional; defaults to `gemini-3.5-flash`)
+  - `TYPESAFE_MODEL` (optional; defaults to `jev-latest`)
 
 ### Fallback behavior (when AI is unavailable)
 
