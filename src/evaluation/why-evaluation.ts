@@ -3,6 +3,8 @@ import type {
   WhyExtractionResult,
   WhySelectionDiagnostic,
 } from '@/types/why.js';
+import { JEV_EVALUATION_THRESHOLDS } from '@/constants/jev.js';
+import { combinedWhyCandidateProbability } from '@/utils/why-candidate-probability.js';
 
 /** One labeled candidate set used to compare WHY extractors. */
 export type WhyEvaluationCase = {
@@ -118,19 +120,12 @@ function expectedCandidateIndexes(
 type CandidateProbability =
   WhySelectionDiagnostic['candidateProbabilities'][number];
 
-function combinedCandidateProbability(candidate: CandidateProbability): number {
-  return Math.min(
-    candidate.probability,
-    candidate.relevanceProbability ?? candidate.probability,
-  );
-}
-
 function highestProbabilityCandidate(
   candidates: readonly CandidateProbability[],
 ): { candidateIndex: number; probability: number } {
   return candidates.reduce(
     (best, candidate) => {
-      const probability = combinedCandidateProbability(candidate);
+      const probability = combinedWhyCandidateProbability(candidate);
       return probability > best.probability
         ? { candidateIndex: candidate.candidateIndex, probability }
         : best;
@@ -323,7 +318,7 @@ export function evaluateJevConfidence(
     }
     const expectedIndexes = expectedCandidateIndexes(evaluationCase);
     for (const candidate of diagnostic.candidateProbabilities) {
-      const probability = combinedCandidateProbability(candidate);
+      const probability = combinedWhyCandidateProbability(candidate);
       const expected = expectedIndexes.includes(candidate.candidateIndex)
         ? 1
         : 0;
@@ -343,7 +338,7 @@ export function evaluateJevConfidence(
     brierScore: ratio(squaredErrorSum, candidateCount),
     meanPositiveProbability: mean(positiveProbabilities),
     meanNegativeProbability: mean(negativeProbabilities),
-    thresholds: [0.5, 0.6, 0.8].map((threshold) =>
+    thresholds: JEV_EVALUATION_THRESHOLDS.map((threshold) =>
       thresholdMetrics(cases, diagnosticsByPrNumber, threshold),
     ),
   };

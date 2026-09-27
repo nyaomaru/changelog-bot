@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+import {
+  JEV_HIGH_CONFIDENCE_PROBABILITY,
+  JEV_MEDIUM_CONFIDENCE_PROBABILITY,
+  JEV_MIN_CHANGE_RELEVANCE_PROBABILITY,
+  JEV_MIN_EXPLICIT_WHY_PROBABILITY,
+  JEV_WHY_ENGINE_NAME,
+} from '@/constants/jev.js';
 import type { TypeSafeRuntimeConfig } from '@/types/config.js';
 import type {
   WhyExtractionUsage,
@@ -11,6 +18,7 @@ import type {
   WhyExtractionOutput,
   WhySelectionDiagnostic,
 } from '@/types/why.js';
+import { combinedWhyCandidateProbability } from '@/utils/why-candidate-probability.js';
 
 const TYPESAFE_SYSTEM_ONE_URL = 'https://api.typesafe.ai/v1/systemone';
 const TYPESAFE_RETRYABLE_STATUS_CODES = new Set([429, 529]);
@@ -18,10 +26,8 @@ const TYPESAFE_MAX_ATTEMPTS = 3;
 const TYPESAFE_RETRY_DELAY_MS = 250;
 const TYPESAFE_MAX_RETRY_AFTER_DELAY_MS = 30_000;
 const TYPESAFE_REQUEST_TIMEOUT_MS = 30_000;
-const JEV_MIN_EXPLICIT_WHY_PROBABILITY = 0.5;
-const JEV_MIN_CHANGE_RELEVANCE_PROBABILITY = 0.5;
-const JEV_MEDIUM_CONFIDENCE_PROBABILITY = 0.6;
-const JEV_HIGH_CONFIDENCE_PROBABILITY = 0.8;
+const TYPESAFE_MAX_ERROR_DETAIL_CHARS = 300;
+const MILLISECONDS_PER_SECOND = 1_000;
 
 const JevNoulAnswerSchema = z.object({
   type: z.literal('noul'),
@@ -75,7 +81,9 @@ function confidenceBucket(probability: number): WhyConfidence {
 
 function readErrorDetail(body: string): string {
   const normalizedBody = body.replace(/\s+/g, ' ').trim();
-  return normalizedBody ? `: ${normalizedBody.slice(0, 300)}` : '';
+  return normalizedBody
+    ? `: ${normalizedBody.slice(0, TYPESAFE_MAX_ERROR_DETAIL_CHARS)}`
+    : '';
 }
 
 function retryDelay(attempt: number): number {
@@ -93,7 +101,7 @@ function retryAfterDelay(retryAfterHeader: string | null): number | undefined {
   const normalizedHeader = retryAfterHeader.trim();
   let delay: number;
   if (/^\d+$/.test(normalizedHeader)) {
-    delay = Number(normalizedHeader) * 1_000;
+    delay = Number(normalizedHeader) * MILLISECONDS_PER_SECOND;
   } else {
     const retryAt = Date.parse(normalizedHeader);
     if (Number.isNaN(retryAt)) return undefined;
@@ -108,7 +116,7 @@ function retryAfterDelay(retryAfterHeader: string | null): number | undefined {
  * @param config API key and model resolved for this run.
  */
 export class JevWhyExtractor implements WhyExtractor {
-  readonly name = 'jev';
+  readonly name = JEV_WHY_ENGINE_NAME;
   lastWhyExtractionUsage?: WhyExtractionUsage;
 
   private readonly apiKey?: string;
@@ -129,6 +137,7 @@ export class JevWhyExtractor implements WhyExtractor {
   ): Promise<WhyExtractionOutput> {
     if (!this.apiKey) throw new Error('Missing TYPESAFE_API_KEY');
     this.lastWhyExtractionUsage = undefined;
+    if (!input.items.length) return { items: [] };
 
     const candidates: Record<
       string,
@@ -221,20 +230,19 @@ export class JevWhyExtractor implements WhyExtractor {
             candidateIndex,
             probability: explicitWhyAnswer.noul,
             relevanceProbability: changeRelevanceAnswer.noul,
-            combinedProbability: Math.min(
-              explicitWhyAnswer.noul,
-              changeRelevanceAnswer.noul,
-            ),
           };
         },
       );
       const bestCandidate = candidateProbabilities.reduce((best, candidate) =>
-        candidate.combinedProbability > best.combinedProbability
+        combinedWhyCandidateProbability(candidate) >
+        combinedWhyCandidateProbability(best)
           ? candidate
           : best,
       );
       const selectedIndex = bestCandidate?.candidateIndex;
-      const selectionProbability = bestCandidate?.combinedProbability ?? 0;
+      const selectionProbability = bestCandidate
+        ? combinedWhyCandidateProbability(bestCandidate)
+        : 0;
       const mappedConfidence = confidenceBucket(selectionProbability);
       const selectedCandidate =
         selectedIndex === undefined
@@ -252,13 +260,7 @@ export class JevWhyExtractor implements WhyExtractor {
         ...(accepted ? { selectedCandidateIndex: selectedIndex } : {}),
         selectionProbability,
         mappedConfidence,
-        candidateProbabilities: candidateProbabilities.map(
-          ({ candidateIndex, probability, relevanceProbability }) => ({
-            candidateIndex,
-            probability,
-            relevanceProbability,
-          }),
-        ),
+        candidateProbabilities,
       });
       if (!accepted) continue;
       items.push({
@@ -327,7 +329,7 @@ export class JevWhyExtractor implements WhyExtractor {
           } catch (error) {
             if (timedOut) {
               throw new Error(
-                `TypeSafe API request timed out after ${TYPESAFE_REQUEST_TIMEOUT_MS / 1_000} seconds`,
+                `TypeSafe API request timed out after ${TYPESAFE_REQUEST_TIMEOUT_MS / MILLISECONDS_PER_SECOND} seconds`,
                 { cause: error },
               );
             }
@@ -345,7 +347,7 @@ export class JevWhyExtractor implements WhyExtractor {
       clearTimeout(timeout);
       if (timedOut) {
         throw new Error(
-          `TypeSafe API request timed out after ${TYPESAFE_REQUEST_TIMEOUT_MS / 1_000} seconds`,
+          `TypeSafe API request timed out after ${TYPESAFE_REQUEST_TIMEOUT_MS / MILLISECONDS_PER_SECOND} seconds`,
           { cause: error },
         );
       }

@@ -1,6 +1,7 @@
 import { performance } from 'node:perf_hooks';
 
 import { PROVIDER_NAMES, PROVIDER_OPENAI } from '@/constants/provider.js';
+import { JEV_WHY_ENGINE_NAME } from '@/constants/jev.js';
 import { WHY_EVALUATION_CORPUS } from '@/evaluation/why-corpus.js';
 import {
   evaluateJevConfidence,
@@ -67,7 +68,7 @@ async function evaluateEngine(
       status: 'completed',
       latencyMs: performance.now() - startedAt,
       metrics: evaluateWhySelections(WHY_EVALUATION_CORPUS, output.items),
-      ...(engine === 'jev'
+      ...(engine === JEV_WHY_ENGINE_NAME
         ? {
             confidence: evaluateJevConfidence(
               WHY_EVALUATION_CORPUS,
@@ -105,7 +106,7 @@ async function run(): Promise<void> {
   // engine's latency or rate-limit behavior during a comparison.
   const engines = [
     await evaluateEngine(
-      'jev',
+      JEV_WHY_ENGINE_NAME,
       appConfig.typesafe.model,
       Boolean(appConfig.typesafe.apiKey),
       jev,

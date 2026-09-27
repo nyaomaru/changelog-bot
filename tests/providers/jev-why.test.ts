@@ -31,6 +31,21 @@ describe('JevWhyExtractor', () => {
     jest.useRealTimers();
   });
 
+  test('does not call TypeSafe when there are no WHY items', async () => {
+    const fetchMock = jest.fn<typeof fetch>();
+    global.fetch = fetchMock;
+    const extractor = new JevWhyExtractor({
+      apiKey: 'typesafe-test',
+      model: 'jev-latest',
+    });
+
+    await expect(
+      extractor.extractWhyNotes({ ...WHY_INPUT, items: [] }),
+    ).resolves.toEqual({ items: [] });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   test('renders the candidate with the strongest explicit-WHY probability', async () => {
     const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(
       new Response(
