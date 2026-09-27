@@ -19,3 +19,8 @@ export const JEV_EVALUATION_THRESHOLDS = [
   JEV_MEDIUM_CONFIDENCE_PROBABILITY,
   JEV_HIGH_CONFIDENCE_PROBABILITY,
 ] as const;
+
+/** Fine-grained probability steps for threshold sweep calibration. */
+export const JEV_CALIBRATION_SWEEP_THRESHOLDS = [
+  0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9,
+] as const;

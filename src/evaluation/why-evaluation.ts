@@ -315,11 +315,13 @@ export function evaluateWhySelections(
  * Evaluate Jev's raw candidate probabilities independently of the active threshold.
  * @param cases Labeled candidate sets sent to Jev.
  * @param diagnostics Jev decision diagnostics returned for the same candidate sets.
+ * @param thresholds Optional probability thresholds to evaluate (defaults to JEV_EVALUATION_THRESHOLDS).
  * @returns Probability calibration proxy and acceptance trade-offs.
  */
 export function evaluateJevConfidence(
   cases: readonly WhyEvaluationCase[],
   diagnostics: readonly WhySelectionDiagnostic[],
+  thresholds: readonly number[] = JEV_EVALUATION_THRESHOLDS,
 ): JevConfidenceMetrics {
   const diagnosticsByPrNumber = new Map<number, WhySelectionDiagnostic>();
   for (const diagnostic of diagnostics) {
@@ -359,7 +361,7 @@ export function evaluateJevConfidence(
     brierScore: ratio(squaredErrorSum, candidateCount),
     meanPositiveProbability: mean(positiveProbabilities),
     meanNegativeProbability: mean(negativeProbabilities),
-    thresholds: JEV_EVALUATION_THRESHOLDS.map((threshold) =>
+    thresholds: thresholds.map((threshold) =>
       thresholdMetrics(cases, diagnosticsByPrNumber, threshold),
     ),
   };

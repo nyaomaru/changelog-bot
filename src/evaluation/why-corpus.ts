@@ -1,11 +1,39 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import type { WhyEvaluationCase } from '@/evaluation/why-evaluation.js';
 
 /**
- * Labeled PR-description candidates for evaluating experimental WHY extractors.
- * WHY: The corpus includes both repository PRs and adversarial fixtures so
- * confidence thresholds are measured against explicit and misleading evidence.
+ * Loads the evaluation corpus from disk or returns the embedded fallback.
+ * WHY: Tests and evaluations can point to custom corpus files via WHY_EVALUATION_CORPUS_PATH,
+ * while default runs load tests/fixtures/why-corpus.json when available.
+ * @param fixturePath Optional explicit path to the corpus JSON fixture.
+ * @returns Array of labeled PR-description evaluation cases.
  */
-export const WHY_EVALUATION_CORPUS: WhyEvaluationCase[] = [
+export function loadWhyEvaluationCorpus(
+  fixturePath?: string,
+): WhyEvaluationCase[] {
+  const resolvedPath =
+    fixturePath ??
+    process.env.WHY_EVALUATION_CORPUS_PATH ??
+    path.resolve(process.cwd(), 'tests/fixtures/why-corpus.json');
+
+  if (fs.existsSync(resolvedPath)) {
+    try {
+      const raw = fs.readFileSync(resolvedPath, 'utf8');
+      return JSON.parse(raw) as WhyEvaluationCase[];
+    } catch {
+      // In case of parsing error, fall through to embedded corpus
+    }
+  }
+
+  return FALLBACK_WHY_EVALUATION_CORPUS;
+}
+
+/**
+ * Fallback static corpus if external fixture file is not reachable.
+ */
+const FALLBACK_WHY_EVALUATION_CORPUS: WhyEvaluationCase[] = [
   {
     id: 'pr-203-explicit-rationale-section',
     sourcePullRequest: 203,
@@ -204,7 +232,7 @@ export const WHY_EVALUATION_CORPUS: WhyEvaluationCase[] = [
   {
     id: 'fixture-japanese-explicit-rationale',
     item: {
-      prNumber: 90_001,
+      prNumber: 90001,
       title: 'ドラフトリリースの公開処理を修正',
       itemText: 'ドラフトリリースの公開処理を修正',
       sectionTitle: 'Fixed',
@@ -220,7 +248,7 @@ export const WHY_EVALUATION_CORPUS: WhyEvaluationCase[] = [
   {
     id: 'fixture-unrelated-explicit-rationale',
     item: {
-      prNumber: 90_002,
+      prNumber: 90002,
       title: 'Fix cache invalidation',
       itemText: 'Fix cache invalidation',
       sectionTitle: 'Fixed',
@@ -236,7 +264,7 @@ export const WHY_EVALUATION_CORPUS: WhyEvaluationCase[] = [
   {
     id: 'fixture-japanese-implementation-only',
     item: {
-      prNumber: 90_003,
+      prNumber: 90003,
       title: 'リリースイベント処理を更新',
       itemText: 'リリースイベント処理を更新',
       sectionTitle: 'Changed',
@@ -250,3 +278,11 @@ export const WHY_EVALUATION_CORPUS: WhyEvaluationCase[] = [
     expectedSelectedCandidateIndex: null,
   },
 ];
+
+/**
+ * Labeled PR-description candidates for evaluating experimental WHY extractors.
+ * WHY: The corpus includes both repository PRs and adversarial fixtures so
+ * confidence thresholds are measured against explicit and misleading evidence.
+ */
+export const WHY_EVALUATION_CORPUS: WhyEvaluationCase[] =
+  loadWhyEvaluationCorpus();

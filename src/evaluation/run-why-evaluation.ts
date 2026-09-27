@@ -2,7 +2,10 @@ import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 
 import { PROVIDER_NAMES, PROVIDER_OPENAI } from '@/constants/provider.js';
-import { JEV_WHY_ENGINE_NAME } from '@/constants/jev.js';
+import {
+  JEV_CALIBRATION_SWEEP_THRESHOLDS,
+  JEV_WHY_ENGINE_NAME,
+} from '@/constants/jev.js';
 import { WHY_EVALUATION_CORPUS } from '@/evaluation/why-corpus.js';
 import {
   evaluateJevConfidence,
@@ -31,7 +34,7 @@ import { providerFactory } from '@/utils/provider.js';
 const DEFAULT_RUNS_COUNT = 1;
 const DEFAULT_OUTPUT_DIRECTORY = 'evaluations/reports';
 
-export function evaluationProviderName(): ProviderName {
+function evaluationProviderName(): ProviderName {
   const configuredProvider = process.env.WHY_EVALUATION_PROVIDER;
   if (!configuredProvider) return PROVIDER_OPENAI;
   if (PROVIDER_NAMES.includes(configuredProvider as ProviderName)) {
@@ -71,6 +74,14 @@ export function parseNoPersistOption(): boolean {
     process.argv.includes('--no-persist') ||
     process.env.WHY_EVALUATION_NO_PERSIST === 'true' ||
     process.env.WHY_EVALUATION_NO_PERSIST === '1'
+  );
+}
+
+export function isSweepEnabled(): boolean {
+  return (
+    process.argv.includes('--sweep') ||
+    process.env.WHY_EVALUATION_SWEEP === 'true' ||
+    process.env.WHY_EVALUATION_SWEEP === '1'
   );
 }
 
@@ -114,6 +125,7 @@ export async function evaluateEngineWithRepeatedRuns(
           ? evaluateJevConfidence(
               WHY_EVALUATION_CORPUS,
               output.selectionDiagnostics,
+              isSweepEnabled() ? JEV_CALIBRATION_SWEEP_THRESHOLDS : undefined,
             )
           : undefined;
 

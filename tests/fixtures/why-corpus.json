@@ -1,0 +1,840 @@
+[
+  {
+    "id": "pr-203-explicit-rationale-section",
+    "sourcePullRequest": 203,
+    "item": {
+      "prNumber": 203,
+      "title": "feat(why): add experimental Jev Noul selection engine",
+      "itemText": "Add experimental Jev Noul selection engine",
+      "sectionTitle": "Added",
+      "trustScore": 10,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Jev is well suited to confidence-aware candidate selection, but it cannot generate the free-form WHY prose expected by the existing provider contract. Keeping it as a dedicated WHY engine lets us evaluate its decision quality without changing changelog generation or weakening the evidence requirement."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-185-description-outcome",
+    "sourcePullRequest": 185,
+    "item": {
+      "prNumber": 185,
+      "title": "refactor: separate changelog run phase",
+      "itemText": "Separate changelog run phase",
+      "sectionTitle": "Changed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Separate changelog execution into input-resolution and output-finalization phases.",
+        "This simplifies the main orchestration flow, runs independent GitHub lookups concurrently, and adds coverage for WHY enrichment finalization."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 1
+  },
+  {
+    "id": "pr-166-prevents-false-positives",
+    "sourcePullRequest": 166,
+    "item": {
+      "prNumber": 166,
+      "title": "feat: extract WHY from description sections",
+      "itemText": "Extract WHY from description sections",
+      "sectionTitle": "Added",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Extract explicit rationale from Description sections using markers such as WHY:, because, and in order to.",
+        "Keep generic description prose below the trust threshold to prevent false positives.",
+        "Document the behavior and add regression coverage."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 1
+  },
+  {
+    "id": "pr-197-implementation-only",
+    "sourcePullRequest": 197,
+    "item": {
+      "prNumber": 197,
+      "title": "refactor(providers): share common provider configuration",
+      "itemText": "Share common provider configuration",
+      "sectionTitle": "Changed",
+      "trustScore": 7,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Extract shared provider runtime configuration and capability initialization into ProviderBase.",
+        "Refactor OpenAI, Anthropic, and Gemini adapters to inherit it while preserving their provider-specific API behavior."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-192-implementation-list",
+    "sourcePullRequest": 192,
+    "item": {
+      "prNumber": 192,
+      "title": "refactor: classify release changes by stable ID",
+      "itemText": "Classify release changes by stable ID",
+      "sectionTitle": "Changed",
+      "trustScore": 7,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Replace category-to-title classification with ID-to-category assignments.",
+        "Update OpenAI, Anthropic, and Gemini providers to classify canonical release changes.",
+        "Reject unknown change IDs and unsupported categories."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-171-implementation-list",
+    "sourcePullRequest": 171,
+    "item": {
+      "prNumber": 171,
+      "title": "refactor: separate release and WHY responsibilities",
+      "itemText": "Separate release and WHY responsibilities",
+      "sectionTitle": "Changed",
+      "trustScore": 7,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Separate category-scoring configuration from scoring logic.",
+        "Split release-note parsing, Markdown handling, PR item mapping, and rendering.",
+        "Split WHY candidate extraction, trust evaluation, PR detail collection, and note rendering."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-155-template-extraction-implementation-list",
+    "sourcePullRequest": 155,
+    "item": {
+      "prNumber": 155,
+      "title": "Improve WHY template extraction",
+      "itemText": "Improve WHY template extraction",
+      "sectionTitle": "Added",
+      "trustScore": 8,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Recognize PR template WHY label blocks, support question-style headings and collapsible Why sections, and filter placeholder/template noise before sending candidates to the provider."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-128-release-heading-implementation-list",
+    "sourcePullRequest": 128,
+    "item": {
+      "prNumber": 128,
+      "title": "Normalize nested release-note headings",
+      "itemText": "Normalize nested release-note headings",
+      "sectionTitle": "Fixed",
+      "trustScore": 8,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Normalize stray prefixes before release-note headings, preserve H2 section boundaries, and demote nested headings while rendering CHANGELOG.md."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-122-config-implementation-list",
+    "sourcePullRequest": 122,
+    "item": {
+      "prNumber": 122,
+      "title": "Add config file support",
+      "itemText": "Add config file support",
+      "sectionTitle": "Added",
+      "trustScore": 8,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Load changelog-bot.config.json by default, let CLI flags override it, validate unknown keys strictly, and pass config-path through Action inputs."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-131-reliability-controls-implementation-list",
+    "sourcePullRequest": 131,
+    "item": {
+      "prNumber": 131,
+      "title": "Add reliability controls",
+      "itemText": "Add reliability controls",
+      "sectionTitle": "Added",
+      "trustScore": 8,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Add --no-ai, --require-provider, and --fail-on-llm-error; add dry-run diagnostics; strengthen mocked integration coverage; and document the options."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-135-optional-label-permission-outcome",
+    "sourcePullRequest": 135,
+    "item": {
+      "prNumber": 135,
+      "title": "Make PR labeling permission optional",
+      "itemText": "Make PR labeling permission optional",
+      "sectionTitle": "Fixed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Keep changelog PR creation successful when label application is denied because the workflow lacks issues: write permission."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "fixture-japanese-explicit-rationale",
+    "item": {
+      "prNumber": 90001,
+      "title": "ドラフトリリースの公開処理を修正",
+      "itemText": "ドラフトリリースの公開処理を修正",
+      "sectionTitle": "Fixed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "ドラフトリリースを後から公開する運用でも、公開時に変更履歴 PR を作れるようにするため。"
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "fixture-unrelated-explicit-rationale",
+    "item": {
+      "prNumber": 90002,
+      "title": "Fix cache invalidation",
+      "itemText": "Fix cache invalidation",
+      "sectionTitle": "Fixed",
+      "trustScore": 8,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Because release notes need Japanese translations, the documentation workflow must run after publication."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "fixture-japanese-implementation-only",
+    "item": {
+      "prNumber": 90003,
+      "title": "リリースイベント処理を更新",
+      "itemText": "リリースイベント処理を更新",
+      "sectionTitle": "Changed",
+      "trustScore": 8,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "リリース公開イベントを受け取る処理と設定ファイルの項目を更新した。"
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-208-windows-crlf-dx-rationale",
+    "sourcePullRequest": 208,
+    "item": {
+      "prNumber": 208,
+      "title": "fix(dx): support Windows development and normalize CRLF",
+      "itemText": "Support Windows development and normalize CRLF in contract tests",
+      "sectionTitle": "Fixed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Windows git clones checkout CRLF line endings by default, causing public contract file snapshot tests to fail on byte comparison."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-210-cross-platform-jest-rationale",
+    "sourcePullRequest": 210,
+    "item": {
+      "prNumber": 210,
+      "title": "chore: use cross-platform node invocation for jest",
+      "itemText": "Use cross-platform node invocation for jest",
+      "sectionTitle": "Changed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Replace NODE_OPTIONS shell prefix with direct node invocation so contributors on Windows can run tests without cross-env or bash."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-201-rate-limit-backoff-rationale",
+    "sourcePullRequest": 201,
+    "item": {
+      "prNumber": 201,
+      "title": "fix(llm): add exponential backoff for rate-limited requests",
+      "itemText": "Add exponential backoff for rate-limited requests",
+      "sectionTitle": "Fixed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Large repositories generate burst requests that trigger HTTP 429 throttling from LLM endpoints during changelog generation."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-180-memory-leak-cleanup-rationale",
+    "sourcePullRequest": 180,
+    "item": {
+      "prNumber": 180,
+      "title": "fix: dispose octokit cache on execution end",
+      "itemText": "Dispose octokit cache on execution end",
+      "sectionTitle": "Fixed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "In long-running CI runners, undisposed HTTP agents cause memory accumulation across repeated release jobs."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-175-redos-regex-safety-rationale",
+    "sourcePullRequest": 175,
+    "item": {
+      "prNumber": 175,
+      "title": "security: avoid catastrophic backtracking in release heading regex",
+      "itemText": "Avoid catastrophic backtracking in release heading regex",
+      "sectionTitle": "Fixed",
+      "trustScore": 10,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Unbounded repetition in the release heading parser caused quadratic parsing times and potential ReDoS vulnerabilities on adversarial changelogs."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-160-linear-scan-optimization-rationale",
+    "sourcePullRequest": 160,
+    "item": {
+      "prNumber": 160,
+      "title": "perf: replace O(N^2) PR reference lookup with Map",
+      "itemText": "Replace O(N^2) PR reference lookup with Map",
+      "sectionTitle": "Changed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Repositories with thousands of closed PRs experienced multi-second freezes during link reconciliation due to nested array searches."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-145-semantic-commit-parser-rationale",
+    "sourcePullRequest": 145,
+    "item": {
+      "prNumber": 145,
+      "title": "feat: parse breaking changes footer from conventional commits",
+      "itemText": "Parse breaking changes footer from conventional commits",
+      "sectionTitle": "Added",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Users need BREAKING CHANGE notes promoted to top-level release highlights to prevent consumers from upgrading without noticing breaking API contracts."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-140-concurrency-lock-rationale",
+    "sourcePullRequest": 140,
+    "item": {
+      "prNumber": 140,
+      "title": "fix: prevent race condition on concurrent changelog PR creation",
+      "itemText": "Prevent race condition on concurrent changelog PR creation",
+      "sectionTitle": "Fixed",
+      "trustScore": 10,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Simultaneous release tag pushes triggered duplicate PR workflows that conflicted and threw 422 Unprocessable Entity on branch creation."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-115-token-truncation-safety-rationale",
+    "sourcePullRequest": 115,
+    "item": {
+      "prNumber": 115,
+      "title": "fix: truncate long diff summaries before sending to LLM",
+      "itemText": "Truncate long diff summaries before sending to LLM",
+      "sectionTitle": "Fixed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Oversized commits with generated lockfile diffs exceeded the provider context window and caused unrecoverable API errors."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-105-preserve-unreleased-section-rationale",
+    "sourcePullRequest": 105,
+    "item": {
+      "prNumber": 105,
+      "title": "fix: preserve custom user notes in Unreleased section",
+      "itemText": "Preserve custom user notes in Unreleased section",
+      "sectionTitle": "Fixed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Manual changelog annotations written ahead of release were inadvertently overwritten when the release runner updated CHANGELOG.md."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-095-directory-traversal-prevention-rationale",
+    "sourcePullRequest": 95,
+    "item": {
+      "prNumber": 95,
+      "title": "security: sanitize output changelog file path",
+      "itemText": "Sanitize output changelog file path",
+      "sectionTitle": "Fixed",
+      "trustScore": 10,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Malicious configuration files could specify relative traversal sequences (../../) to write changelog files outside the repository root."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-085-git-tag-prefix-strip-rationale",
+    "sourcePullRequest": 85,
+    "item": {
+      "prNumber": 85,
+      "title": "fix: handle release tags with leading v prefix consistently",
+      "itemText": "Handle release tags with leading v prefix consistently",
+      "sectionTitle": "Fixed",
+      "trustScore": 8,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Inconsistent v-prefix handling in semver comparison led to broken GitHub release diff comparison links."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-075-dry-run-exit-code-rationale",
+    "sourcePullRequest": 75,
+    "item": {
+      "prNumber": 75,
+      "title": "fix: return zero exit code on dry-run completion",
+      "itemText": "Return zero exit code on dry-run completion",
+      "sectionTitle": "Fixed",
+      "trustScore": 8,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "CI validation pipelines failed because dry-run mode exited with status code 1 when no remote PR was dispatched."
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "pr-065-dependency-bump-implementation-only",
+    "sourcePullRequest": 65,
+    "item": {
+      "prNumber": 65,
+      "title": "chore(deps): bump octokit from 5.0.0 to 5.0.5",
+      "itemText": "Bump octokit from 5.0.0 to 5.0.5",
+      "sectionTitle": "Changed",
+      "trustScore": 6,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Update octokit dependency in package.json and pnpm-lock.yaml to version 5.0.5.",
+        "Run pnpm install to regenerate lockfile."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-055-refactor-ast-visitor-implementation-only",
+    "sourcePullRequest": 55,
+    "item": {
+      "prNumber": 55,
+      "title": "refactor: rewrite markdown section extractor using visitor pattern",
+      "itemText": "Rewrite markdown section extractor using visitor pattern",
+      "sectionTitle": "Changed",
+      "trustScore": 7,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Convert markdown parser regexes into an AST visitor traversal.",
+        "Split heading visitor and list item visitor into dedicated functions."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-045-code-style-rename-implementation-only",
+    "sourcePullRequest": 45,
+    "item": {
+      "prNumber": 45,
+      "title": "style: rename internal helper variables to lowerCamelCase",
+      "itemText": "Rename internal helper variables to lowerCamelCase",
+      "sectionTitle": "Changed",
+      "trustScore": 6,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Rename snake_case variable names in git parser utils to follow repository style guide."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-035-extract-shared-constants-implementation-only",
+    "sourcePullRequest": 35,
+    "item": {
+      "prNumber": 35,
+      "title": "refactor: extract magic strings to constants file",
+      "itemText": "Extract magic strings to constants file",
+      "sectionTitle": "Changed",
+      "trustScore": 7,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Move section headers 'Features', 'Bug Fixes', and 'Performance' into src/constants/sections.ts."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-025-add-debug-logging-implementation-only",
+    "sourcePullRequest": 25,
+    "item": {
+      "prNumber": 25,
+      "title": "chore: add debug logging statements to PR fetcher",
+      "itemText": "Add debug logging statements to PR fetcher",
+      "sectionTitle": "Changed",
+      "trustScore": 6,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Add console.debug lines to trace GitHub API response headers and pagination cursors."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-015-move-test-helpers-implementation-only",
+    "sourcePullRequest": 15,
+    "item": {
+      "prNumber": 15,
+      "title": "test: move mock git repositories to tests/helpers",
+      "itemText": "Move mock git repositories to tests/helpers",
+      "sectionTitle": "Changed",
+      "trustScore": 6,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Relocate fixture creation utilities from individual test files into tests/helpers/git-mock.ts."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-005-update-readme-badges-implementation-only",
+    "sourcePullRequest": 5,
+    "item": {
+      "prNumber": 5,
+      "title": "docs: update npm version badge in README",
+      "itemText": "Update npm version badge in README",
+      "sectionTitle": "Changed",
+      "trustScore": 6,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Update shields.io badge URL in README.md to reflect new package name."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-042-convert-map-to-object-implementation-only",
+    "sourcePullRequest": 42,
+    "item": {
+      "prNumber": 42,
+      "title": "refactor: use plain object for category mapping lookup",
+      "itemText": "Use plain object for category mapping lookup",
+      "sectionTitle": "Changed",
+      "trustScore": 6,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Change CategoryMapping type from Map<string, string> to Record<string, string>."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-048-bump-typescript-compiler-implementation-only",
+    "sourcePullRequest": 48,
+    "item": {
+      "prNumber": 48,
+      "title": "build(deps-dev): upgrade typescript to 5.4.5",
+      "itemText": "Upgrade typescript to 5.4.5",
+      "sectionTitle": "Changed",
+      "trustScore": 6,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Bump devDependency typescript in package.json and update tsconfig target to ES2022."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "pr-052-format-codebase-implementation-only",
+    "sourcePullRequest": 52,
+    "item": {
+      "prNumber": 52,
+      "title": "style: run prettier format on all source files",
+      "itemText": "Run prettier format on all source files",
+      "sectionTitle": "Changed",
+      "trustScore": 5,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Execute pnpm prettier --write on src/ and tests/ directories."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "fixture-template-checkbox-noise",
+    "item": {
+      "prNumber": 90004,
+      "title": "Fix crash on malformed yaml config",
+      "itemText": "Fix crash on malformed yaml config",
+      "sectionTitle": "Fixed",
+      "trustScore": 7,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "### Checklist\n- [x] Unit tests added\n- [x] Documentation updated\n- [ ] E2E verified\n- [x] Signed CLA"
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "fixture-template-placeholder-noise",
+    "item": {
+      "prNumber": 90005,
+      "title": "Add telemetry opt-out flag",
+      "itemText": "Add telemetry opt-out flag",
+      "sectionTitle": "Added",
+      "trustScore": 6,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "<!-- Describe your changes in detail -->\n<!-- Why is this change required? What problem does it solve? -->\nTODO: add explanation before merge."
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "fixture-stacktrace-noise",
+    "item": {
+      "prNumber": 90006,
+      "title": "Fix uncaught promise rejection in git loader",
+      "itemText": "Fix uncaught promise rejection in git loader",
+      "sectionTitle": "Fixed",
+      "trustScore": 7,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Error: spawn git ENOENT\n    at Process.ChildProcess._handle.onexit (node:internal/child_process:283:19)\n    at onErrorNT (node:internal/child_process:478:16)"
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "fixture-generic-issue-reference-noise",
+    "item": {
+      "prNumber": 90007,
+      "title": "Fix issues found in testing",
+      "itemText": "Fix issues found in testing",
+      "sectionTitle": "Fixed",
+      "trustScore": 6,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": ["Resolves #123. Closes #456. See attached screenshots."]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "fixture-template-heading-only-noise",
+    "item": {
+      "prNumber": 90008,
+      "title": "Update release template",
+      "itemText": "Update release template",
+      "sectionTitle": "Changed",
+      "trustScore": 6,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": ["## Why\n\nN/A\n\n## How to test\n\nRun pnpm test"]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "fixture-japanese-windows-path-rationale",
+    "item": {
+      "prNumber": 90009,
+      "title": "Windows環境でのパス区切り文字エラーを修正",
+      "itemText": "Windows環境でのパス区切り文字エラーを修正",
+      "sectionTitle": "Fixed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "Windows環境でバックスラッシュ（\\）が正規表現エスケープとして解釈されファイルマッチに失敗する不具合を解消するため。"
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "fixture-japanese-rate-limit-rationale",
+    "item": {
+      "prNumber": 90010,
+      "title": "APIレート制限時の指数バックオフリトライを導入",
+      "itemText": "APIレート制限時の指数バックオフリトライを導入",
+      "sectionTitle": "Added",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "GitHub APIのレートリミット到達時にリトライを指数バックオフで行うことで、大規模リポジトリでの一括生成エラーを防ぐため。"
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "fixture-japanese-multibyte-rationale",
+    "item": {
+      "prNumber": 90011,
+      "title": "コミットメッセージ内のマルチバイト文字の欠落を修正",
+      "itemText": "コミットメッセージ内のマルチバイト文字の欠落を修正",
+      "sectionTitle": "Fixed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "日本語コミットメッセージの文字化けや途中で文字列が切断される問題を防ぐため、UTF-8バイト境界を考慮したスライス処理に変更。"
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "fixture-japanese-security-patch-rationale",
+    "item": {
+      "prNumber": 90012,
+      "title": "依存パッケージの脆弱性パッチ適用",
+      "itemText": "依存パッケージの脆弱性パッチ適用",
+      "sectionTitle": "Fixed",
+      "trustScore": 9,
+      "trustBucket": "high",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "悪意のあるMarkdown入力によるサービス停止（ReDoS攻撃）を防止するため、パーサーライブラリを最新の安全なバージョンへ更新。"
+      ]
+    },
+    "expectedSelectedCandidateIndex": 0
+  },
+  {
+    "id": "fixture-japanese-type-refactor-implementation-only",
+    "item": {
+      "prNumber": 90013,
+      "title": "型定義の共通化とリファクタリング",
+      "itemText": "型定義の共通化とリファクタリング",
+      "sectionTitle": "Changed",
+      "trustScore": 7,
+      "trustBucket": "medium",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "共通の戻り値型をtypes.tsにまとめ、各プロバイダー実装で再利用するように変更した。"
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "fixture-japanese-checkbox-template-noise",
+    "item": {
+      "prNumber": 90014,
+      "title": "単体テストの拡充",
+      "itemText": "単体テストの拡充",
+      "sectionTitle": "Added",
+      "trustScore": 6,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "### 変更内容\n- [x] 単体テスト追加\n- [x] ドキュメント更新\n- [ ] リリースノート記載"
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "fixture-japanese-docs-typo-implementation-only",
+    "item": {
+      "prNumber": 90015,
+      "title": "READMEの誤字修正",
+      "itemText": "READMEの誤字修正",
+      "sectionTitle": "Changed",
+      "trustScore": 6,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": ["READMEのコマンド説明のタイポを修正。"]
+    },
+    "expectedSelectedCandidateIndex": null
+  },
+  {
+    "id": "fixture-japanese-comment-cleanup-implementation-only",
+    "item": {
+      "prNumber": 90016,
+      "title": "不要なインラインコメントの削除",
+      "itemText": "不要なインラインコメントの削除",
+      "sectionTitle": "Changed",
+      "trustScore": 6,
+      "trustBucket": "low",
+      "requiresHighConfidence": false,
+      "candidates": [
+        "デバッグ用のコメントアウトコードと不要なログ出力を削除しました。"
+      ]
+    },
+    "expectedSelectedCandidateIndex": null
+  }
+]
