@@ -44,6 +44,10 @@ export type WhyEvaluationRunOutcome = {
   servedModel?: string;
   /** Throttle and retry diagnostics observed during this run. */
   diagnostics?: WhyExtractionDiagnostics;
+  /** Quality metrics computed from this individual run, when completed. */
+  metrics?: WhyEvaluationMetrics;
+  /** Confidence metrics computed for this individual run (Jev). */
+  confidence?: JevConfidenceMetrics;
   /** Error message if this execution failed. */
   error?: string;
 };
@@ -64,6 +68,8 @@ export type WhyEvaluationEngineReport = {
   successCount: number;
   /** Number of failed runs. */
   failureCount: number;
+  /** Outcomes of each individual execution run. */
+  runs?: WhyEvaluationRunOutcome[];
   /** Aggregated latency metrics across successful runs. */
   latency?: AggregatedLatencyMetrics;
   /** Aggregated or latest token accounting. */

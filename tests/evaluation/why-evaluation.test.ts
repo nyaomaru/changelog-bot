@@ -328,6 +328,9 @@ describe('evaluateEngineWithRepeatedRuns', () => {
     expect(report.runsCount).toBe(2);
     expect(report.successCount).toBe(2);
     expect(report.failureCount).toBe(0);
+    expect(report.runs).toHaveLength(2);
+    expect(report.runs?.[0]?.status).toBe('completed');
+    expect(report.runs?.[0]?.servedModel).toBe('test-model-served');
     expect(report.requestedModel).toBe('test-model-requested');
     expect(report.servedModel).toBe('test-model-served');
     expect(report.latency).toBeDefined();

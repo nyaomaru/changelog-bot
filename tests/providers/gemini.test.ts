@@ -213,11 +213,12 @@ describe('GeminiProvider', () => {
     });
   });
 
-  test('records token usage from WHY extraction', async () => {
+  test('records token usage and served model from WHY extraction', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       text: async () =>
         JSON.stringify({
+          modelVersion: 'gemini-1.5-pro-002',
           candidates: [
             {
               content: {
@@ -242,5 +243,6 @@ describe('GeminiProvider', () => {
       inputTokens: 123,
       outputTokens: 45,
     });
+    expect(provider.lastServedModel).toBe('gemini-1.5-pro-002');
   });
 });

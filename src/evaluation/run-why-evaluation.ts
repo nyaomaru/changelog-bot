@@ -1,4 +1,5 @@
 import { performance } from 'node:perf_hooks';
+import { pathToFileURL } from 'node:url';
 
 import { PROVIDER_NAMES, PROVIDER_OPENAI } from '@/constants/provider.js';
 import { JEV_WHY_ENGINE_NAME } from '@/constants/jev.js';
@@ -14,11 +15,12 @@ import {
   resolveCurrentCommitSha,
   type WhyEvaluationArtifact,
   type WhyEvaluationEngineReport,
+  type WhyEvaluationRunOutcome,
 } from '@/evaluation/why-evaluation-artifacts.js';
 import { loadAppConfig } from '@/lib/app-config.js';
 import { JevWhyExtractor } from '@/providers/jev-why.js';
 import type { ProviderName } from '@/types/llm.js';
-import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
+import type { WhyExtractionInput } from '@/types/why.js';
 import type {
   WhyExtractionDiagnostics,
   WhyExtractionUsage,
@@ -94,13 +96,7 @@ export async function evaluateEngineWithRepeatedRuns(
     };
   }
 
-  const completedLatencies: number[] = [];
-  const failureReasons: string[] = [];
-  let latestOutput: WhyExtractionOutput | undefined;
-  let latestUsage: WhyExtractionUsage | undefined;
-  let servedModel: string | undefined;
-  let totalRetries = 0;
-  let throttled = false;
+  const runs: WhyEvaluationRunOutcome[] = [];
 
   // WHY: Sequential runs prevent concurrent requests from changing either
   // engine's latency or rate-limit behavior during a comparison.
@@ -109,50 +105,74 @@ export async function evaluateEngineWithRepeatedRuns(
     try {
       const output = await extractor.extractWhyNotes(input);
       const latencyMs = performance.now() - startedAt;
-      completedLatencies.push(latencyMs);
-      latestOutput = output;
-      if (extractor.lastWhyExtractionUsage) {
-        latestUsage = extractor.lastWhyExtractionUsage;
-      }
-      if (extractor.lastServedModel) {
-        servedModel = extractor.lastServedModel;
-      }
-      if (extractor.lastWhyExtractionDiagnostics) {
-        totalRetries += extractor.lastWhyExtractionDiagnostics.retries;
-        if (extractor.lastWhyExtractionDiagnostics.throttled) {
-          throttled = true;
-        }
-      }
+      const metrics = evaluateWhySelections(
+        WHY_EVALUATION_CORPUS,
+        output.items ?? [],
+      );
+      const confidence =
+        engine === JEV_WHY_ENGINE_NAME && output.selectionDiagnostics
+          ? evaluateJevConfidence(
+              WHY_EVALUATION_CORPUS,
+              output.selectionDiagnostics,
+            )
+          : undefined;
+
+      runs.push({
+        runIndex,
+        status: 'completed',
+        latencyMs,
+        tokenUsage: extractor.lastWhyExtractionUsage,
+        servedModel: extractor.lastServedModel,
+        diagnostics: extractor.lastWhyExtractionDiagnostics,
+        metrics,
+        ...(confidence ? { confidence } : {}),
+      });
     } catch (error) {
       const latencyMs = performance.now() - startedAt;
-      const message = error instanceof Error ? error.message : String(error);
-      failureReasons.push(
-        `Run ${runIndex} (${Math.round(latencyMs)}ms): ${message}`,
-      );
-      if (extractor.lastWhyExtractionUsage) {
-        latestUsage = extractor.lastWhyExtractionUsage;
-      }
-      if (extractor.lastServedModel) {
-        servedModel = extractor.lastServedModel;
-      }
-      if (extractor.lastWhyExtractionDiagnostics) {
-        totalRetries += extractor.lastWhyExtractionDiagnostics.retries;
-        if (extractor.lastWhyExtractionDiagnostics.throttled) {
-          throttled = true;
-        }
-      }
+      runs.push({
+        runIndex,
+        status: 'failed',
+        latencyMs,
+        tokenUsage: extractor.lastWhyExtractionUsage,
+        servedModel: extractor.lastServedModel,
+        diagnostics: extractor.lastWhyExtractionDiagnostics,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
-  const successCount = completedLatencies.length;
-  const failureCount = failureReasons.length;
+  const successfulRuns = runs.filter((r) => r.status === 'completed');
+  const failedRuns = runs.filter((r) => r.status === 'failed');
+  const completedLatencies = successfulRuns.map((r) => r.latencyMs);
   const latency = calculateAggregatedLatency(completedLatencies);
+
+  const totalRetries = runs.reduce(
+    (sum, r) => sum + (r.diagnostics?.retries ?? 0),
+    0,
+  );
+  const throttled = runs.some((r) => r.diagnostics?.throttled);
   const diagnostics: WhyExtractionDiagnostics = {
     retries: totalRetries,
     throttled,
   };
 
-  if (successCount === 0) {
+  // Derive aggregated token usage from successful runs or latest observed
+  const tokenUsage =
+    successfulRuns.reduce<WhyExtractionUsage | undefined>((acc, r) => {
+      if (!r.tokenUsage) return acc;
+      return {
+        inputTokens: (acc?.inputTokens ?? 0) + r.tokenUsage.inputTokens,
+        outputTokens: (acc?.outputTokens ?? 0) + r.tokenUsage.outputTokens,
+      };
+    }, undefined) ?? runs.find((r) => r.tokenUsage)?.tokenUsage;
+
+  const servedModel = runs.find((r) => r.servedModel)?.servedModel;
+  const failureReasons = failedRuns.map(
+    (r) => `Run ${r.runIndex} (${Math.round(r.latencyMs)}ms): ${r.error}`,
+  );
+  const primaryRun = successfulRuns[0];
+
+  if (successfulRuns.length === 0) {
     return {
       engine,
       requestedModel,
@@ -160,12 +180,13 @@ export async function evaluateEngineWithRepeatedRuns(
       status: 'failed',
       runsCount: runsRequested,
       successCount: 0,
-      failureCount,
+      failureCount: failedRuns.length,
+      runs,
       inputCharacters,
-      ...(latestUsage ? { tokenUsage: latestUsage } : {}),
+      ...(tokenUsage ? { tokenUsage } : {}),
       diagnostics,
       failureReasons,
-      error: failureReasons[0],
+      error: failedRuns[0]?.error ?? failureReasons[0],
     };
   }
 
@@ -175,24 +196,15 @@ export async function evaluateEngineWithRepeatedRuns(
     ...(servedModel ? { servedModel } : {}),
     status: 'completed',
     runsCount: runsRequested,
-    successCount,
-    failureCount,
+    successCount: successfulRuns.length,
+    failureCount: failedRuns.length,
+    runs,
     latency,
-    ...(latestUsage ? { tokenUsage: latestUsage } : {}),
+    ...(tokenUsage ? { tokenUsage } : {}),
     diagnostics,
     ...(failureReasons.length > 0 ? { failureReasons } : {}),
-    metrics: evaluateWhySelections(
-      WHY_EVALUATION_CORPUS,
-      latestOutput?.items ?? [],
-    ),
-    ...(engine === JEV_WHY_ENGINE_NAME && latestOutput?.selectionDiagnostics
-      ? {
-          confidence: evaluateJevConfidence(
-            WHY_EVALUATION_CORPUS,
-            latestOutput.selectionDiagnostics,
-          ),
-        }
-      : {}),
+    ...(primaryRun?.metrics ? { metrics: primaryRun.metrics } : {}),
+    ...(primaryRun?.confidence ? { confidence: primaryRun.confidence } : {}),
     inputCharacters,
   };
 }
@@ -260,4 +272,7 @@ export async function runWhyEvaluation(): Promise<WhyEvaluationArtifact> {
   return artifact;
 }
 
-void runWhyEvaluation();
+const entrypoint = process.argv[1];
+if (entrypoint && import.meta.url === pathToFileURL(entrypoint).href) {
+  void runWhyEvaluation();
+}
