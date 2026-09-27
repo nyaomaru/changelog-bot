@@ -14,7 +14,7 @@ export type WhyEvaluationCase = {
   item: WhyExtractionItem;
   /** Expected accepted candidate index, or null when no WHY note is valid. */
   expectedSelectedCandidateIndex: number | null;
-  /** Other candidate indexes that are also valid WHY evidence for this case. */
+  /** Additional candidate indexes that are also valid WHY evidence for this case. */
   acceptableCandidateIndexes?: readonly number[];
 };
 
@@ -103,12 +103,14 @@ function ratio(numerator: number, denominator: number): number | null {
 function expectedCandidateIndexes(
   evaluationCase: WhyEvaluationCase,
 ): readonly number[] {
-  if (evaluationCase.acceptableCandidateIndexes) {
-    return evaluationCase.acceptableCandidateIndexes;
-  }
-  return evaluationCase.expectedSelectedCandidateIndex === null
-    ? []
-    : [evaluationCase.expectedSelectedCandidateIndex];
+  return Array.from(
+    new Set([
+      ...(evaluationCase.expectedSelectedCandidateIndex === null
+        ? []
+        : [evaluationCase.expectedSelectedCandidateIndex]),
+      ...(evaluationCase.acceptableCandidateIndexes ?? []),
+    ]),
+  );
 }
 
 function thresholdMetrics(
@@ -237,6 +239,11 @@ export function evaluateWhySelections(
     }
     if (predictedSelection) falsePositives += 1;
   }
+
+  // WHY: A note for an unknown PR is a hallucinated selection. It has no corpus
+  // outcome, but must reduce precision just like a known negative selection.
+  predictedSelections += unexpectedSelections;
+  falsePositives += unexpectedSelections;
 
   const precision = ratio(truePositives, predictedSelections);
   const recall = ratio(truePositives, expectedSelections);

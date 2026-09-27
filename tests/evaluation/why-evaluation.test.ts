@@ -78,13 +78,13 @@ describe('evaluateWhySelections', () => {
     expect(metrics).toEqual({
       caseCount: 2,
       expectedSelections: 1,
-      predictedSelections: 2,
+      predictedSelections: 3,
       truePositives: 1,
-      falsePositives: 1,
+      falsePositives: 2,
       falseNegatives: 0,
-      precision: 0.5,
+      precision: 1 / 3,
       recall: 1,
-      f1: 2 / 3,
+      f1: 0.5,
       exactCandidatePreservations: 1,
       exactCandidatePreservationRate: 1,
       unexpectedSelections: 1,
@@ -217,5 +217,43 @@ describe('evaluateWhySelections', () => {
       recall: 0,
       f1: null,
     });
+  });
+
+  test('treats the primary and additional acceptable candidate indexes as labels', () => {
+    const multiCandidateCase: WhyEvaluationCase = {
+      id: 'multiple-valid-candidates',
+      item: {
+        ...CASES[0]?.item,
+        candidates: [
+          'The lookup must use the merged pull request to avoid stale data.',
+          'The release reference prevents stale lookup data.',
+        ],
+      },
+      expectedSelectedCandidateIndex: 0,
+      acceptableCandidateIndexes: [1],
+    };
+    const metrics = evaluateJevConfidence(
+      [multiCandidateCase],
+      [
+        {
+          prNumber: 1,
+          questionType: 'noul',
+          selectedOption: 'candidate_1',
+          selectedCandidateIndex: 1,
+          selectionProbability: 0.9,
+          mappedConfidence: 'high',
+          candidateProbabilities: [
+            { candidateIndex: 0, probability: 0.4, relevanceProbability: 0.4 },
+            { candidateIndex: 1, probability: 0.9, relevanceProbability: 0.9 },
+          ],
+        },
+      ],
+    );
+
+    expect(metrics.brierScore).toBeCloseTo(0.185);
+    expect(metrics.meanPositiveProbability).toBeCloseTo(0.65);
+    expect(metrics.thresholds[0]).toEqual(
+      expect.objectContaining({ truePositives: 1, falsePositives: 0 }),
+    );
   });
 });

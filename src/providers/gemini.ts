@@ -30,6 +30,7 @@ import {
   whyExtractionJsonSchema,
 } from '@/providers/why.js';
 import { ProviderBase } from '@/providers/base.js';
+import type { WhyExtractionUsage } from '@/types/why-extractor.js';
 
 const SYSTEM_GEMINI_CLASSIFY =
   'Classify each release change into one provided category. Return a JSON object mapping every change ID to its category. Do not rewrite IDs.';
@@ -47,6 +48,11 @@ type GeminiResponse = {
       }>;
     };
   }>;
+  /** Token accounting returned for the request. */
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+  };
 };
 
 /**
@@ -73,9 +79,26 @@ function extractGeminiText(response: GeminiResponse): string {
   );
 }
 
+/**
+ * Normalize Gemini token accounting when the API includes it.
+ * @param response Gemini generateContent response.
+ * @returns Input and output token counts, or undefined when omitted by the API.
+ */
+function extractGeminiWhyUsage(
+  response: GeminiResponse,
+): WhyExtractionUsage | undefined {
+  const inputTokens = response.usageMetadata?.promptTokenCount;
+  const outputTokens = response.usageMetadata?.candidatesTokenCount;
+  if (typeof inputTokens !== 'number' || typeof outputTokens !== 'number') {
+    return undefined;
+  }
+  return { inputTokens, outputTokens };
+}
+
 /** Gemini provider adapter backed by the Google AI generateContent REST API. */
 export class GeminiProvider extends ProviderBase {
   name = PROVIDER_GEMINI;
+  lastWhyExtractionUsage?: WhyExtractionUsage;
 
   constructor(config: ProviderRuntimeConfig) {
     super(config);
@@ -161,6 +184,7 @@ export class GeminiProvider extends ProviderBase {
   async extractWhyNotes(
     input: WhyExtractionInput,
   ): Promise<WhyExtractionOutput> {
+    this.lastWhyExtractionUsage = undefined;
     if (!input.items.length) return { items: [] };
 
     const payload = {
@@ -191,6 +215,7 @@ export class GeminiProvider extends ProviderBase {
       { 'x-goog-api-key': this.apiKey ?? '' },
       'Gemini WHY extraction error',
     );
+    this.lastWhyExtractionUsage = extractGeminiWhyUsage(response);
     return parseWhyExtractionOutput(extractGeminiText(response));
   }
 }
