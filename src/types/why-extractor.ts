@@ -8,6 +8,14 @@ export type WhyExtractionUsage = {
   outputTokens: number;
 };
 
+/** Throttle and retry diagnostics observed during an extraction request. */
+export type WhyExtractionDiagnostics = {
+  /** Number of retry attempts made due to rate-limiting or transient errors. */
+  retries: number;
+  /** Whether at least one rate-limit or capacity throttle was encountered. */
+  throttled: boolean;
+};
+
 /**
  * Minimal contract for the optional WHY-enrichment stage.
  * WHY: Jev can select evidence but cannot generate a complete changelog, so it
@@ -18,6 +26,10 @@ export interface WhyExtractor {
   readonly name: string;
   /** Token accounting from the most recent WHY extraction request, when available. */
   readonly lastWhyExtractionUsage?: WhyExtractionUsage;
+  /** Model actually served by the provider API, when available. */
+  readonly lastServedModel?: string;
+  /** Request diagnostics including retry and throttle events, when observable. */
+  readonly lastWhyExtractionDiagnostics?: WhyExtractionDiagnostics;
   /** Select or generate evidence-backed WHY notes. */
   extractWhyNotes(input: WhyExtractionInput): Promise<WhyExtractionOutput>;
 }

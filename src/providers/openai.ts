@@ -45,6 +45,8 @@ type OpenAIResponse = {
       text?: string;
     }>;
   }>;
+  /** Served model identifier returned by OpenAI. */
+  model?: string;
   /** Token accounting reported by the API. */
   usage?: {
     input_tokens?: number;
@@ -117,6 +119,7 @@ function buildOpenAiResponsePayload(
 export class OpenAIProvider extends ProviderBase {
   name = PROVIDER_OPENAI;
   lastWhyExtractionUsage?: WhyExtractionUsage;
+  lastServedModel?: string;
 
   constructor(config: ProviderRuntimeConfig) {
     super(config, {
@@ -199,6 +202,7 @@ export class OpenAIProvider extends ProviderBase {
     input: WhyExtractionInput,
   ): Promise<WhyExtractionOutput> {
     this.lastWhyExtractionUsage = undefined;
+    this.lastServedModel = undefined;
     if (!input.items.length) return { items: [] };
 
     const userPrompt = JSON.stringify(buildWhyExtractionPrompt(input));
@@ -221,6 +225,7 @@ export class OpenAIProvider extends ProviderBase {
         outputTokens:
           response.usage?.output_tokens ?? response.usage?.completion_tokens,
       });
+      this.lastServedModel = response.model;
       return parseWhyExtractionOutput(extractOpenAiResponseText(response));
     }
 
@@ -248,6 +253,7 @@ export class OpenAIProvider extends ProviderBase {
       inputTokens: json.usage?.input_tokens ?? json.usage?.prompt_tokens,
       outputTokens: json.usage?.output_tokens ?? json.usage?.completion_tokens,
     });
+    this.lastServedModel = json.model;
     return parseWhyExtractionOutput(extractOpenAiClassificationResponse(json));
   }
 }

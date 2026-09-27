@@ -7,29 +7,29 @@ import {
   evaluateJevConfidence,
   evaluateWhySelections,
 } from '@/evaluation/why-evaluation.js';
+import {
+  calculateAggregatedLatency,
+  calculateCorpusRevision,
+  persistEvaluationReports,
+  resolveCurrentCommitSha,
+  type WhyEvaluationArtifact,
+  type WhyEvaluationEngineReport,
+} from '@/evaluation/why-evaluation-artifacts.js';
 import { loadAppConfig } from '@/lib/app-config.js';
 import { JevWhyExtractor } from '@/providers/jev-why.js';
 import type { ProviderName } from '@/types/llm.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 import type {
+  WhyExtractionDiagnostics,
   WhyExtractionUsage,
   WhyExtractor,
 } from '@/types/why-extractor.js';
 import { providerFactory } from '@/utils/provider.js';
 
-type EvaluationEngineReport = {
-  engine: string;
-  model: string;
-  status: 'completed' | 'failed' | 'skipped';
-  latencyMs?: number;
-  metrics?: ReturnType<typeof evaluateWhySelections>;
-  confidence?: ReturnType<typeof evaluateJevConfidence>;
-  tokenUsage?: WhyExtractionUsage;
-  inputCharacters: number;
-  error?: string;
-};
+const DEFAULT_RUNS_COUNT = 1;
+const DEFAULT_OUTPUT_DIRECTORY = 'evaluations/reports';
 
-function evaluationProviderName(): ProviderName {
+export function evaluationProviderName(): ProviderName {
   const configuredProvider = process.env.WHY_EVALUATION_PROVIDER;
   if (!configuredProvider) return PROVIDER_OPENAI;
   if (PROVIDER_NAMES.includes(configuredProvider as ProviderName)) {
@@ -40,102 +40,224 @@ function evaluationProviderName(): ProviderName {
   );
 }
 
-async function evaluateEngine(
+export function parseEvaluationRuns(): number {
+  const envRuns = process.env.WHY_EVALUATION_RUNS;
+  if (envRuns) {
+    const parsedRuns = parseInt(envRuns, 10);
+    if (!Number.isNaN(parsedRuns) && parsedRuns > 0) return parsedRuns;
+  }
+  const flagIndex = process.argv.indexOf('--runs');
+  if (flagIndex !== -1 && process.argv[flagIndex + 1]) {
+    const parsedFlagRuns = parseInt(process.argv[flagIndex + 1], 10);
+    if (!Number.isNaN(parsedFlagRuns) && parsedFlagRuns > 0) {
+      return parsedFlagRuns;
+    }
+  }
+  return DEFAULT_RUNS_COUNT;
+}
+
+export function parseOutputDirectory(): string {
+  const flagIndex = process.argv.indexOf('--output-dir');
+  if (flagIndex !== -1 && process.argv[flagIndex + 1]) {
+    return process.argv[flagIndex + 1];
+  }
+  return process.env.WHY_EVALUATION_OUTPUT_DIR || DEFAULT_OUTPUT_DIRECTORY;
+}
+
+export function parseNoPersistOption(): boolean {
+  return (
+    process.argv.includes('--no-persist') ||
+    process.env.WHY_EVALUATION_NO_PERSIST === 'true' ||
+    process.env.WHY_EVALUATION_NO_PERSIST === '1'
+  );
+}
+
+export async function evaluateEngineWithRepeatedRuns(
   engine: string,
-  model: string,
+  requestedModel: string,
   hasApiKey: boolean,
   extractor: WhyExtractor,
   input: WhyExtractionInput,
   inputCharacters: number,
-): Promise<EvaluationEngineReport> {
+  runsRequested: number,
+): Promise<WhyEvaluationEngineReport> {
   if (!hasApiKey) {
     return {
       engine,
-      model,
+      requestedModel,
       status: 'skipped',
+      runsCount: 0,
+      successCount: 0,
+      failureCount: 0,
       inputCharacters,
       error: 'API key is not configured',
     };
   }
 
-  const startedAt = performance.now();
-  try {
-    const output: WhyExtractionOutput = await extractor.extractWhyNotes(input);
-    const tokenUsage = extractor.lastWhyExtractionUsage;
+  const completedLatencies: number[] = [];
+  const failureReasons: string[] = [];
+  let latestOutput: WhyExtractionOutput | undefined;
+  let latestUsage: WhyExtractionUsage | undefined;
+  let servedModel: string | undefined;
+  let totalRetries = 0;
+  let throttled = false;
+
+  // WHY: Sequential runs prevent concurrent requests from changing either
+  // engine's latency or rate-limit behavior during a comparison.
+  for (let runIndex = 1; runIndex <= runsRequested; runIndex += 1) {
+    const startedAt = performance.now();
+    try {
+      const output = await extractor.extractWhyNotes(input);
+      const latencyMs = performance.now() - startedAt;
+      completedLatencies.push(latencyMs);
+      latestOutput = output;
+      if (extractor.lastWhyExtractionUsage) {
+        latestUsage = extractor.lastWhyExtractionUsage;
+      }
+      if (extractor.lastServedModel) {
+        servedModel = extractor.lastServedModel;
+      }
+      if (extractor.lastWhyExtractionDiagnostics) {
+        totalRetries += extractor.lastWhyExtractionDiagnostics.retries;
+        if (extractor.lastWhyExtractionDiagnostics.throttled) {
+          throttled = true;
+        }
+      }
+    } catch (error) {
+      const latencyMs = performance.now() - startedAt;
+      const message = error instanceof Error ? error.message : String(error);
+      failureReasons.push(
+        `Run ${runIndex} (${Math.round(latencyMs)}ms): ${message}`,
+      );
+      if (extractor.lastWhyExtractionUsage) {
+        latestUsage = extractor.lastWhyExtractionUsage;
+      }
+      if (extractor.lastServedModel) {
+        servedModel = extractor.lastServedModel;
+      }
+      if (extractor.lastWhyExtractionDiagnostics) {
+        totalRetries += extractor.lastWhyExtractionDiagnostics.retries;
+        if (extractor.lastWhyExtractionDiagnostics.throttled) {
+          throttled = true;
+        }
+      }
+    }
+  }
+
+  const successCount = completedLatencies.length;
+  const failureCount = failureReasons.length;
+  const latency = calculateAggregatedLatency(completedLatencies);
+  const diagnostics: WhyExtractionDiagnostics = {
+    retries: totalRetries,
+    throttled,
+  };
+
+  if (successCount === 0) {
     return {
       engine,
-      model,
-      status: 'completed',
-      latencyMs: performance.now() - startedAt,
-      metrics: evaluateWhySelections(WHY_EVALUATION_CORPUS, output.items),
-      ...(engine === JEV_WHY_ENGINE_NAME
-        ? {
-            confidence: evaluateJevConfidence(
-              WHY_EVALUATION_CORPUS,
-              output.selectionDiagnostics ?? [],
-            ),
-          }
-        : {}),
-      ...(tokenUsage ? { tokenUsage } : {}),
-      inputCharacters,
-    };
-  } catch (error) {
-    const tokenUsage = extractor.lastWhyExtractionUsage;
-    return {
-      engine,
-      model,
+      requestedModel,
+      ...(servedModel ? { servedModel } : {}),
       status: 'failed',
-      latencyMs: performance.now() - startedAt,
+      runsCount: runsRequested,
+      successCount: 0,
+      failureCount,
       inputCharacters,
-      ...(tokenUsage ? { tokenUsage } : {}),
-      error: error instanceof Error ? error.message : String(error),
+      ...(latestUsage ? { tokenUsage: latestUsage } : {}),
+      diagnostics,
+      failureReasons,
+      error: failureReasons[0],
     };
   }
+
+  return {
+    engine,
+    requestedModel,
+    ...(servedModel ? { servedModel } : {}),
+    status: 'completed',
+    runsCount: runsRequested,
+    successCount,
+    failureCount,
+    latency,
+    ...(latestUsage ? { tokenUsage: latestUsage } : {}),
+    diagnostics,
+    ...(failureReasons.length > 0 ? { failureReasons } : {}),
+    metrics: evaluateWhySelections(
+      WHY_EVALUATION_CORPUS,
+      latestOutput?.items ?? [],
+    ),
+    ...(engine === JEV_WHY_ENGINE_NAME && latestOutput?.selectionDiagnostics
+      ? {
+          confidence: evaluateJevConfidence(
+            WHY_EVALUATION_CORPUS,
+            latestOutput.selectionDiagnostics,
+          ),
+        }
+      : {}),
+    inputCharacters,
+  };
 }
 
-async function run(): Promise<void> {
+export async function runWhyEvaluation(): Promise<WhyEvaluationArtifact> {
   const providerName = evaluationProviderName();
+  const runsRequested = parseEvaluationRuns();
+  const outputDirectory = parseOutputDirectory();
+  const noPersist = parseNoPersistOption();
+
   const appConfig = loadAppConfig();
   const provider = providerFactory(providerName, appConfig.providers);
   const jev = new JevWhyExtractor(appConfig.typesafe);
+
   const input: WhyExtractionInput = {
     language: 'en',
     whyLabel: 'Why',
     items: WHY_EVALUATION_CORPUS.map((evaluationCase) => evaluationCase.item),
   };
   const inputCharacters = JSON.stringify(input).length;
-  // WHY: Sequential runs prevent concurrent requests from changing either
-  // engine's latency or rate-limit behavior during a comparison.
+
   const engines = [
-    await evaluateEngine(
+    await evaluateEngineWithRepeatedRuns(
       JEV_WHY_ENGINE_NAME,
       appConfig.typesafe.model,
       Boolean(appConfig.typesafe.apiKey),
       jev,
       input,
       inputCharacters,
+      runsRequested,
     ),
-    await evaluateEngine(
+    await evaluateEngineWithRepeatedRuns(
       provider.name,
       provider.modelName,
       Boolean(appConfig.providers[providerName].apiKey),
       provider,
       input,
       inputCharacters,
+      runsRequested,
     ),
   ];
 
-  process.stdout.write(
-    `${JSON.stringify(
-      {
-        corpusCases: WHY_EVALUATION_CORPUS.length,
-        inputCharacters,
-        engines,
-      },
-      null,
-      2,
-    )}\n`,
-  );
+  const artifact: WhyEvaluationArtifact = {
+    commitSha: resolveCurrentCommitSha(),
+    timestamp: new Date().toISOString(),
+    corpusRevision: calculateCorpusRevision(WHY_EVALUATION_CORPUS),
+    corpusCases: WHY_EVALUATION_CORPUS.length,
+    inputCharacters,
+    runsRequested,
+    engines,
+  };
+
+  process.stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+
+  if (!noPersist) {
+    const { jsonPath, markdownPath } = persistEvaluationReports(
+      artifact,
+      outputDirectory,
+    );
+    process.stderr.write(
+      `Saved evaluation reports to ${jsonPath} and ${markdownPath}\n`,
+    );
+  }
+
+  return artifact;
 }
 
-void run();
+void runWhyEvaluation();
