@@ -6,6 +6,9 @@ import type {
 import { JEV_EVALUATION_THRESHOLDS } from '@/constants/jev.js';
 import { combinedWhyCandidateProbability } from '@/utils/why-candidate-probability.js';
 
+// Array#indexOf uses this sentinel when generated text has no source candidate.
+const SOURCE_CANDIDATE_NOT_FOUND_INDEX = -1;
+
 /** One labeled candidate set used to compare WHY extractors. */
 export type WhyEvaluationCase = {
   /** Stable identifier for this labeled example. */
@@ -104,6 +107,16 @@ function ratio(numerator: number, denominator: number): number | null {
   return denominator === 0 ? null : numerator / denominator;
 }
 
+function f1Score(
+  precision: number | null,
+  recall: number | null,
+): number | null {
+  if (precision === null || recall === null || precision + recall === 0) {
+    return null;
+  }
+  return (2 * precision * recall) / (precision + recall);
+}
+
 function expectedCandidateIndexes(
   evaluationCase: WhyEvaluationCase,
 ): readonly number[] {
@@ -117,20 +130,31 @@ function expectedCandidateIndexes(
   );
 }
 
+function sourceCandidateIndex(
+  candidates: readonly string[],
+  why: string,
+): number | undefined {
+  const candidateIndex = candidates.indexOf(why);
+  return candidateIndex === SOURCE_CANDIDATE_NOT_FOUND_INDEX
+    ? undefined
+    : candidateIndex;
+}
+
 type CandidateProbability =
   WhySelectionDiagnostic['candidateProbabilities'][number];
 
 function highestProbabilityCandidate(
   candidates: readonly CandidateProbability[],
-): { candidateIndex: number; probability: number } {
-  return candidates.reduce(
+): CandidateProbability | undefined {
+  return candidates.reduce<CandidateProbability | undefined>(
     (best, candidate) => {
-      const probability = combinedWhyCandidateProbability(candidate);
-      return probability > best.probability
-        ? { candidateIndex: candidate.candidateIndex, probability }
+      if (!best) return candidate;
+      return combinedWhyCandidateProbability(candidate) >
+        combinedWhyCandidateProbability(best)
+        ? candidate
         : best;
     },
-    { candidateIndex: -1, probability: -1 },
+    undefined,
   );
 }
 
@@ -154,9 +178,13 @@ function thresholdMetrics(
     const selectedCandidate = highestProbabilityCandidate(
       diagnostic.candidateProbabilities,
     );
-    const selected = selectedCandidate.probability >= threshold;
+    const selected =
+      selectedCandidate !== undefined &&
+      combinedWhyCandidateProbability(selectedCandidate) >= threshold;
     const selectedExpectedCandidate =
-      selected && expectedIndexes.includes(selectedCandidate.candidateIndex);
+      selected &&
+      selectedCandidate !== undefined &&
+      expectedIndexes.includes(selectedCandidate.candidateIndex);
     if (selectedExpectedCandidate) truePositives += 1;
     if (selected && !selectedExpectedCandidate) falsePositives += 1;
     if (expectedSelection && !selectedExpectedCandidate) falseNegatives += 1;
@@ -170,10 +198,7 @@ function thresholdMetrics(
     falseNegatives,
     precision,
     recall,
-    f1:
-      precision === null || recall === null || precision + recall === 0
-        ? null
-        : (2 * precision * recall) / (precision + recall),
+    f1: f1Score(precision, recall),
   };
 }
 
@@ -226,18 +251,17 @@ export function evaluateWhySelections(
     const predicted = outputByPrNumber.get(evaluationCase.item.prNumber);
     const predictedSelection = predicted !== undefined;
     const selectedCandidateIndex = predicted
-      ? evaluationCase.item.candidates.indexOf(predicted.why)
-      : -1;
+      ? sourceCandidateIndex(evaluationCase.item.candidates, predicted.why)
+      : undefined;
     const preservesExpectedCandidate =
-      selectedCandidateIndex !== -1 &&
+      selectedCandidateIndex !== undefined &&
       expectedIndexes.includes(selectedCandidateIndex);
     outcomes.push({
       id: evaluationCase.id,
       prNumber: evaluationCase.item.prNumber,
       expectedSelectedCandidateIndex: expectedIndex,
       selected: predictedSelection,
-      selectedCandidateIndex:
-        selectedCandidateIndex === -1 ? null : selectedCandidateIndex,
+      selectedCandidateIndex: selectedCandidateIndex ?? null,
       preservesExpectedCandidate,
     });
     if (expectedSelection) expectedSelections += 1;
@@ -264,10 +288,7 @@ export function evaluateWhySelections(
 
   const precision = ratio(truePositives, predictedSelections);
   const recall = ratio(truePositives, expectedSelections);
-  const f1 =
-    precision === null || recall === null || precision + recall === 0
-      ? null
-      : (2 * precision * recall) / (precision + recall);
+  const f1 = f1Score(precision, recall);
 
   return {
     caseCount: cases.length,
@@ -319,12 +340,12 @@ export function evaluateJevConfidence(
     const expectedIndexes = expectedCandidateIndexes(evaluationCase);
     for (const candidate of diagnostic.candidateProbabilities) {
       const probability = combinedWhyCandidateProbability(candidate);
-      const expected = expectedIndexes.includes(candidate.candidateIndex)
-        ? 1
-        : 0;
-      squaredErrorSum += (probability - expected) ** 2;
+      const isExpectedCandidate = expectedIndexes.includes(
+        candidate.candidateIndex,
+      );
+      squaredErrorSum += (probability - Number(isExpectedCandidate)) ** 2;
       candidateCount += 1;
-      if (expected === 1) positiveProbabilities.push(probability);
+      if (isExpectedCandidate) positiveProbabilities.push(probability);
       else negativeProbabilities.push(probability);
     }
   }
