@@ -20,7 +20,10 @@ type ContractRow = {
 };
 
 function readRepoFile(relativePath: string): string {
-  return readFileSync(join(REPO_ROOT, relativePath), 'utf8');
+  return readFileSync(join(REPO_ROOT, relativePath), 'utf8').replace(
+    /\r\n/g,
+    '\n',
+  );
 }
 
 function uniqueSorted(values: string[]): string[] {

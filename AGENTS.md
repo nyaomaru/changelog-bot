@@ -16,25 +16,28 @@
 Prerequisite: Install the toolchain via mise. This repo pins Node and pnpm in `mise.toml`.
 
 ```sh
-mise install   # installs Node 22 and pnpm 10.12
+mise install   # installs Node 22
 ```
 
 - `pnpm dev_install`: Install deps.
 - `pnpm build`: Compile TypeScript and rewrite path aliases (`tsc`, `tsc-alias`).
 - `pnpm dev`: Run the CLI from TS (`ts-node-esm`).
 - `pnpm start`: Run compiled CLI (`node dist/cli.js`).
+- `pnpm test`: Run tests with Jest (`node --experimental-vm-modules ...`).
+- `pnpm eval:why`: Run WHY extraction evaluation.
 - Dry run example: `node dist/cli.js --release-tag HEAD --release-name 0.1.0 --provider openai --dry-run` (prints updated changelog without writing/PR).
 
 ### Mise Tasks
 
-- Tools: Node `22`, pnpm `10.12`.
-- Tasks: `lint`, `build`, `test`, `test_unit`, `test_performance`, `qa`.
+- Tools: Node `22`.
+- Tasks: `lint`, `build`, `test`, `eval_why`, `qa`.
 
 ```sh
 mise run build       # compile TS
 mise run lint        # lint sources
 mise run test        # run tests
-mise run qa          # lint + test + build
+mise run eval_why    # run WHY evaluation
+mise run qa          # lint + test + build + check:dist
 ```
 
 ## Coding Style & Naming Conventions
@@ -54,9 +57,11 @@ mise run qa          # lint + test + build
 
 ## Testing Guidelines
 
-- No automated test runner yet. Validate via dry runs against a repo clone:
+- Automated test runner: Jest with ts-jest in ESM mode (`tests/**/*.test.ts`).
+- Run the full suite with `pnpm test` (or `mise run test`).
+- Validate CLI changes via dry runs against a repo clone:
   `node dist/cli.js --release-tag vx.y.z --release-name x.y.z --dry-run`.
-- If adding tests, prefer Vitest/Jest in `src/**/__tests__` with `*.test.ts`. Keep pure functions in `utils/` easy to unit test.
+- Add tests in `tests/**` mirroring the source structure. Keep pure functions in `utils/` easy to unit test.
 
 ## Commit & Pull Request Guidelines
 
