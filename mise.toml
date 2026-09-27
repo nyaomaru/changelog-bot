@@ -16,11 +16,8 @@ run = "pnpm build"
 [tasks.test]
 run = "pnpm test"
 
-[tasks.test_unit]
-run = "pnpm run test:unit"
-
-[tasks.test_performance]
-run = "pnpm run test:performance"
+[tasks.eval_why]
+run = "pnpm eval:why"
 
 [tasks.qa]
 run = ["pnpm lint", "pnpm test", "pnpm build", "pnpm run check:dist"]

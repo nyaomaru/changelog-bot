@@ -4,12 +4,12 @@ Welcome! This is the developer guide for changelog-bot. It keeps things practica
 
 ## Quick Start
 
-- Requirements: Node 22, pnpm 11.2.2
+- Requirements: Node 22, pnpm 11
 - Recommended: use mise to pin tools and run tasks
 
 ```sh
 # Clone and install
-mise install              # installs Node 22 and pnpm 11.2.2
+mise install              # installs Node 22
 mise dev_install          # installs dependencies
 
 # Build and try the CLI
@@ -21,7 +21,7 @@ Using mise tasks:
 
 - Build: `mise build`
 - Test: `mise test`
-- QA: `mise qa` (lint + test + build; note: lint script may be absent)
+- QA: `mise qa` (lint + test + build + check:dist)
 
 ## Project Map
 
@@ -44,6 +44,7 @@ Alias: `@/…` → `src/` (see tsconfig.json and jest.config.cjs `moduleNameMapp
 - `pnpm dev` run the CLI from TS (`ts-node-esm`)
 - `pnpm start` run compiled CLI (`node dist/cli.js`)
 - `pnpm test` run Jest tests (`tests/**/*.test.ts`)
+- `pnpm eval:why` run WHY extraction evaluation
 
 Handy dry-run example:
 
