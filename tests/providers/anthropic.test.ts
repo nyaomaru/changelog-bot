@@ -1,6 +1,24 @@
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 
 import { AnthropicProvider } from '@/providers/anthropic.js';
+import type { WhyExtractionInput } from '@/types/why.js';
+
+const WHY_INPUT: WhyExtractionInput = {
+  language: 'en',
+  whyLabel: 'Why',
+  items: [
+    {
+      prNumber: 123,
+      title: 'Fix release lookup',
+      itemText: 'Fix release lookup',
+      sectionTitle: 'Fixed',
+      trustScore: 9,
+      trustBucket: 'high',
+      requiresHighConfidence: false,
+      candidates: ['The lookup must use the merged pull request.'],
+    },
+  ],
+};
 
 describe('AnthropicProvider', () => {
   const originalFetch = global.fetch;
@@ -66,5 +84,34 @@ describe('AnthropicProvider', () => {
         },
       }),
     );
+  });
+
+  test('records token usage from WHY extraction', async () => {
+    const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          content: [
+            {
+              type: 'tool_use',
+              name: 'return_why_notes',
+              input: { items: [] },
+            },
+          ],
+          usage: { input_tokens: 123, output_tokens: 45 },
+        }),
+      ),
+    );
+    global.fetch = fetchMock;
+    const provider = new AnthropicProvider({
+      apiKey: 'anthropic-test',
+      model: 'claude-test-model',
+    });
+
+    await provider.extractWhyNotes(WHY_INPUT);
+
+    expect(provider.lastWhyExtractionUsage).toEqual({
+      inputTokens: 123,
+      outputTokens: 45,
+    });
   });
 });

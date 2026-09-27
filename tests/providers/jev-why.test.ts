@@ -31,6 +31,21 @@ describe('JevWhyExtractor', () => {
     jest.useRealTimers();
   });
 
+  test('does not call TypeSafe when there are no WHY items', async () => {
+    const fetchMock = jest.fn<typeof fetch>();
+    global.fetch = fetchMock;
+    const extractor = new JevWhyExtractor({
+      apiKey: 'typesafe-test',
+      model: 'jev-latest',
+    });
+
+    await expect(
+      extractor.extractWhyNotes({ ...WHY_INPUT, items: [] }),
+    ).resolves.toEqual({ items: [] });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   test('renders the candidate with the strongest explicit-WHY probability', async () => {
     const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(
       new Response(
@@ -41,10 +56,12 @@ describe('JevWhyExtractor', () => {
               type: 'noul',
               noul: 0.42,
             },
+            pr_123_candidate_0_matches_change: { type: 'noul', noul: 0.91 },
             pr_123_candidate_1_is_explicit_why: {
               type: 'noul',
               noul: 0.91,
             },
+            pr_123_candidate_1_matches_change: { type: 'noul', noul: 0.91 },
           },
           usage: { input_tokens: 123, output_tokens: 4 },
         }),
@@ -75,8 +92,16 @@ describe('JevWhyExtractor', () => {
           selectionProbability: 0.91,
           mappedConfidence: 'high',
           candidateProbabilities: [
-            { candidateIndex: 0, probability: 0.42 },
-            { candidateIndex: 1, probability: 0.91 },
+            {
+              candidateIndex: 0,
+              probability: 0.42,
+              relevanceProbability: 0.91,
+            },
+            {
+              candidateIndex: 1,
+              probability: 0.91,
+              relevanceProbability: 0.91,
+            },
           ],
         },
       ],
@@ -115,6 +140,14 @@ describe('JevWhyExtractor', () => {
               false: expect.any(String),
             }),
           }),
+          pr_123_candidate_0_matches_change: expect.objectContaining({
+            type: 'noul',
+            instructions: {
+              question:
+                'Does the target candidate state a reason that applies to the identified changelog change?',
+              target: 'candidates.pr_123_candidate_0',
+            },
+          }),
         }),
       }),
     );
@@ -148,14 +181,17 @@ describe('JevWhyExtractor', () => {
               type: 'noul',
               noul: 0.91,
             },
+            pr_123_candidate_0_matches_change: { type: 'noul', noul: 0.91 },
             pr_123_candidate_1_is_explicit_why: {
               type: 'noul',
               noul: 0.42,
             },
+            pr_123_candidate_1_matches_change: { type: 'noul', noul: 0.91 },
             pr_456_candidate_0_is_explicit_why: {
               type: 'noul',
               noul: 0.87,
             },
+            pr_456_candidate_0_matches_change: { type: 'noul', noul: 0.91 },
           },
           usage: { input_tokens: 123, output_tokens: 4 },
         }),
@@ -188,7 +224,17 @@ describe('JevWhyExtractor', () => {
           target: 'candidates.pr_123_candidate_0',
         }),
       },
+      pr_123_candidate_0_matches_change: {
+        instructions: expect.objectContaining({
+          target: 'candidates.pr_123_candidate_0',
+        }),
+      },
       pr_456_candidate_0_is_explicit_why: {
+        instructions: expect.objectContaining({
+          target: 'candidates.pr_456_candidate_0',
+        }),
+      },
+      pr_456_candidate_0_matches_change: {
         instructions: expect.objectContaining({
           target: 'candidates.pr_456_candidate_0',
         }),
@@ -206,10 +252,12 @@ describe('JevWhyExtractor', () => {
               type: 'noul',
               noul: 0.42,
             },
+            pr_123_candidate_0_matches_change: { type: 'noul', noul: 0.91 },
             pr_123_candidate_1_is_explicit_why: {
               type: 'noul',
               noul: 0.37,
             },
+            pr_123_candidate_1_matches_change: { type: 'noul', noul: 0.91 },
           },
           usage: { input_tokens: 123, output_tokens: 4 },
         }),
@@ -230,8 +278,16 @@ describe('JevWhyExtractor', () => {
           selectionProbability: 0.42,
           mappedConfidence: 'low',
           candidateProbabilities: [
-            { candidateIndex: 0, probability: 0.42 },
-            { candidateIndex: 1, probability: 0.37 },
+            {
+              candidateIndex: 0,
+              probability: 0.42,
+              relevanceProbability: 0.91,
+            },
+            {
+              candidateIndex: 1,
+              probability: 0.37,
+              relevanceProbability: 0.91,
+            },
           ],
         },
       ],
@@ -248,10 +304,12 @@ describe('JevWhyExtractor', () => {
               type: 'noul',
               noul: 0.6,
             },
+            pr_123_candidate_0_matches_change: { type: 'noul', noul: 0.91 },
             pr_123_candidate_1_is_explicit_why: {
               type: 'noul',
               noul: 0.42,
             },
+            pr_123_candidate_1_matches_change: { type: 'noul', noul: 0.91 },
           },
           usage: { input_tokens: 123, output_tokens: 4 },
         }),
@@ -262,7 +320,7 @@ describe('JevWhyExtractor', () => {
       model: 'jev-latest',
     });
 
-    await expect(extractor.extractWhyNotes(WHY_INPUT)).resolves.toEqual(
+    await expect(extractor.extractWhyNotes(WHY_INPUT)).resolves.toMatchObject(
       expect.objectContaining({
         items: [
           expect.objectContaining({
@@ -280,6 +338,52 @@ describe('JevWhyExtractor', () => {
     );
   });
 
+  test('rejects an explicit reason that does not apply to the changelog change', async () => {
+    global.fetch = jest.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model: 'jev-latest',
+          answers: {
+            pr_123_candidate_0_is_explicit_why: { type: 'noul', noul: 0.91 },
+            pr_123_candidate_0_matches_change: { type: 'noul', noul: 0.18 },
+            pr_123_candidate_1_is_explicit_why: { type: 'noul', noul: 0.42 },
+            pr_123_candidate_1_matches_change: { type: 'noul', noul: 0.91 },
+          },
+          usage: { input_tokens: 123, output_tokens: 4 },
+        }),
+      ),
+    );
+    const extractor = new JevWhyExtractor({
+      apiKey: 'typesafe-test',
+      model: 'jev-latest',
+    });
+
+    await expect(extractor.extractWhyNotes(WHY_INPUT)).resolves.toEqual({
+      items: [],
+      selectionDiagnostics: [
+        {
+          prNumber: 123,
+          questionType: 'noul',
+          selectedOption: 'none',
+          selectionProbability: 0.42,
+          mappedConfidence: 'low',
+          candidateProbabilities: [
+            {
+              candidateIndex: 0,
+              probability: 0.91,
+              relevanceProbability: 0.18,
+            },
+            {
+              candidateIndex: 1,
+              probability: 0.42,
+              relevanceProbability: 0.91,
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   test('honors Retry-After before retrying a throttled TypeSafe request', async () => {
     jest.useFakeTimers();
     const successfulResponse = new Response(
@@ -290,10 +394,12 @@ describe('JevWhyExtractor', () => {
             type: 'noul',
             noul: 0.42,
           },
+          pr_123_candidate_0_matches_change: { type: 'noul', noul: 0.91 },
           pr_123_candidate_1_is_explicit_why: {
             type: 'noul',
             noul: 0.91,
           },
+          pr_123_candidate_1_matches_change: { type: 'noul', noul: 0.91 },
         },
         usage: { input_tokens: 123, output_tokens: 4 },
       }),
@@ -352,10 +458,12 @@ describe('JevWhyExtractor', () => {
                 type: 'noul',
                 noul: 0.42,
               },
+              pr_123_candidate_0_matches_change: { type: 'noul', noul: 0.91 },
               pr_123_candidate_1_is_explicit_why: {
                 type: 'noul',
                 noul: 0.91,
               },
+              pr_123_candidate_1_matches_change: { type: 'noul', noul: 0.91 },
             },
             usage: { input_tokens: 123, output_tokens: 4 },
           }),
@@ -480,10 +588,12 @@ describe('JevWhyExtractor', () => {
                 type: 'noul',
                 noul: 0.42,
               },
+              pr_123_candidate_0_matches_change: { type: 'noul', noul: 0.91 },
               pr_123_candidate_1_is_explicit_why: {
                 type: 'noul',
                 noul: 0.91,
               },
+              pr_123_candidate_1_matches_change: { type: 'noul', noul: 0.91 },
             },
             usage: { input_tokens: 123, output_tokens: 4 },
           }),

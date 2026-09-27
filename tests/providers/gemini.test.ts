@@ -2,6 +2,23 @@
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import { GeminiProvider } from '@/providers/gemini.js';
 
+const WHY_INPUT = {
+  language: 'en',
+  whyLabel: 'Why',
+  items: [
+    {
+      prNumber: 123,
+      title: 'Fix release lookup',
+      itemText: 'Fix release lookup',
+      sectionTitle: 'Fixed',
+      trustScore: 9,
+      trustBucket: 'high',
+      requiresHighConfidence: false,
+      candidates: ['The lookup must use the merged pull request.'],
+    },
+  ],
+};
+
 describe('GeminiProvider', () => {
   const originalFetch = global.fetch;
 
@@ -193,6 +210,37 @@ describe('GeminiProvider', () => {
       diagnostics: [
         'Gemini classify output did not match schema; used deterministic fallback for all changes',
       ],
+    });
+  });
+
+  test('records token usage from WHY extraction', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: JSON.stringify({ items: [] }) }],
+              },
+            },
+          ],
+          usageMetadata: {
+            promptTokenCount: 123,
+            candidatesTokenCount: 45,
+          },
+        }),
+    });
+    const provider = new GeminiProvider({
+      apiKey: 'gemini-test',
+      model: 'gemini-test-model',
+    });
+
+    await provider.extractWhyNotes(WHY_INPUT);
+
+    expect(provider.lastWhyExtractionUsage).toEqual({
+      inputTokens: 123,
+      outputTokens: 45,
     });
   });
 });

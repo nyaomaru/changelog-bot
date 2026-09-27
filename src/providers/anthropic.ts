@@ -31,9 +31,19 @@ import {
 } from '@/providers/why.js';
 import { WhyExtractionOutputSchema } from '@/schema/why.js';
 import { ProviderBase } from '@/providers/base.js';
+import type { WhyExtractionUsage } from '@/types/why-extractor.js';
+import { normalizeWhyExtractionUsage } from '@/utils/why-extraction-usage.js';
 
 const SYSTEM_ANTHROPIC_CLASSIFY =
   'Classify each release change into one provided category. Return a JSON object mapping every change ID to its category. Do not rewrite IDs.';
+
+/** Subset of an Anthropic WHY response used for token accounting. */
+type AnthropicWhyResponse = {
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+  };
+};
 
 /**
  * Extract the assistant text content from an Anthropic Messages API response.
@@ -60,6 +70,7 @@ function extractAnthropicClassificationResponse(json: unknown): string {
 
 export class AnthropicProvider extends ProviderBase {
   name = PROVIDER_ANTHROPIC;
+  lastWhyExtractionUsage?: WhyExtractionUsage;
 
   constructor(config: ProviderRuntimeConfig) {
     super(config);
@@ -150,6 +161,7 @@ export class AnthropicProvider extends ProviderBase {
   async extractWhyNotes(
     input: WhyExtractionInput,
   ): Promise<WhyExtractionOutput> {
+    this.lastWhyExtractionUsage = undefined;
     if (!input.items.length) return { items: [] };
 
     const payload = {
@@ -173,7 +185,7 @@ export class AnthropicProvider extends ProviderBase {
       tool_choice: { type: 'tool', name: 'return_why_notes' },
     } as const;
 
-    const json = await postJson<unknown>(
+    const json = await postJson<AnthropicWhyResponse>(
       ANTHROPIC_API,
       payload,
       {
@@ -182,6 +194,10 @@ export class AnthropicProvider extends ProviderBase {
       },
       'Anthropic WHY extraction error',
     );
+    this.lastWhyExtractionUsage = normalizeWhyExtractionUsage({
+      inputTokens: json.usage?.input_tokens,
+      outputTokens: json.usage?.output_tokens,
+    });
     const text = extractAnthropicClassificationResponse(json) || '{"items":[]}';
     const parsed = WhyExtractionOutputSchema.safeParse(JSON.parse(text));
     if (!parsed.success) {

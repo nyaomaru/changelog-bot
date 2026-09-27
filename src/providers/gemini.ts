@@ -30,6 +30,8 @@ import {
   whyExtractionJsonSchema,
 } from '@/providers/why.js';
 import { ProviderBase } from '@/providers/base.js';
+import type { WhyExtractionUsage } from '@/types/why-extractor.js';
+import { normalizeWhyExtractionUsage } from '@/utils/why-extraction-usage.js';
 
 const SYSTEM_GEMINI_CLASSIFY =
   'Classify each release change into one provided category. Return a JSON object mapping every change ID to its category. Do not rewrite IDs.';
@@ -47,6 +49,11 @@ type GeminiResponse = {
       }>;
     };
   }>;
+  /** Token accounting returned for the request. */
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+  };
 };
 
 /**
@@ -76,6 +83,7 @@ function extractGeminiText(response: GeminiResponse): string {
 /** Gemini provider adapter backed by the Google AI generateContent REST API. */
 export class GeminiProvider extends ProviderBase {
   name = PROVIDER_GEMINI;
+  lastWhyExtractionUsage?: WhyExtractionUsage;
 
   constructor(config: ProviderRuntimeConfig) {
     super(config);
@@ -161,6 +169,7 @@ export class GeminiProvider extends ProviderBase {
   async extractWhyNotes(
     input: WhyExtractionInput,
   ): Promise<WhyExtractionOutput> {
+    this.lastWhyExtractionUsage = undefined;
     if (!input.items.length) return { items: [] };
 
     const payload = {
@@ -191,6 +200,10 @@ export class GeminiProvider extends ProviderBase {
       { 'x-goog-api-key': this.apiKey ?? '' },
       'Gemini WHY extraction error',
     );
+    this.lastWhyExtractionUsage = normalizeWhyExtractionUsage({
+      inputTokens: response.usageMetadata?.promptTokenCount,
+      outputTokens: response.usageMetadata?.candidatesTokenCount,
+    });
     return parseWhyExtractionOutput(extractGeminiText(response));
   }
 }
