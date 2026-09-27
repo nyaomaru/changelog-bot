@@ -80,12 +80,14 @@ async function evaluateEngine(
       inputCharacters,
     };
   } catch (error) {
+    const tokenUsage = extractor.lastWhyExtractionUsage;
     return {
       engine,
       model,
       status: 'failed',
       latencyMs: performance.now() - startedAt,
       inputCharacters,
+      ...(tokenUsage ? { tokenUsage } : {}),
       error: error instanceof Error ? error.message : String(error),
     };
   }
