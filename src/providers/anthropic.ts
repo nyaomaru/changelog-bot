@@ -32,6 +32,7 @@ import {
 import { WhyExtractionOutputSchema } from '@/schema/why.js';
 import { ProviderBase } from '@/providers/base.js';
 import type { WhyExtractionUsage } from '@/types/why-extractor.js';
+import { normalizeWhyExtractionUsage } from '@/utils/why-extraction-usage.js';
 
 const SYSTEM_ANTHROPIC_CLASSIFY =
   'Classify each release change into one provided category. Return a JSON object mapping every change ID to its category. Do not rewrite IDs.';
@@ -65,22 +66,6 @@ function extractAnthropicClassificationResponse(json: unknown): string {
     }
   }
   return '';
-}
-
-/**
- * Normalize Anthropic token accounting when the API includes it.
- * @param response Anthropic WHY response payload.
- * @returns Input and output token counts, or undefined when omitted by the API.
- */
-function extractAnthropicWhyUsage(
-  response: AnthropicWhyResponse,
-): WhyExtractionUsage | undefined {
-  const inputTokens = response.usage?.input_tokens;
-  const outputTokens = response.usage?.output_tokens;
-  if (typeof inputTokens !== 'number' || typeof outputTokens !== 'number') {
-    return undefined;
-  }
-  return { inputTokens, outputTokens };
 }
 
 export class AnthropicProvider extends ProviderBase {
@@ -209,7 +194,10 @@ export class AnthropicProvider extends ProviderBase {
       },
       'Anthropic WHY extraction error',
     );
-    this.lastWhyExtractionUsage = extractAnthropicWhyUsage(json);
+    this.lastWhyExtractionUsage = normalizeWhyExtractionUsage({
+      inputTokens: json.usage?.input_tokens,
+      outputTokens: json.usage?.output_tokens,
+    });
     const text = extractAnthropicClassificationResponse(json) || '{"items":[]}';
     const parsed = WhyExtractionOutputSchema.safeParse(JSON.parse(text));
     if (!parsed.success) {

@@ -88,6 +88,7 @@ describe('evaluateWhySelections', () => {
       exactCandidatePreservations: 1,
       exactCandidatePreservationRate: 1,
       unexpectedSelections: 1,
+      duplicateSelections: 0,
       outcomes: [
         {
           id: 'positive',
@@ -107,6 +108,27 @@ describe('evaluateWhySelections', () => {
         },
       ],
     });
+  });
+
+  test('counts duplicate output for a corpus PR as a false positive', () => {
+    const metrics = evaluateWhySelections(CASES, [
+      {
+        prNumber: 1,
+        why: 'The lookup must use the merged pull request to avoid stale data.',
+        confidence: 'high',
+      },
+      { prNumber: 1, why: 'Duplicate output', confidence: 'low' },
+    ]);
+
+    expect(metrics).toEqual(
+      expect.objectContaining({
+        predictedSelections: 2,
+        truePositives: 1,
+        falsePositives: 1,
+        duplicateSelections: 1,
+        precision: 0.5,
+      }),
+    );
   });
 
   test('reports Jev probability calibration proxies and threshold trade-offs', () => {

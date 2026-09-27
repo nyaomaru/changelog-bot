@@ -16,12 +16,8 @@ export type WhyExtractionUsage = {
 export interface WhyExtractor {
   /** Stable identifier included in diagnostics and missing-key messages. */
   readonly name: string;
+  /** Token accounting from the most recent WHY extraction request, when available. */
+  readonly lastWhyExtractionUsage?: WhyExtractionUsage;
   /** Select or generate evidence-backed WHY notes. */
   extractWhyNotes(input: WhyExtractionInput): Promise<WhyExtractionOutput>;
-}
-
-/** Optional API usage exposed by extractors that report token accounting. */
-export interface UsageReportingWhyExtractor extends WhyExtractor {
-  /** Token accounting from the most recent WHY extraction request. */
-  lastWhyExtractionUsage?: WhyExtractionUsage;
 }

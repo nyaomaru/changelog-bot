@@ -11,7 +11,6 @@ import { JevWhyExtractor } from '@/providers/jev-why.js';
 import type { ProviderName } from '@/types/llm.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 import type {
-  UsageReportingWhyExtractor,
   WhyExtractionUsage,
   WhyExtractor,
 } from '@/types/why-extractor.js';
@@ -61,8 +60,7 @@ async function evaluateEngine(
   const startedAt = performance.now();
   try {
     const output: WhyExtractionOutput = await extractor.extractWhyNotes(input);
-    const tokenUsage = (extractor as UsageReportingWhyExtractor)
-      .lastWhyExtractionUsage;
+    const tokenUsage = extractor.lastWhyExtractionUsage;
     return {
       engine,
       model,

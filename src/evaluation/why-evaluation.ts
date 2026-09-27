@@ -44,6 +44,8 @@ export type WhyEvaluationMetrics = {
   exactCandidatePreservationRate: number | null;
   /** Returned notes whose PR number is not part of the corpus. */
   unexpectedSelections: number;
+  /** Additional returned notes for corpus PRs that already have a selection. */
+  duplicateSelections: number;
   /** Per-case decisions used to diagnose metric changes. */
   outcomes: WhyEvaluationOutcome[];
 };
@@ -113,6 +115,30 @@ function expectedCandidateIndexes(
   );
 }
 
+type CandidateProbability =
+  WhySelectionDiagnostic['candidateProbabilities'][number];
+
+function combinedCandidateProbability(candidate: CandidateProbability): number {
+  return Math.min(
+    candidate.probability,
+    candidate.relevanceProbability ?? candidate.probability,
+  );
+}
+
+function highestProbabilityCandidate(
+  candidates: readonly CandidateProbability[],
+): { candidateIndex: number; probability: number } {
+  return candidates.reduce(
+    (best, candidate) => {
+      const probability = combinedCandidateProbability(candidate);
+      return probability > best.probability
+        ? { candidateIndex: candidate.candidateIndex, probability }
+        : best;
+    },
+    { candidateIndex: -1, probability: -1 },
+  );
+}
+
 function thresholdMetrics(
   cases: readonly WhyEvaluationCase[],
   diagnosticsByPrNumber: ReadonlyMap<number, WhySelectionDiagnostic>,
@@ -130,17 +156,8 @@ function thresholdMetrics(
     }
     const expectedIndexes = expectedCandidateIndexes(evaluationCase);
     const expectedSelection = expectedIndexes.length > 0;
-    const selectedCandidate = diagnostic.candidateProbabilities.reduce(
-      (best, candidate) => {
-        const probability = Math.min(
-          candidate.probability,
-          candidate.relevanceProbability ?? candidate.probability,
-        );
-        return probability > best.probability
-          ? { candidateIndex: candidate.candidateIndex, probability }
-          : best;
-      },
-      { candidateIndex: -1, probability: -1 },
+    const selectedCandidate = highestProbabilityCandidate(
+      diagnostic.candidateProbabilities,
     );
     const selected = selectedCandidate.probability >= threshold;
     const selectedExpectedCandidate =
@@ -187,9 +204,14 @@ export function evaluateWhySelections(
 
   const outputByPrNumber = new Map<number, WhyExtractionResult>();
   let unexpectedSelections = 0;
+  let duplicateSelections = 0;
   for (const note of output) {
     if (!casesByPrNumber.has(note.prNumber)) {
       unexpectedSelections += 1;
+      continue;
+    }
+    if (outputByPrNumber.has(note.prNumber)) {
+      duplicateSelections += 1;
       continue;
     }
     outputByPrNumber.set(note.prNumber, note);
@@ -240,10 +262,10 @@ export function evaluateWhySelections(
     if (predictedSelection) falsePositives += 1;
   }
 
-  // WHY: A note for an unknown PR is a hallucinated selection. It has no corpus
-  // outcome, but must reduce precision just like a known negative selection.
-  predictedSelections += unexpectedSelections;
-  falsePositives += unexpectedSelections;
+  // WHY: Notes for unknown PRs or duplicate notes for a known PR have no unique
+  // positive corpus outcome, so both must reduce precision.
+  predictedSelections += unexpectedSelections + duplicateSelections;
+  falsePositives += unexpectedSelections + duplicateSelections;
 
   const precision = ratio(truePositives, predictedSelections);
   const recall = ratio(truePositives, expectedSelections);
@@ -268,6 +290,7 @@ export function evaluateWhySelections(
       expectedSelections,
     ),
     unexpectedSelections,
+    duplicateSelections,
     outcomes,
   };
 }
@@ -300,10 +323,7 @@ export function evaluateJevConfidence(
     }
     const expectedIndexes = expectedCandidateIndexes(evaluationCase);
     for (const candidate of diagnostic.candidateProbabilities) {
-      const probability = Math.min(
-        candidate.probability,
-        candidate.relevanceProbability ?? candidate.probability,
-      );
+      const probability = combinedCandidateProbability(candidate);
       const expected = expectedIndexes.includes(candidate.candidateIndex)
         ? 1
         : 0;
