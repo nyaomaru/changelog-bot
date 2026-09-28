@@ -1,0 +1,80 @@
+name: WHY Evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: 'Number of repeated evaluation runs per engine'
+        required: false
+        default: '3'
+        type: string
+      provider:
+        description: 'Baseline provider to evaluate against Jev'
+        required: false
+        default: 'openai'
+        type: choice
+        options:
+          - openai
+          - anthropic
+          - gemini
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install mise
+        uses: jdx/mise-action@v4
+        with:
+          cache: true
+
+      - name: Install toolchain
+        run: mise install
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack install
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        run: |
+          pnpm_store_path="$(pnpm store path)"
+          if [[ -z "$pnpm_store_path" ]]; then
+            echo "::error::pnpm store path returned an empty value"
+            exit 1
+          fi
+          printf 'path=%s\n' "$pnpm_store_path" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run WHY Evaluation
+        env:
+          WHY_EVALUATION_RUNS: ${{ inputs.runs }}
+          WHY_EVALUATION_PROVIDER: ${{ inputs.provider }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: pnpm eval:why
+
+      - name: Upload Evaluation Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: why-evaluation-reports
+          path: evaluations/reports/*
+          if-no-files-found: error

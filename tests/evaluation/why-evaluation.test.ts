@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals';
+import { jest, describe, expect, test } from '@jest/globals';
 
 import { WHY_EVALUATION_CORPUS } from '@/evaluation/why-corpus.js';
 import {
@@ -6,6 +6,8 @@ import {
   evaluateWhySelections,
 } from '@/evaluation/why-evaluation.js';
 import type { WhyEvaluationCase } from '@/evaluation/why-evaluation.js';
+import { evaluateEngineWithRepeatedRuns } from '@/evaluation/run-why-evaluation.js';
+import type { WhyExtractor } from '@/types/why-extractor.js';
 
 const CASES: WhyEvaluationCase[] = [
   {
@@ -277,5 +279,61 @@ describe('evaluateWhySelections', () => {
     expect(metrics.thresholds[0]).toEqual(
       expect.objectContaining({ truePositives: 1, falsePositives: 0 }),
     );
+  });
+});
+
+describe('evaluateEngineWithRepeatedRuns', () => {
+  test('skips evaluation when hasApiKey is false', async () => {
+    const mockExtractor: WhyExtractor = {
+      name: 'test-extractor',
+      extractWhyNotes: jest.fn<WhyExtractor['extractWhyNotes']>(),
+    };
+    const report = await evaluateEngineWithRepeatedRuns(
+      'test-engine',
+      'test-model',
+      false,
+      mockExtractor,
+      { language: 'en', whyLabel: 'Why', items: [] },
+      100,
+      3,
+    );
+    expect(report.status).toBe('skipped');
+    expect(report.runsCount).toBe(0);
+    expect(report.error).toBe('API key is not configured');
+    expect(mockExtractor.extractWhyNotes).not.toHaveBeenCalled();
+  });
+
+  test('runs multiple iterations and records aggregated latency and model metadata', async () => {
+    const mockExtractor: WhyExtractor = {
+      name: 'test-extractor',
+      lastServedModel: 'test-model-served',
+      lastWhyExtractionUsage: { inputTokens: 10, outputTokens: 5 },
+      lastWhyExtractionDiagnostics: { retries: 0, throttled: false },
+      extractWhyNotes: jest
+        .fn<WhyExtractor['extractWhyNotes']>()
+        .mockResolvedValue({
+          items: [],
+        }),
+    };
+    const report = await evaluateEngineWithRepeatedRuns(
+      'test-engine',
+      'test-model-requested',
+      true,
+      mockExtractor,
+      { language: 'en', whyLabel: 'Why', items: [] },
+      100,
+      2,
+    );
+    expect(report.status).toBe('completed');
+    expect(report.runsCount).toBe(2);
+    expect(report.successCount).toBe(2);
+    expect(report.failureCount).toBe(0);
+    expect(report.runs).toHaveLength(2);
+    expect(report.runs?.[0]?.status).toBe('completed');
+    expect(report.runs?.[0]?.servedModel).toBe('test-model-served');
+    expect(report.requestedModel).toBe('test-model-requested');
+    expect(report.servedModel).toBe('test-model-served');
+    expect(report.latency).toBeDefined();
+    expect(mockExtractor.extractWhyNotes).toHaveBeenCalledTimes(2);
   });
 });

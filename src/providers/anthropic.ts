@@ -39,6 +39,7 @@ const SYSTEM_ANTHROPIC_CLASSIFY =
 
 /** Subset of an Anthropic WHY response used for token accounting. */
 type AnthropicWhyResponse = {
+  model?: string;
   usage?: {
     input_tokens?: number;
     output_tokens?: number;
@@ -71,6 +72,7 @@ function extractAnthropicClassificationResponse(json: unknown): string {
 export class AnthropicProvider extends ProviderBase {
   name = PROVIDER_ANTHROPIC;
   lastWhyExtractionUsage?: WhyExtractionUsage;
+  lastServedModel?: string;
 
   constructor(config: ProviderRuntimeConfig) {
     super(config);
@@ -162,6 +164,7 @@ export class AnthropicProvider extends ProviderBase {
     input: WhyExtractionInput,
   ): Promise<WhyExtractionOutput> {
     this.lastWhyExtractionUsage = undefined;
+    this.lastServedModel = undefined;
     if (!input.items.length) return { items: [] };
 
     const payload = {
@@ -198,6 +201,7 @@ export class AnthropicProvider extends ProviderBase {
       inputTokens: json.usage?.input_tokens,
       outputTokens: json.usage?.output_tokens,
     });
+    this.lastServedModel = json.model;
     const text = extractAnthropicClassificationResponse(json) || '{"items":[]}';
     const parsed = WhyExtractionOutputSchema.safeParse(JSON.parse(text));
     if (!parsed.success) {

@@ -30,7 +30,10 @@ import {
   whyExtractionJsonSchema,
 } from '@/providers/why.js';
 import { ProviderBase } from '@/providers/base.js';
-import type { WhyExtractionUsage } from '@/types/why-extractor.js';
+import type {
+  WhyExtractionDiagnostics,
+  WhyExtractionUsage,
+} from '@/types/why-extractor.js';
 import { normalizeWhyExtractionUsage } from '@/utils/why-extraction-usage.js';
 
 const SYSTEM_GEMINI_CLASSIFY =
@@ -49,6 +52,8 @@ type GeminiResponse = {
       }>;
     };
   }>;
+  /** Model version actually served by Gemini API, when available. */
+  modelVersion?: string;
   /** Token accounting returned for the request. */
   usageMetadata?: {
     promptTokenCount?: number;
@@ -84,6 +89,8 @@ function extractGeminiText(response: GeminiResponse): string {
 export class GeminiProvider extends ProviderBase {
   name = PROVIDER_GEMINI;
   lastWhyExtractionUsage?: WhyExtractionUsage;
+  lastServedModel?: string;
+  lastWhyExtractionDiagnostics?: WhyExtractionDiagnostics;
 
   constructor(config: ProviderRuntimeConfig) {
     super(config);
@@ -170,6 +177,8 @@ export class GeminiProvider extends ProviderBase {
     input: WhyExtractionInput,
   ): Promise<WhyExtractionOutput> {
     this.lastWhyExtractionUsage = undefined;
+    this.lastServedModel = undefined;
+    this.lastWhyExtractionDiagnostics = undefined;
     if (!input.items.length) return { items: [] };
 
     const payload = {
@@ -204,6 +213,7 @@ export class GeminiProvider extends ProviderBase {
       inputTokens: response.usageMetadata?.promptTokenCount,
       outputTokens: response.usageMetadata?.candidatesTokenCount,
     });
+    this.lastServedModel = response.modelVersion;
     return parseWhyExtractionOutput(extractGeminiText(response));
   }
 }

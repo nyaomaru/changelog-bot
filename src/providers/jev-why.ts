@@ -9,6 +9,7 @@ import {
 } from '@/constants/jev.js';
 import type { TypeSafeRuntimeConfig } from '@/types/config.js';
 import type {
+  WhyExtractionDiagnostics,
   WhyExtractionUsage,
   WhyExtractor,
 } from '@/types/why-extractor.js';
@@ -118,6 +119,8 @@ function retryAfterDelay(retryAfterHeader: string | null): number | undefined {
 export class JevWhyExtractor implements WhyExtractor {
   readonly name = JEV_WHY_ENGINE_NAME;
   lastWhyExtractionUsage?: WhyExtractionUsage;
+  lastServedModel?: string;
+  lastWhyExtractionDiagnostics?: WhyExtractionDiagnostics;
 
   private readonly apiKey?: string;
   private readonly model: string;
@@ -137,6 +140,8 @@ export class JevWhyExtractor implements WhyExtractor {
   ): Promise<WhyExtractionOutput> {
     if (!this.apiKey) throw new Error('Missing TYPESAFE_API_KEY');
     this.lastWhyExtractionUsage = undefined;
+    this.lastServedModel = undefined;
+    this.lastWhyExtractionDiagnostics = undefined;
     if (!input.items.length) return { items: [] };
 
     const candidates: Record<
@@ -205,6 +210,7 @@ export class JevWhyExtractor implements WhyExtractor {
       inputTokens: parsedResponse.data.usage.input_tokens,
       outputTokens: parsedResponse.data.usage.output_tokens,
     };
+    this.lastServedModel = parsedResponse.data.model;
 
     const items = [];
     const selectionDiagnostics: WhySelectionDiagnostic[] = [];
@@ -274,21 +280,32 @@ export class JevWhyExtractor implements WhyExtractor {
   }
 
   private async request(body: unknown): Promise<unknown> {
+    let retries = 0;
+    let throttled = false;
     for (let attempt = 0; attempt < TYPESAFE_MAX_ATTEMPTS; attempt += 1) {
       const typeSafeResponse = await this.fetchWithTimeout(body);
       if (typeSafeResponse.response.ok) {
+        this.lastWhyExtractionDiagnostics = { retries, throttled };
         return JSON.parse(await typeSafeResponse.readBody());
       }
 
+      if (
+        typeSafeResponse.response.status === 429 ||
+        typeSafeResponse.response.status === 529
+      ) {
+        throttled = true;
+      }
       const retryable = TYPESAFE_RETRYABLE_STATUS_CODES.has(
         typeSafeResponse.response.status,
       );
       if (!retryable || attempt === TYPESAFE_MAX_ATTEMPTS - 1) {
+        this.lastWhyExtractionDiagnostics = { retries, throttled };
         const errorDetail = readErrorDetail(await typeSafeResponse.readBody());
         throw new Error(
           `TypeSafe API request failed (${typeSafeResponse.response.status})${errorDetail}`,
         );
       }
+      retries += 1;
       // WHY: TypeSafe may extend throttling or capacity windows beyond our
       // local exponential backoff. Decide to retry from headers before
       // consuming a possibly stalled error body, then discard it so an
@@ -300,6 +317,7 @@ export class JevWhyExtractor implements WhyExtractor {
       await new Promise<void>((resolve) => setTimeout(resolve, delay));
     }
 
+    this.lastWhyExtractionDiagnostics = { retries, throttled };
     throw new Error('TypeSafe API request exhausted retries');
   }
 
