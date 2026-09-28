@@ -149,7 +149,8 @@ describe('WHY Evaluation Corpus Calibration (#205)', () => {
       JEV_CALIBRATION_SWEEP_THRESHOLDS.length,
     );
 
-    // Verify monotonic precision / recall trends across thresholds
+    // Verify monotonic non-increasing recall trend across increasing thresholds
+    let previousRecall = 1;
     for (const thresholdMetric of sweepMetrics.thresholds) {
       if (thresholdMetric.precision !== null) {
         expect(thresholdMetric.precision).toBeGreaterThanOrEqual(0);
@@ -158,12 +159,15 @@ describe('WHY Evaluation Corpus Calibration (#205)', () => {
       if (thresholdMetric.recall !== null) {
         expect(thresholdMetric.recall).toBeGreaterThanOrEqual(0);
         expect(thresholdMetric.recall).toBeLessThanOrEqual(1);
+        expect(thresholdMetric.recall).toBeLessThanOrEqual(previousRecall);
+        previousRecall = thresholdMetric.recall;
       }
     }
   });
 
-  test('falls back gracefully to embedded corpus when fixture path is invalid', () => {
-    const fallback = loadWhyEvaluationCorpus('/non/existent/path.json');
-    expect(fallback.length).toBeGreaterThanOrEqual(14);
+  test('throws an explicit error when a custom fixture path cannot be loaded', () => {
+    expect(() => loadWhyEvaluationCorpus('/non/existent/path.json')).toThrow(
+      /Failed to load WHY evaluation corpus/,
+    );
   });
 });

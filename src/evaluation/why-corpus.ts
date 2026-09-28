@@ -13,17 +13,33 @@ import type { WhyEvaluationCase } from '@/evaluation/why-evaluation.js';
 export function loadWhyEvaluationCorpus(
   fixturePath?: string,
 ): WhyEvaluationCase[] {
-  const resolvedPath =
-    fixturePath ??
-    process.env.WHY_EVALUATION_CORPUS_PATH ??
-    path.resolve(process.cwd(), 'tests/fixtures/why-corpus.json');
+  const customPath = fixturePath ?? process.env.WHY_EVALUATION_CORPUS_PATH;
 
-  if (fs.existsSync(resolvedPath)) {
+  if (customPath) {
+    const resolvedPath = path.resolve(customPath);
     try {
       const raw = fs.readFileSync(resolvedPath, 'utf8');
       return JSON.parse(raw) as WhyEvaluationCase[];
-    } catch {
-      // In case of parsing error, fall through to embedded corpus
+    } catch (error) {
+      throw new Error(`Failed to load WHY evaluation corpus: ${resolvedPath}`, {
+        cause: error,
+      });
+    }
+  }
+
+  const defaultPath = path.resolve(
+    process.cwd(),
+    'tests/fixtures/why-corpus.json',
+  );
+
+  if (fs.existsSync(defaultPath)) {
+    try {
+      const raw = fs.readFileSync(defaultPath, 'utf8');
+      return JSON.parse(raw) as WhyEvaluationCase[];
+    } catch (error) {
+      throw new Error(`Failed to load WHY evaluation corpus: ${defaultPath}`, {
+        cause: error,
+      });
     }
   }
 

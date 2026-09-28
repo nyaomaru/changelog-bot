@@ -243,44 +243,45 @@
     "expectedSelectedCandidateIndex": null
   },
   {
-    "id": "pr-208-windows-crlf-dx-rationale",
-    "sourcePullRequest": 208,
+    "id": "pr-210-cross-platform-jest-dx-rationale",
+    "sourcePullRequest": 210,
     "item": {
-      "prNumber": 208,
-      "title": "fix(dx): support Windows development and normalize CRLF",
-      "itemText": "Support Windows development and normalize CRLF in contract tests",
+      "prNumber": 210,
+      "title": "fix(dx): support Windows development, cross-platform test runner, and normalize CRLF in contract tests",
+      "itemText": "Support Windows development, cross-platform test runner, and normalize CRLF in contract tests",
       "sectionTitle": "Fixed",
       "trustScore": 9,
       "trustBucket": "high",
       "requiresHighConfidence": false,
       "candidates": [
-        "Windows git clones checkout CRLF line endings by default, causing public contract file snapshot tests to fail on byte comparison."
+        "Update test script to execute node with experimental-vm-modules directly instead of POSIX NODE_OPTIONS syntax.",
+        "Normalize CRLF line endings at the file-read boundary so contract tests pass reliably across Windows and Unix checkouts."
       ]
     },
-    "expectedSelectedCandidateIndex": 0
+    "expectedSelectedCandidateIndex": 1
   },
   {
-    "id": "pr-210-cross-platform-jest-rationale",
-    "sourcePullRequest": 210,
+    "id": "pr-211-evaluation-artifacts-rationale",
+    "sourcePullRequest": 211,
     "item": {
-      "prNumber": 210,
-      "title": "chore: use cross-platform node invocation for jest",
-      "itemText": "Use cross-platform node invocation for jest",
-      "sectionTitle": "Changed",
+      "prNumber": 211,
+      "title": "test(why): persist reproducible evaluation artifacts",
+      "itemText": "Persist reproducible evaluation artifacts",
+      "sectionTitle": "Added",
       "trustScore": 9,
       "trustBucket": "high",
       "requiresHighConfidence": false,
       "candidates": [
-        "Replace NODE_OPTIONS shell prefix with direct node invocation so contributors on Windows can run tests without cross-env or bash."
+        "Extend run-why-evaluation to support repeated runs and configurable output directory.",
+        "Persist structured benchmark reports and human-readable summaries so engine comparisons are reproducible across commits without relying on transient console logs."
       ]
     },
-    "expectedSelectedCandidateIndex": 0
+    "expectedSelectedCandidateIndex": 1
   },
   {
-    "id": "pr-201-rate-limit-backoff-rationale",
-    "sourcePullRequest": 201,
+    "id": "fixture-rate-limit-backoff-rationale",
     "item": {
-      "prNumber": 201,
+      "prNumber": 90020,
       "title": "fix(llm): add exponential backoff for rate-limited requests",
       "itemText": "Add exponential backoff for rate-limited requests",
       "sectionTitle": "Fixed",
@@ -294,10 +295,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-180-memory-leak-cleanup-rationale",
-    "sourcePullRequest": 180,
+    "id": "fixture-memory-leak-cleanup-rationale",
     "item": {
-      "prNumber": 180,
+      "prNumber": 90021,
       "title": "fix: dispose octokit cache on execution end",
       "itemText": "Dispose octokit cache on execution end",
       "sectionTitle": "Fixed",
@@ -311,10 +311,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-175-redos-regex-safety-rationale",
-    "sourcePullRequest": 175,
+    "id": "fixture-redos-regex-safety-rationale",
     "item": {
-      "prNumber": 175,
+      "prNumber": 90022,
       "title": "security: avoid catastrophic backtracking in release heading regex",
       "itemText": "Avoid catastrophic backtracking in release heading regex",
       "sectionTitle": "Fixed",
@@ -328,10 +327,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-160-linear-scan-optimization-rationale",
-    "sourcePullRequest": 160,
+    "id": "fixture-linear-scan-optimization-rationale",
     "item": {
-      "prNumber": 160,
+      "prNumber": 90023,
       "title": "perf: replace O(N^2) PR reference lookup with Map",
       "itemText": "Replace O(N^2) PR reference lookup with Map",
       "sectionTitle": "Changed",
@@ -345,10 +343,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-145-semantic-commit-parser-rationale",
-    "sourcePullRequest": 145,
+    "id": "fixture-semantic-commit-parser-rationale",
     "item": {
-      "prNumber": 145,
+      "prNumber": 90024,
       "title": "feat: parse breaking changes footer from conventional commits",
       "itemText": "Parse breaking changes footer from conventional commits",
       "sectionTitle": "Added",
@@ -362,10 +359,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-140-concurrency-lock-rationale",
-    "sourcePullRequest": 140,
+    "id": "fixture-concurrency-lock-rationale",
     "item": {
-      "prNumber": 140,
+      "prNumber": 90025,
       "title": "fix: prevent race condition on concurrent changelog PR creation",
       "itemText": "Prevent race condition on concurrent changelog PR creation",
       "sectionTitle": "Fixed",
@@ -379,10 +375,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-115-token-truncation-safety-rationale",
-    "sourcePullRequest": 115,
+    "id": "fixture-token-truncation-safety-rationale",
     "item": {
-      "prNumber": 115,
+      "prNumber": 90026,
       "title": "fix: truncate long diff summaries before sending to LLM",
       "itemText": "Truncate long diff summaries before sending to LLM",
       "sectionTitle": "Fixed",
@@ -396,10 +391,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-105-preserve-unreleased-section-rationale",
-    "sourcePullRequest": 105,
+    "id": "fixture-preserve-unreleased-section-rationale",
     "item": {
-      "prNumber": 105,
+      "prNumber": 90027,
       "title": "fix: preserve custom user notes in Unreleased section",
       "itemText": "Preserve custom user notes in Unreleased section",
       "sectionTitle": "Fixed",
@@ -413,10 +407,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-095-directory-traversal-prevention-rationale",
-    "sourcePullRequest": 95,
+    "id": "fixture-directory-traversal-prevention-rationale",
     "item": {
-      "prNumber": 95,
+      "prNumber": 90028,
       "title": "security: sanitize output changelog file path",
       "itemText": "Sanitize output changelog file path",
       "sectionTitle": "Fixed",
@@ -430,10 +423,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-085-git-tag-prefix-strip-rationale",
-    "sourcePullRequest": 85,
+    "id": "fixture-git-tag-prefix-strip-rationale",
     "item": {
-      "prNumber": 85,
+      "prNumber": 90029,
       "title": "fix: handle release tags with leading v prefix consistently",
       "itemText": "Handle release tags with leading v prefix consistently",
       "sectionTitle": "Fixed",
@@ -447,10 +439,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-075-dry-run-exit-code-rationale",
-    "sourcePullRequest": 75,
+    "id": "fixture-dry-run-exit-code-rationale",
     "item": {
-      "prNumber": 75,
+      "prNumber": 90030,
       "title": "fix: return zero exit code on dry-run completion",
       "itemText": "Return zero exit code on dry-run completion",
       "sectionTitle": "Fixed",
@@ -464,10 +455,9 @@
     "expectedSelectedCandidateIndex": 0
   },
   {
-    "id": "pr-065-dependency-bump-implementation-only",
-    "sourcePullRequest": 65,
+    "id": "fixture-dependency-bump-implementation-only",
     "item": {
-      "prNumber": 65,
+      "prNumber": 90031,
       "title": "chore(deps): bump octokit from 5.0.0 to 5.0.5",
       "itemText": "Bump octokit from 5.0.0 to 5.0.5",
       "sectionTitle": "Changed",
@@ -482,10 +472,9 @@
     "expectedSelectedCandidateIndex": null
   },
   {
-    "id": "pr-055-refactor-ast-visitor-implementation-only",
-    "sourcePullRequest": 55,
+    "id": "fixture-refactor-ast-visitor-implementation-only",
     "item": {
-      "prNumber": 55,
+      "prNumber": 90032,
       "title": "refactor: rewrite markdown section extractor using visitor pattern",
       "itemText": "Rewrite markdown section extractor using visitor pattern",
       "sectionTitle": "Changed",
@@ -500,10 +489,9 @@
     "expectedSelectedCandidateIndex": null
   },
   {
-    "id": "pr-045-code-style-rename-implementation-only",
-    "sourcePullRequest": 45,
+    "id": "fixture-code-style-rename-implementation-only",
     "item": {
-      "prNumber": 45,
+      "prNumber": 90033,
       "title": "style: rename internal helper variables to lowerCamelCase",
       "itemText": "Rename internal helper variables to lowerCamelCase",
       "sectionTitle": "Changed",
@@ -517,10 +505,9 @@
     "expectedSelectedCandidateIndex": null
   },
   {
-    "id": "pr-035-extract-shared-constants-implementation-only",
-    "sourcePullRequest": 35,
+    "id": "fixture-extract-shared-constants-implementation-only",
     "item": {
-      "prNumber": 35,
+      "prNumber": 90034,
       "title": "refactor: extract magic strings to constants file",
       "itemText": "Extract magic strings to constants file",
       "sectionTitle": "Changed",
@@ -534,10 +521,9 @@
     "expectedSelectedCandidateIndex": null
   },
   {
-    "id": "pr-025-add-debug-logging-implementation-only",
-    "sourcePullRequest": 25,
+    "id": "fixture-add-debug-logging-implementation-only",
     "item": {
-      "prNumber": 25,
+      "prNumber": 90035,
       "title": "chore: add debug logging statements to PR fetcher",
       "itemText": "Add debug logging statements to PR fetcher",
       "sectionTitle": "Changed",
@@ -551,10 +537,9 @@
     "expectedSelectedCandidateIndex": null
   },
   {
-    "id": "pr-015-move-test-helpers-implementation-only",
-    "sourcePullRequest": 15,
+    "id": "fixture-move-test-helpers-implementation-only",
     "item": {
-      "prNumber": 15,
+      "prNumber": 90036,
       "title": "test: move mock git repositories to tests/helpers",
       "itemText": "Move mock git repositories to tests/helpers",
       "sectionTitle": "Changed",
@@ -568,10 +553,9 @@
     "expectedSelectedCandidateIndex": null
   },
   {
-    "id": "pr-005-update-readme-badges-implementation-only",
-    "sourcePullRequest": 5,
+    "id": "fixture-update-readme-badges-implementation-only",
     "item": {
-      "prNumber": 5,
+      "prNumber": 90037,
       "title": "docs: update npm version badge in README",
       "itemText": "Update npm version badge in README",
       "sectionTitle": "Changed",
@@ -585,10 +569,9 @@
     "expectedSelectedCandidateIndex": null
   },
   {
-    "id": "pr-042-convert-map-to-object-implementation-only",
-    "sourcePullRequest": 42,
+    "id": "fixture-convert-map-to-object-implementation-only",
     "item": {
-      "prNumber": 42,
+      "prNumber": 90038,
       "title": "refactor: use plain object for category mapping lookup",
       "itemText": "Use plain object for category mapping lookup",
       "sectionTitle": "Changed",
@@ -602,10 +585,9 @@
     "expectedSelectedCandidateIndex": null
   },
   {
-    "id": "pr-048-bump-typescript-compiler-implementation-only",
-    "sourcePullRequest": 48,
+    "id": "fixture-bump-typescript-compiler-implementation-only",
     "item": {
-      "prNumber": 48,
+      "prNumber": 90039,
       "title": "build(deps-dev): upgrade typescript to 5.4.5",
       "itemText": "Upgrade typescript to 5.4.5",
       "sectionTitle": "Changed",
@@ -619,10 +601,9 @@
     "expectedSelectedCandidateIndex": null
   },
   {
-    "id": "pr-052-format-codebase-implementation-only",
-    "sourcePullRequest": 52,
+    "id": "fixture-format-codebase-implementation-only",
     "item": {
-      "prNumber": 52,
+      "prNumber": 90040,
       "title": "style: run prettier format on all source files",
       "itemText": "Run prettier format on all source files",
       "sectionTitle": "Changed",
