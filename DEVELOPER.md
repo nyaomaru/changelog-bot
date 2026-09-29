@@ -98,6 +98,41 @@ Tips:
 - Cover normal paths and edge/error cases
 - Keep helpers small and unit-testable
 
+## WHY Extraction Evaluation
+
+The evaluation suite benchmarks the experimental Jev selection engine against a selected baseline LLM provider on labeled PR descriptions (defaulting to the 50-case benchmark in `tests/fixtures/why-corpus.json`).
+
+### Running Evaluations
+
+`pnpm eval:why` runs Jev alongside one selected baseline provider (`openai`, `anthropic`, or `gemini`, defaulting to OpenAI).
+
+Useful options:
+
+- **Repeated runs**: `pnpm eval:why --runs 3` (or `WHY_EVALUATION_RUNS=3`) measures latency percentiles (`min`, `mean`, `p95`, `max`) and checks consistency across repeated runs.
+- **Select baseline provider**: set `WHY_EVALUATION_PROVIDER=anthropic` or `WHY_EVALUATION_PROVIDER=gemini` (defaults to `openai`).
+- **Threshold sweep**: `pnpm eval:why --sweep` (or `WHY_EVALUATION_SWEEP=true`) evaluates Jev across fine-grained confidence thresholds (`0.40` through `0.90` in `0.05` increments) to inspect Precision and Recall curves.
+- **Custom output directory**: `--output-dir <path>` (or `WHY_EVALUATION_OUTPUT_DIR=<path>`, defaults to `evaluations/reports`).
+- **Skip file persistence**: `--no-persist` (or `WHY_EVALUATION_NO_PERSIST=true`) prints benchmark results to stdout without saving report files to disk.
+- **Custom corpus**: point `WHY_EVALUATION_CORPUS_PATH` to an alternative labeled dataset.
+
+### Evaluation Artifacts
+
+Unless `--no-persist` is specified, runs save reproducible benchmark artifacts under `evaluations/reports/`:
+
+- Structured report: `evaluations/reports/eval-<timestamp>-<shortSha>.json`
+- Human-readable summary: `evaluations/reports/eval-<timestamp>-<shortSha>.md`
+
+The `evaluations/reports/` directory is ignored by git to keep transient run logs out of source control.
+
+### On-Demand CI Workflow
+
+GitHub Actions includes an on-demand workflow (`.github/workflows/why-eval.yaml`) triggered via `workflow_dispatch`. The GitHub Actions UI exposes:
+
+- `runs`: number of repeated evaluation runs per engine (defaults to `3`).
+- `provider`: baseline provider to evaluate against Jev (`openai`, `anthropic`, or `gemini`).
+
+Evaluation artifacts are uploaded as workflow run artifacts named `why-evaluation-reports`. (Note: threshold sweeps via `--sweep` are currently available through the CLI runner).
+
 ## Contributing Flow
 
 1. Implement in `src/**` with small, focused changes
