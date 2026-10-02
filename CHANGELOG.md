@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7.0] - 2026-10-02
+
+### Added
+
+- add experimental Jev Noul selection engine by @nyaomaru in [#203](https://github.com/nyaomaru/changelog-bot/pull/203)
+  - Why: Add experimental Jev support for WHY extraction to improve decision-making processes.
+- jev why evaluation by @nyaomaru in [#207](https://github.com/nyaomaru/changelog-bot/pull/207)
+  - Why: Add an opt-in Jev WHY evaluation harness to enhance rationale assessment in PRs.
+
+### Fixed
+
+- support Windows development, cross-platform test runner, and normalize CRLF in contract tests by @johnnylemonny in [#210](https://github.com/nyaomaru/changelog-bot/pull/210)
+  - Why: Support Windows development to ensure tests run correctly across different platforms.
+- override js-yaml to patched version by @johnnylemonny in [#215](https://github.com/nyaomaru/changelog-bot/pull/215)
+
+### Changed
+
+- Release: 0.7.0 by [bot] by @github-actions in [#217](https://github.com/nyaomaru/changelog-bot/pull/217)
+
+### Docs
+
+- 0.6.14 by [bot] by @github-actions in [#200](https://github.com/nyaomaru/changelog-bot/pull/200)
+- document WHY evaluation runner options and CI workflow by @johnnylemonny in [#216](https://github.com/nyaomaru/changelog-bot/pull/216)
+
+### Test
+
+- persist reproducible evaluation artifacts by @johnnylemonny in [#211](https://github.com/nyaomaru/changelog-bot/pull/211)
+- calibrate Jev confidence thresholds on a broader corpus by @johnnylemonny in [#212](https://github.com/nyaomaru/changelog-bot/pull/212)
+
+### Chore
+
+- bump the minor-and-patch group with 6 updates by [bot] by @dependabot in [#202](https://github.com/nyaomaru/changelog-bot/pull/202)
+- bump the minor-and-patch group with 9 updates by [bot] by @dependabot in [#204](https://github.com/nyaomaru/changelog-bot/pull/204)
+
+### New Contributors
+
+* @johnnylemonny made their first contribution in https://github.com/nyaomaru/changelog-bot/pull/210
+
+A huge thank you to @johnnylemonny for making their first contribution in [#210](https://github.com/nyaomaru/changelog-bot/pull/210) and for continuing to contribute across this release. 🙌
+
+Beyond improving Windows development support, John helped build out the reproducible Jev evaluation artifacts and the broader calibration corpus that now form an important part of the experimental WHY evaluation workflow.
+
+Thank you for the thoughtful contributions, detailed follow-ups, and for helping make v0.7.0 better! 😸
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.6.14...v0.7.0
+
+[v0.7.0]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.7.0
+
 ## [v0.6.14] - 2026-09-12
 
 ### Added
