@@ -6,8 +6,8 @@ settings:
 
 overrides:
   browserslist: 4.28.7
-  brace-expansion@<2.0.0: 1.1.18
-  brace-expansion@>=2.0.0 <3.0.0: 2.1.4
+  brace-expansion@<2.0.0: 1.1.21
+  brace-expansion@>=2.0.0 <3.0.0: 2.1.7
   js-yaml@<4.0.0: 3.15.2
 
 importers:
@@ -1895,10 +1895,10 @@ packages:
         integrity: sha512-VHiNCbI1lKdl44tGrhNfU3lup0Tj/ZBMJB5/2ZbNXRCPuRCO7ed2mgcK4r17y+KB2EfuYuRaVlwNbAeaWGSpbw==,
       }
 
-  brace-expansion@2.1.4:
+  brace-expansion@2.1.7:
     resolution:
       {
-        integrity: sha512-hGfVzPxthbf3+2yjg/RBs60cB0FhqBS/zvdV/4wn4/BmN0bNMMHPc4V/BbFieqf1TKAGGAHnY4eSjajCl0f2Xg==,
+        integrity: sha512-uZbew1NqdmPDTMJ8ah1y+b+9QEJrfkXFk3RcTQw3X0jW/xRUvFKsg1CfQdSYGdTbXZWExtU3J3ccxtnfw1Fi0g==,
       }
 
   brace-expansion@5.0.12:
@@ -5208,7 +5208,7 @@ snapshots:
 
   bottleneck@2.19.5: {}
 
-  brace-expansion@2.1.4:
+  brace-expansion@2.1.7:
     dependencies:
       balanced-match: 1.0.2
 
@@ -6132,7 +6132,7 @@ snapshots:
 
   minimatch@9.0.9:
     dependencies:
-      brace-expansion: 2.1.4
+      brace-expansion: 2.1.7
 
   minimist@1.2.8: {}
 
