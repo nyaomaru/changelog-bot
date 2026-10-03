@@ -1,6 +1,7 @@
 import { buildLLMInput } from '@/lib/prompt.js';
 import { parseOrRetryLLMOutput } from '@/utils/llm-parse.js';
-import { fallbackSection } from '@/utils/fallback.js';
+import { buildReleaseDraft } from '@/utils/release-draft.js';
+import { buildSectionFromRelease } from '@/utils/release-section.js';
 import {
   DEFAULT_PR_LABELS,
   PR_TITLE_PREFIX,
@@ -36,6 +37,15 @@ function buildLogsForLLM(
     .join('\n');
 }
 
+/**
+ * Build changelog output using deterministic draft and optional provider generation.
+ * WHY: In Phase 4, the deterministic ReleaseDraft is always constructed first and validated.
+ * When AI generation is enabled, it enhances the changelog while deterministic fallbacks
+ * use the canonical ReleaseDraft renderer instead of raw unclassified logs.
+ * @param params Input release context, commits, and provider configuration.
+ * @param fallbackReasons List of diagnostics describing missing keys or degraded enrichment.
+ * @returns LLM output payload, release draft, and AI usage metadata.
+ */
 export async function buildOutputFromModelOrFallback(
   params: BuildChangelogLlmOutputParams,
   fallbackReasons: string[],
@@ -54,11 +64,25 @@ export async function buildOutputFromModelOrFallback(
     commitList,
     prs,
     prMapBySha,
+    pullRequestsBySha,
+    titleToPr,
     provider,
     hasProviderKey,
     noAi,
     failOnLlmError,
   } = params;
+
+  // Phase 4: Construct authoritative deterministic ReleaseDraft before any model call
+  const draft = buildReleaseDraft({
+    version,
+    date,
+    releaseBody,
+    commitList,
+    pullRequestsBySha,
+    titleToPr,
+    owner,
+    repo,
+  });
 
   const logsForLLM = buildLogsForLLM(commitList, prMapBySha);
 
@@ -99,19 +123,12 @@ export async function buildOutputFromModelOrFallback(
   }
 
   if (!llm) {
+    // Deterministic-first: render directly from the complete ReleaseDraft
+    const section = buildSectionFromRelease({
+      ...draft,
+    });
     llm = {
-      new_section_markdown: fallbackSection({
-        version,
-        date,
-        logs: commitList
-          .map(
-            (commit) =>
-              `${commit.sha.slice(0, SHA_SHORT_LENGTH)} ${commit.subject}`,
-          )
-          .join('\n'),
-        prs,
-        prMapBySha,
-      }),
+      new_section_markdown: section,
       insert_after_anchor: UNRELEASED_ANCHOR,
       pr_title: `${PR_TITLE_PREFIX}${version}`,
       pr_body: buildAutoPrBody(prevRef, releaseRef, true),
@@ -125,5 +142,5 @@ export async function buildOutputFromModelOrFallback(
     llm.pr_body = appendFallbackNote(llm.pr_body, fallbackReasons);
   }
 
-  return { llm, aiUsed, fallbackReasons };
+  return { llm, draft, aiUsed, fallbackReasons };
 }

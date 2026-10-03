@@ -1,5 +1,6 @@
 import { WHY_ELIGIBLE_SECTION_TITLES } from '@/constants/why.js';
 import type { WhyNote, WhyTarget } from '@/types/why.js';
+import type { ReleaseChange } from '@/types/release.js';
 import {
   renderMarkdownSections,
   splitMarkdownSections,
@@ -123,4 +124,68 @@ export function applyWhyNotesToSection(
   }
 
   return renderMarkdownSections(document);
+}
+
+/**
+ * Extract PRs that can receive WHY notes directly from structured release changes.
+ * WHY: Phase 4 builds targets before rendering so Markdown does not require regex parsing.
+ * @param changes Canonical release changes.
+ * @param assignments Category assignments per change ID.
+ * @returns Eligible changelog PR targets and skipped count.
+ */
+export function extractWhyTargetsFromChanges(
+  changes: readonly ReleaseChange[],
+  assignments: Record<string, string>,
+): {
+  targets: WhyTarget[];
+  skippedBeforeFetch: number;
+} {
+  const targets: WhyTarget[] = [];
+  let skippedBeforeFetch = 0;
+
+  for (const change of changes) {
+    const sectionTitle = assignments[change.id];
+    if (!sectionTitle || !WHY_ELIGIBLE_SECTION_TITLE_SET.has(sectionTitle)) {
+      continue;
+    }
+    if (change.pr === undefined) {
+      continue;
+    }
+    if (shouldSkipWhyTarget(change.title, change.author)) {
+      skippedBeforeFetch += 1;
+      continue;
+    }
+
+    targets.push({
+      prNumber: change.pr,
+      sectionTitle,
+      itemText: change.title,
+      author: change.author,
+    });
+  }
+
+  return { targets, skippedBeforeFetch };
+}
+
+/**
+ * Attach accepted WHY notes directly to structured release changes.
+ * WHY: Phase 4 attaches notes to domain objects so the shared renderer is the
+ * sole author of final bullet markdown.
+ * @param changes Canonical release changes to enrich with why notes.
+ * @param notes Accepted WHY notes keyed by PR number.
+ * @param assignments Category assignments for section matching.
+ */
+export function attachWhyNotesToChanges(
+  changes: ReleaseChange[],
+  notesByPr: ReadonlyMap<number, WhyNote>,
+  assignments: Record<string, string>,
+): void {
+  for (const change of changes) {
+    if (change.pr === undefined) continue;
+    const note = notesByPr.get(change.pr);
+    if (!note) continue;
+    if (assignments[change.id] === note.sectionTitle) {
+      change.why = note.why;
+    }
+  }
 }
