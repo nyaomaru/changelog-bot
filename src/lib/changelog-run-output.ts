@@ -5,6 +5,8 @@ import type { WhyExtractor } from '@/types/why-extractor.js';
 import type { WhyDiagnostics } from '@/types/why.js';
 import type { ChangelogRunDependencies } from '@/lib/changelog-run-dependencies.js';
 
+import type { ReleaseDraft } from '@/types/release.js';
+
 type ChangelogRunOutputDependencies = Pick<
   ChangelogRunDependencies,
   'fetchPRDetails' | 'finalizeChangelogUpdate' | 'runWhyExtraction'
@@ -16,6 +18,8 @@ export type FinalizeChangelogRunOutputParams = {
   cli: CliOptions;
   /** Initial generated changelog and pull request payload. */
   llm: LLMOutput;
+  /** Canonical release draft produced before optional enrichment. */
+  draft?: ReleaseDraft;
   /** Whether changelog generation completed through the selected LLM provider. */
   changelogAiUsed: boolean;
   /** Selected provider adapter. */
@@ -85,6 +89,8 @@ export async function finalizeChangelogRunOutput(
   const whyOutput = await params.deps.runWhyExtraction({
     cli: params.cli,
     llm: finalized.llm,
+    changes: params.draft?.changes,
+    assignments: params.draft?.assignments,
     changelogAiUsed: params.changelogAiUsed,
     provider: params.provider,
     hasProviderKey: params.hasProviderKey,

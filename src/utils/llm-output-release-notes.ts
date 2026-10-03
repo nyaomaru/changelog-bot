@@ -30,7 +30,7 @@ import {
   resolvePrFromTitles,
 } from '@/utils/llm-output-common.js';
 import { isError } from '@/utils/is.js';
-import type { ReleaseChange } from '@/types/release.js';
+import type { ReleaseChange, ReleaseDraft } from '@/types/release.js';
 import type { CategoryAssignments } from '@/types/changelog.js';
 
 /**
@@ -169,13 +169,17 @@ export async function buildOutputFromReleaseNotes(
     );
   }
 
-  const section = buildSectionFromRelease({
+  const draft: ReleaseDraft = {
     version,
     date,
     changes: releaseChanges,
     assignments,
     fullChangelog: parsedRelease.fullChangelog,
     sections: parsedRelease.sections,
+  };
+
+  const section = buildSectionFromRelease({
+    ...draft,
   });
 
   const llm: LLMOutput = {
@@ -190,5 +194,5 @@ export async function buildOutputFromReleaseNotes(
     llm.pr_body = appendFallbackNote(llm.pr_body, fallbackReasons);
   }
 
-  return { llm, aiUsed, fallbackReasons };
+  return { llm, draft, aiUsed, fallbackReasons };
 }

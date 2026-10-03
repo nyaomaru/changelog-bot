@@ -5,9 +5,12 @@ import type { LLMOutput } from '@/types/llm.js';
 import type { Provider } from '@/types/provider.js';
 import type { WhyExtractor } from '@/types/why-extractor.js';
 import type { WhyDiagnostics } from '@/types/why.js';
+import type { ReleaseChange } from '@/types/release.js';
 import {
   applyWhyNotesToSection,
+  attachWhyNotesToChanges,
   extractWhyTargets,
+  extractWhyTargetsFromChanges,
 } from '@/utils/why-targets.js';
 import { removeFallbackNote } from '@/utils/llm-output-common.js';
 import {
@@ -26,6 +29,10 @@ type RunWhyExtractionParams = {
   cli: CliOptions;
   /** Generated changelog output before WHY notes are applied. */
   llm: LLMOutput;
+  /** Canonical release changes to enrich before rendering. */
+  changes?: ReleaseChange[];
+  /** Category assignments mapping change IDs to buckets. */
+  assignments?: Record<string, string>;
   /** Whether changelog generation completed through the selected LLM provider. */
   changelogAiUsed: boolean;
   /** Main LLM provider, retained as the default WHY extractor. */
@@ -107,10 +114,10 @@ export async function runWhyExtraction(
     repo: params.repo,
     host: githubWebHost(params.githubApiBase),
   };
-  const extractedTargets = extractWhyTargets(
-    llm.new_section_markdown,
-    repository,
-  );
+  const extractedTargets =
+    params.changes && params.assignments
+      ? extractWhyTargetsFromChanges(params.changes, params.assignments)
+      : extractWhyTargets(llm.new_section_markdown, repository);
   diagnostics.targetsFound = extractedTargets.targets.length;
   diagnostics.skippedBeforeFetch = extractedTargets.skippedBeforeFetch;
   const targets = extractedTargets.targets.slice(0, cli.whyMaxPrs);
@@ -192,6 +199,9 @@ export async function runWhyExtraction(
   const notesByPr = new Map(
     acceptedNotes.map((note) => [note.prNumber, note] as const),
   );
+  if (params.changes && params.assignments) {
+    attachWhyNotesToChanges(params.changes, notesByPr, params.assignments);
+  }
   diagnostics.notesRendered = acceptedNotes.length;
   return {
     llm: {

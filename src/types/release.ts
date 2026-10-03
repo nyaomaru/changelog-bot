@@ -10,6 +10,8 @@ export type ReleaseItem = {
   pr?: number;
   /** Link to the pull request. */
   url?: string;
+  /** Extracted WHY rationale explaining motivation behind the change. */
+  why?: string;
 };
 
 /** Stable identity assigned to a release change before classification. */
@@ -47,3 +49,22 @@ export type ParsedRelease = {
   /** Extra sections beyond the primary item list. */
   sections?: ReleaseSection[];
 };
+
+/** Complete, structurally valid changelog draft produced before optional AI. */
+export type ReleaseDraft = {
+  /** Target version string without the leading 'v'. */
+  version: string;
+  /** Release date formatted as YYYY-MM-DD. */
+  date: string;
+  /** Canonical changes with stable IDs and deterministic classification. */
+  changes: ReleaseChange[];
+  /** Category assignments mapping each change ID to its bucket name. */
+  assignments: import('@/types/changelog.js').CategoryAssignments;
+  /** Full changelog compare link URL, when provided. */
+  fullChangelog?: string;
+  /** Extra Markdown sections preserved from GitHub release notes. */
+  sections?: ReleaseSection[];
+};
+
+/** Final validated release payload ready for deterministic rendering. */
+export type ReleaseResult = ReleaseDraft;

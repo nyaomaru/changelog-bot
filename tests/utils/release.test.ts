@@ -490,4 +490,30 @@ describe('release utils', () => {
     expect(section).toContain('### Fixed\n\n- Improve output');
     expect(section.match(/- Improve output/g)).toHaveLength(2);
   });
+
+  test('buildSectionFromRelease renders WHY notes under bullets with custom label', () => {
+    const section = buildSectionFromRelease({
+      version: '1.2.3',
+      date: '2026-05-16',
+      changes: [
+        {
+          id: 'pr:101',
+          origin: { kind: 'pull-request', number: 101 },
+          title: 'Add persistent cache',
+          author: 'alice',
+          pr: 101,
+          url: 'https://github.com/acme/repo/pull/101',
+          why: 'Prevent repeated expensive database queries on cold starts',
+        },
+      ],
+      assignments: {
+        'pr:101': 'Added',
+      },
+      whyLabel: 'Rationale',
+    });
+
+    expect(section).toContain(
+      '- Add persistent cache by @alice in [#101](https://github.com/acme/repo/pull/101)\n  - Rationale: Prevent repeated expensive database queries on cold starts',
+    );
+  });
 });
