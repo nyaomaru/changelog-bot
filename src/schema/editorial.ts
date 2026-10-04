@@ -17,7 +17,7 @@ export const EditorialChangeSchema = z.object({
 /** Sparse editorial payload returned by provider in Phase 4. */
 export const EditorialOutputSchema = z.object({
   /** Sparse dictionary of change adjustments keyed by canonical ReleaseChangeId. */
-  changes: z.record(z.string(), EditorialChangeSchema).optional().default({}),
+  changes: z.record(z.string(), EditorialChangeSchema),
 });
 
 export type EditorialChange = z.infer<typeof EditorialChangeSchema>;

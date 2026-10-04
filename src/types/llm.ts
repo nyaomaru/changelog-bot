@@ -1,6 +1,16 @@
 /** Supported LLM provider identifiers. */
 export type ProviderName = 'openai' | 'anthropic' | 'gemini';
 
+/** Canonical change sent to editorial provider. */
+export type EditorialPromptChange = {
+  /** Stable change ID (e.g. 'pr:10', 'commit:abc'). */
+  id: string;
+  /** Normalized display title. */
+  title: string;
+  /** Categorized bucket if known. */
+  category?: string;
+};
+
 /** Input payload shared across all LLM providers. */
 export type LLMInput = {
   /** Repository identifier in `owner/repo` format. */
@@ -25,6 +35,8 @@ export type LLMInput = {
   language: string;
   /** Optional user-provided writing and grouping guidance. */
   customInstructions?: string;
+  /** Canonical changes with stable IDs from ReleaseDraft for editorial enrichment. */
+  changes?: EditorialPromptChange[];
 };
 
 /** Structured output expected from provider responses. */

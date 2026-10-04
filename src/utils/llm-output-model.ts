@@ -2,7 +2,6 @@ import { buildLLMInput } from '@/lib/prompt.js';
 import { parseOrRetryLLMOutput } from '@/utils/llm-parse.js';
 import { buildReleaseDraft } from '@/utils/release-draft.js';
 import { buildSectionFromRelease } from '@/utils/release-section.js';
-import { EditorialOutputSchema } from '@/schema/editorial.js';
 import { reconcileEditorialOutput } from '@/utils/editorial.js';
 import {
   DEFAULT_PR_LABELS,
@@ -86,6 +85,11 @@ export async function buildOutputFromModelOrFallback(
   });
 
   const logsForLLM = buildLogsForLLM(commitList, prMapBySha);
+  const editorialChanges = draft.changes.map((change) => ({
+    id: change.id,
+    title: change.title,
+    category: draft.assignments[change.id],
+  }));
 
   const llmInput = buildLLMInput({
     repo: `${owner}/${repo}`,
@@ -99,6 +103,7 @@ export async function buildOutputFromModelOrFallback(
     changelog: existingChangelog,
     language,
     customInstructions,
+    changes: editorialChanges,
   });
 
   let aiUsed = false;
@@ -110,12 +115,8 @@ export async function buildOutputFromModelOrFallback(
     fallbackReasons.push(`Missing API key for provider: ${provider.name}`);
   } else {
     try {
-      const raw = await parseOrRetryLLMOutput(provider, llmInput);
+      const editorial = await parseOrRetryLLMOutput(provider, llmInput);
       aiUsed = true;
-      const parsedEditorial = EditorialOutputSchema.safeParse(raw);
-      const editorial = parsedEditorial.success
-        ? parsedEditorial.data
-        : undefined;
       const reconciled = reconcileEditorialOutput(draft, editorial);
       activeDraft = reconciled.result;
       fallbackReasons.push(...reconciled.diagnostics);

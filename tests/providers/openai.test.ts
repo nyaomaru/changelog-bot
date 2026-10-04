@@ -150,4 +150,63 @@ describe('OpenAIProvider', () => {
     expect(requestBody).not.toHaveProperty('max_tokens');
     expect(requestBody).not.toHaveProperty('temperature');
   });
+
+  test('generate sends canonical changes with stable IDs and parses EditorialOutput', async () => {
+    const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({
+            changes: {
+              'pr:10': { title: 'Polished title', category: 'Added' },
+            },
+          }),
+        }),
+      ),
+    );
+    global.fetch = fetchMock;
+    const provider = new OpenAIProvider({
+      apiKey: 'openai-test',
+      model: 'gpt-5.1-reasoning',
+    });
+
+    const input = {
+      repo: 'octo/repo',
+      version: '1.0.0',
+      date: '2026-10-04',
+      releaseTag: 'v1.0.0',
+      prevTag: 'v0.9.0',
+      releaseBody: '',
+      gitLog: '',
+      mergedPRs: '',
+      changelogPreview: '',
+      language: 'en',
+      changes: [{ id: 'pr:10', title: 'raw title', category: 'Added' }],
+    };
+
+    const output = await provider.generate(input);
+
+    expect(output).toEqual({
+      changes: {
+        'pr:10': { title: 'Polished title', category: 'Added' },
+      },
+    });
+
+    const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const userPromptContent = JSON.parse(requestBody.input[1]?.content ?? '{}');
+    expect(userPromptContent.changes).toEqual([
+      { id: 'pr:10', title: 'raw title', category: 'Added' },
+    ]);
+    expect(userPromptContent.requiredJsonSchema.required).toContain('changes');
+  });
+
+  test('rejects legacy full-generation response missing changes property', async () => {
+    const { EditorialOutputSchema } = await import('@/schema/editorial.js');
+    const legacyResponse = {
+      new_section_markdown: '### Added\n- Something',
+      pr_title: 'docs: release',
+      pr_body: 'summary',
+    };
+    const parsed = EditorialOutputSchema.safeParse(legacyResponse);
+    expect(parsed.success).toBe(false);
+  });
 });
