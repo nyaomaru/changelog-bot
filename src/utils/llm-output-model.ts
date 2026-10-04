@@ -2,6 +2,8 @@ import { buildLLMInput } from '@/lib/prompt.js';
 import { parseOrRetryLLMOutput } from '@/utils/llm-parse.js';
 import { buildReleaseDraft } from '@/utils/release-draft.js';
 import { buildSectionFromRelease } from '@/utils/release-section.js';
+import { EditorialOutputSchema } from '@/schema/editorial.js';
+import { reconcileEditorialOutput } from '@/utils/editorial.js';
 import {
   DEFAULT_PR_LABELS,
   PR_TITLE_PREFIX,
@@ -16,7 +18,6 @@ import type { CommitLite } from '@/types/commit.js';
 import type { LLMOutput } from '@/types/llm.js';
 import {
   appendFallbackNote,
-  applyLlmDefaults,
   buildAutoPrBody,
 } from '@/utils/llm-output-common.js';
 import { LlmError } from '@/lib/errors.js';
@@ -101,7 +102,7 @@ export async function buildOutputFromModelOrFallback(
   });
 
   let aiUsed = false;
-  let llm: LLMOutput | null = null;
+  let activeDraft = draft;
 
   if (noAi) {
     // The caller has already recorded the flag in fallbackReasons.
@@ -109,8 +110,15 @@ export async function buildOutputFromModelOrFallback(
     fallbackReasons.push(`Missing API key for provider: ${provider.name}`);
   } else {
     try {
-      llm = await parseOrRetryLLMOutput(provider, llmInput);
+      const raw = await parseOrRetryLLMOutput(provider, llmInput);
       aiUsed = true;
+      const parsedEditorial = EditorialOutputSchema.safeParse(raw);
+      const editorial = parsedEditorial.success
+        ? parsedEditorial.data
+        : undefined;
+      const reconciled = reconcileEditorialOutput(draft, editorial);
+      activeDraft = reconciled.result;
+      fallbackReasons.push(...reconciled.diagnostics);
     } catch (err) {
       const message = isError(err) ? err.message : String(err);
       if (failOnLlmError) {
@@ -122,25 +130,22 @@ export async function buildOutputFromModelOrFallback(
     }
   }
 
-  if (!llm) {
-    // Deterministic-first: render directly from the complete ReleaseDraft
-    const section = buildSectionFromRelease({
-      ...draft,
-    });
-    llm = {
-      new_section_markdown: section,
-      insert_after_anchor: UNRELEASED_ANCHOR,
-      pr_title: `${PR_TITLE_PREFIX}${version}`,
-      pr_body: buildAutoPrBody(prevRef, releaseRef, true),
-      labels: [...DEFAULT_PR_LABELS],
-    };
-  } else {
-    llm = applyLlmDefaults(llm, { version, prevRef, releaseRef });
-  }
+  // Phase 4: Deterministic renderer is the sole Markdown author for both AI and fallback paths
+  const section = buildSectionFromRelease({
+    ...activeDraft,
+  });
+
+  const llm: LLMOutput = {
+    new_section_markdown: section,
+    insert_after_anchor: UNRELEASED_ANCHOR,
+    pr_title: `${PR_TITLE_PREFIX}${version}`,
+    pr_body: buildAutoPrBody(prevRef, releaseRef, !aiUsed),
+    labels: [...DEFAULT_PR_LABELS],
+  };
 
   if (!aiUsed && llm.pr_body) {
     llm.pr_body = appendFallbackNote(llm.pr_body, fallbackReasons);
   }
 
-  return { llm, draft, aiUsed, fallbackReasons };
+  return { llm, draft: activeDraft, aiUsed, fallbackReasons };
 }

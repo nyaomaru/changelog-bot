@@ -3,18 +3,14 @@ import type {
   ReleaseDraft,
   ReleaseResult,
 } from '@/types/release.js';
-import type { BucketName, CategoryAssignments } from '@/types/changelog.js';
+import type { CategoryAssignments } from '@/types/changelog.js';
 import type { EditorialOutput } from '@/schema/editorial.js';
 import { applyDeterministicClassification } from '@/utils/deterministic-classification.js';
-import { SECTION_ORDER } from '@/constants/changelog.js';
+import { isBucketName } from '@/utils/is.js';
 
 export type ReconcileEditorialResult = {
   /** Updated release result after sparse editorial enrichment and hard rule enforcement. */
   result: ReleaseResult;
-  /** Polished pull request title if returned by the provider. */
-  prTitle?: string;
-  /** Polished pull request body if returned by the provider. */
-  prBody?: string;
   /** Diagnostics regarding omitted, unknown, or rejected editorial edits. */
   diagnostics: string[];
 };
@@ -26,7 +22,7 @@ export type ReconcileEditorialResult = {
  * overrides any non-compliant category suggestion.
  * @param draft Authoritative pre-AI release draft.
  * @param editorial Sparse edits returned by the LLM provider.
- * @returns Validated release result and delivery metadata.
+ * @returns Validated release result and diagnostics.
  */
 export function reconcileEditorialOutput(
   draft: ReleaseDraft,
@@ -44,16 +40,13 @@ export function reconcileEditorialOutput(
     };
   }
 
-  const knownIds = new Set(draft.changes.map((change) => change.id));
-  const validCategories = new Set<string>(SECTION_ORDER);
-
   // Deep copy changes and assignments to keep pure behavior
   const updatedChanges: ReleaseChange[] = draft.changes.map((change) => ({
     ...change,
   }));
   const updatedAssignments: CategoryAssignments = {
     ...draft.assignments,
-  } as CategoryAssignments;
+  };
   const changesById = new Map<string, ReleaseChange>(
     updatedChanges.map((change) => [change.id, change]),
   );
@@ -61,26 +54,20 @@ export function reconcileEditorialOutput(
   const unknownIds: string[] = [];
 
   for (const [id, edit] of Object.entries(editorial.changes ?? {})) {
-    if (!knownIds.has(id as ReleaseChange['id'])) {
+    const change = changesById.get(id);
+    if (!change) {
       unknownIds.push(id);
       continue;
     }
 
-    const change = changesById.get(id);
-    if (!change) continue;
-
-    // Apply title polishing if non-empty string is provided
+    // Apply title polishing if non-empty string is provided (normalize single-line)
     if (typeof edit.title === 'string' && edit.title.trim().length > 0) {
-      change.title = edit.title.trim();
+      change.title = edit.title.replace(/[\r\n]+/g, ' ').trim();
     }
 
-    // Apply category suggestion if valid category name
-    if (
-      typeof edit.category === 'string' &&
-      validCategories.has(edit.category)
-    ) {
-      updatedAssignments[id as ReleaseChange['id']] =
-        edit.category as BucketName;
+    // Apply category suggestion if valid category name without type assertion
+    if (isBucketName(edit.category)) {
+      updatedAssignments[change.id] = edit.category;
     }
   }
 
@@ -105,8 +92,6 @@ export function reconcileEditorialOutput(
 
   return {
     result,
-    prTitle: editorial.pr_title?.trim() || undefined,
-    prBody: editorial.pr_body?.trim() || undefined,
     diagnostics,
   };
 }

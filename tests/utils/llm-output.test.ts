@@ -350,6 +350,9 @@ describe('llm-output', () => {
 
   test('uses model path when custom instructions are set with release notes', async () => {
     const generate = jest.fn(async (input) => ({
+      changes: {
+        'release-note:0': { title: 'Customized output' },
+      },
       new_section_markdown: `## [v${input.version}] - ${input.date}\n### Added\n- Customized output`,
       insert_after_anchor: '## [Unreleased]',
       pr_title: `docs(changelog): ${input.version}`,
@@ -383,6 +386,9 @@ describe('llm-output', () => {
 
   test('uses model path when non-default language is set with release notes', async () => {
     const generate = jest.fn(async (input) => ({
+      changes: {
+        'release-note:0': { title: '日本語の出力' },
+      },
       new_section_markdown: `## [v${input.version}] - ${input.date}\n### Added\n- 日本語の出力`,
       insert_after_anchor: '## [Unreleased]',
       pr_title: `docs(changelog): ${input.version}`,

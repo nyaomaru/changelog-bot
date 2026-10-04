@@ -41,29 +41,36 @@ describe('editorial reconciliation', () => {
   });
 
   test('applies sparse title and category adjustments', () => {
-    const { result, prTitle, prBody, diagnostics } = reconcileEditorialOutput(
-      sampleDraft,
-      {
-        changes: {
-          'pr:10': {
-            title: 'Add `--export` CLI flag for automated workflows',
-          },
-          'commit:abc1234': {
-            category: 'Chore',
-          },
+    const { result, diagnostics } = reconcileEditorialOutput(sampleDraft, {
+      changes: {
+        'pr:10': {
+          title: 'Add `--export` CLI flag for automated workflows',
         },
-        pr_title: 'release: 1.0.0',
-        pr_body: 'Automated release summary',
+        'commit:abc1234': {
+          category: 'Chore',
+        },
       },
-    );
+    });
 
     expect(diagnostics).toHaveLength(0);
     expect(result.changes[0].title).toBe(
       'Add `--export` CLI flag for automated workflows',
     );
     expect(result.assignments['commit:abc1234']).toBe('Chore');
-    expect(prTitle).toBe('release: 1.0.0');
-    expect(prBody).toBe('Automated release summary');
+  });
+
+  test('normalizes multiline title into a single line', () => {
+    const { result } = reconcileEditorialOutput(sampleDraft, {
+      changes: {
+        'pr:10': {
+          title: 'Add `--export` CLI flag\nwith extra detail',
+        },
+      },
+    });
+
+    expect(result.changes[0].title).toBe(
+      'Add `--export` CLI flag with extra detail',
+    );
   });
 
   test('rejects unknown IDs with diagnostics and ignores them', () => {
@@ -91,5 +98,22 @@ describe('editorial reconciliation', () => {
 
     // Hard rule: feat!: remains Breaking Changes
     expect(result.assignments['pr:20']).toBe('Breaking Changes');
+  });
+
+  test('EditorialChangeSchema rejects multiline titles', async () => {
+    const { EditorialChangeSchema } = await import('@/schema/editorial.js');
+    const result = EditorialChangeSchema.safeParse({
+      title: 'First line\n### Injected heading',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test('EditorialChangeSchema accepts valid single-line title and enum category', async () => {
+    const { EditorialChangeSchema } = await import('@/schema/editorial.js');
+    const result = EditorialChangeSchema.safeParse({
+      title: 'Polished single-line title',
+      category: 'Added',
+    });
+    expect(result.success).toBe(true);
   });
 });

@@ -89,6 +89,7 @@ export async function finalizeChangelogRunOutput(
   const whyOutput = await params.deps.runWhyExtraction({
     cli: params.cli,
     llm: finalized.llm,
+    draft: params.draft,
     changes: params.draft?.changes,
     assignments: params.draft?.assignments,
     changelogAiUsed: params.changelogAiUsed,
