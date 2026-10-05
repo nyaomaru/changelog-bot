@@ -350,6 +350,9 @@ describe('llm-output', () => {
 
   test('uses model path when custom instructions are set with release notes', async () => {
     const generate = jest.fn(async (input) => ({
+      changes: {
+        'release-note:0': { title: 'Customized output' },
+      },
       new_section_markdown: `## [v${input.version}] - ${input.date}\n### Added\n- Customized output`,
       insert_after_anchor: '## [Unreleased]',
       pr_title: `docs(changelog): ${input.version}`,
@@ -383,6 +386,9 @@ describe('llm-output', () => {
 
   test('uses model path when non-default language is set with release notes', async () => {
     const generate = jest.fn(async (input) => ({
+      changes: {
+        'release-note:0': { title: '日本語の出力' },
+      },
       new_section_markdown: `## [v${input.version}] - ${input.date}\n### Added\n- 日本語の出力`,
       insert_after_anchor: '## [Unreleased]',
       pr_title: `docs(changelog): ${input.version}`,
@@ -497,5 +503,34 @@ describe('llm-output', () => {
         }),
       ),
     ).rejects.toThrow(LlmError);
+  });
+
+  test('treats legacy response missing changes property as generation failure rather than silent empty success', async () => {
+    const generate = jest.fn(async () => ({
+      new_section_markdown: '### Added\n- Hallucinated markdown',
+      pr_title: 'docs: release',
+      pr_body: 'summary',
+    }));
+    const providerWithLegacyOutput = { ...mockProvider, generate };
+
+    const result = await buildChangelogLlmOutput(
+      buildBaseParams({
+        commitList: [{ sha: 'abcdef1', subject: 'feat: add feature' }],
+        provider: providerWithLegacyOutput,
+        providerConfig: { apiKey: 'sk-test', model: 'mock-model' },
+        hasProviderKey: true,
+      }),
+    );
+
+    expect(generate).toHaveBeenCalled();
+    expect(result.aiUsed).toBe(false);
+    expect(result.fallbackReasons.join('\n')).toContain(
+      'LLM generation failed: LLM output did not match editorial schema',
+    );
+    // Preserves the deterministic draft baseline
+    expect(result.llm.new_section_markdown).toContain('- add feature');
+    expect(result.llm.new_section_markdown).not.toContain(
+      'Hallucinated markdown',
+    );
   });
 });

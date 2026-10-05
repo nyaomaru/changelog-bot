@@ -1,21 +1,25 @@
 import type { Provider } from '@/types/provider.js';
-import type { LLMInput, LLMOutput } from '@/types/llm.js';
-import { LLMOutputSchema } from '@/schema/schema.js';
+import type { LLMInput } from '@/types/llm.js';
+import {
+  EditorialOutputSchema,
+  type EditorialOutput,
+} from '@/schema/editorial.js';
 import { LlmError, ValidationError } from '@/lib/errors.js';
 import { LLM_TRUNCATE_LIMIT } from '@/constants/prompt.js';
 import { isError } from '@/utils/is.js';
 
 /**
- * Generate LLM output and enforce schema with a bounded retry using a repaired prompt.
- * WHY: Providers sometimes overrun budgets; retry with truncated inputs improves success odds.
+ * Generate LLM editorial output and enforce schema with a bounded retry.
+ * WHY: In Phase 4, providers must return sparse editorial output matching EditorialOutputSchema.
+ * Legacy full-generation output missing the required changes dictionary is rejected.
  * @param provider Provider implementation to call.
- * @param input Normalized input payload.
- * @returns Validated LLM output conforming to the schema.
+ * @param input Normalized input payload with canonical changes and stable IDs.
+ * @returns Validated editorial output conforming to the schema.
  */
 export async function parseOrRetryLLMOutput(
   provider: Provider,
   input: LLMInput,
-): Promise<LLMOutput> {
+): Promise<EditorialOutput> {
   const attempts: LLMInput[] = [
     input,
     {
@@ -30,7 +34,7 @@ export async function parseOrRetryLLMOutput(
   for (const attempt of attempts) {
     try {
       const raw = await provider.generate(attempt);
-      const parsed = LLMOutputSchema.safeParse(raw as unknown);
+      const parsed = EditorialOutputSchema.safeParse(raw);
       if (parsed.success) return parsed.data;
       lastErr = parsed.error;
       lastWasProviderError = false;
@@ -47,5 +51,7 @@ export async function parseOrRetryLLMOutput(
       isError(lastErr) ? lastErr.message : 'Unknown LLM provider error',
     );
   }
-  throw new ValidationError('LLM output did not match schema after retry');
+  throw new ValidationError(
+    'LLM output did not match editorial schema after retry',
+  );
 }

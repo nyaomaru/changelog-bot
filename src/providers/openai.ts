@@ -1,4 +1,5 @@
-import type { LLMInput, LLMOutput } from '@/types/llm.js';
+import type { LLMInput } from '@/types/llm.js';
+import type { EditorialOutput } from '@/schema/editorial.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
 import type { ClassifyChangesOptions } from '@/types/provider.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
@@ -127,7 +128,7 @@ export class OpenAIProvider extends ProviderBase {
     });
   }
 
-  async generate(input: LLMInput): Promise<LLMOutput> {
+  async generate(input: LLMInput): Promise<EditorialOutput> {
     const payload = buildOpenAiResponsePayload(
       this.modelName,
       RELEASE_NOTES_SYSTEM_PROMPT,
@@ -144,7 +145,7 @@ export class OpenAIProvider extends ProviderBase {
       { Authorization: `Bearer ${this.apiKey ?? ''}` },
       'OpenAI error',
     );
-    return extractJsonObject<LLMOutput>(extractOpenAiResponseText(resp));
+    return extractJsonObject<EditorialOutput>(extractOpenAiResponseText(resp));
   }
 
   async classifyChanges(

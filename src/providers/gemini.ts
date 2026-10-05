@@ -1,4 +1,5 @@
-import type { LLMInput, LLMOutput } from '@/types/llm.js';
+import type { LLMInput } from '@/types/llm.js';
+import type { EditorialOutput } from '@/schema/editorial.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
 import type { ClassifyChangesOptions } from '@/types/provider.js';
 import type {
@@ -96,7 +97,7 @@ export class GeminiProvider extends ProviderBase {
     super(config);
   }
 
-  async generate(input: LLMInput): Promise<LLMOutput> {
+  async generate(input: LLMInput): Promise<EditorialOutput> {
     const payload = {
       systemInstruction: {
         parts: [{ text: RELEASE_NOTES_SYSTEM_PROMPT }],
@@ -128,7 +129,7 @@ export class GeminiProvider extends ProviderBase {
       { 'x-goog-api-key': this.apiKey ?? '' },
       'Gemini error',
     );
-    return extractJsonObject<LLMOutput>(extractGeminiText(response));
+    return extractJsonObject<EditorialOutput>(extractGeminiText(response));
   }
 
   async classifyChanges(

@@ -30,7 +30,7 @@ import {
   resolvePrFromTitles,
 } from '@/utils/llm-output-common.js';
 import { isError } from '@/utils/is.js';
-import type { ReleaseChange } from '@/types/release.js';
+import type { ReleaseChange, ReleaseDraft } from '@/types/release.js';
 import type { CategoryAssignments } from '@/types/changelog.js';
 
 /**
@@ -131,51 +131,74 @@ export async function buildOutputFromReleaseNotes(
 
   const changesForClassification =
     buildChangesForClassification(releaseChanges);
-  let assignments = {} as CategoryAssignments;
-  if (changesForClassification.length) {
-    if (noAi) {
-      assignments = fallbackCategoryAssignments(changesForClassification);
-    } else {
-      try {
-        const classification = await provider.classifyChanges(
-          changesForClassification,
-          {
-            throwOnError: true,
-          },
-        );
-        assignments = classification.assignments;
-        fallbackReasons.push(...classification.diagnostics);
-        // Mark AI usage only when classification had input and a provider key is available.
-        aiUsed = aiUsed || hasProviderKey;
-      } catch (err) {
-        if (err instanceof IncompleteClassificationError && !failOnLlmError) {
-          assignments = err.result.assignments;
-          fallbackReasons.push(...err.result.diagnostics);
-          aiUsed = aiUsed || hasProviderKey;
-        } else {
-          const message = isError(err) ? err.message : String(err);
-          if (failOnLlmError) {
-            throw new LlmError(`LLM classification failed: ${message}`);
-          }
-          fallbackReasons.push(`LLM classification failed: ${message}`);
-          assignments = fallbackCategoryAssignments(changesForClassification);
-        }
-      }
-    }
-    assignments = applyDeterministicClassification(
-      releaseChanges,
-      assignments,
-      changesForClassification,
-    );
-  }
 
-  const section = buildSectionFromRelease({
+  // Phase 4: Construct authoritative deterministic ReleaseDraft upfront as the baseline
+  const baselineAssignments: CategoryAssignments =
+    changesForClassification.length
+      ? applyDeterministicClassification(
+          releaseChanges,
+          fallbackCategoryAssignments(changesForClassification),
+          changesForClassification,
+        )
+      : ({} as CategoryAssignments);
+
+  const draft: ReleaseDraft = {
     version,
     date,
     changes: releaseChanges,
-    assignments,
+    assignments: baselineAssignments,
     fullChangelog: parsedRelease.fullChangelog,
     sections: parsedRelease.sections,
+  };
+
+  let activeDraft = draft;
+
+  if (changesForClassification.length && !noAi) {
+    try {
+      const classification = await provider.classifyChanges(
+        changesForClassification,
+        {
+          throwOnError: true,
+        },
+      );
+      const aiAssignments = applyDeterministicClassification(
+        releaseChanges,
+        classification.assignments,
+        changesForClassification,
+      );
+      activeDraft = {
+        ...draft,
+        assignments: aiAssignments,
+      };
+      fallbackReasons.push(...classification.diagnostics);
+      // Mark AI usage only when classification had input and a provider key is available.
+      aiUsed = aiUsed || hasProviderKey;
+    } catch (err) {
+      if (err instanceof IncompleteClassificationError && !failOnLlmError) {
+        const partialAssignments = applyDeterministicClassification(
+          releaseChanges,
+          err.result.assignments,
+          changesForClassification,
+        );
+        activeDraft = {
+          ...draft,
+          assignments: partialAssignments,
+        };
+        fallbackReasons.push(...err.result.diagnostics);
+        aiUsed = aiUsed || hasProviderKey;
+      } else {
+        const message = isError(err) ? err.message : String(err);
+        if (failOnLlmError) {
+          throw new LlmError(`LLM classification failed: ${message}`);
+        }
+        fallbackReasons.push(`LLM classification failed: ${message}`);
+        // Degradation gracefully retains baseline draft assignments
+      }
+    }
+  }
+
+  const section = buildSectionFromRelease({
+    ...activeDraft,
   });
 
   const llm: LLMOutput = {
@@ -190,5 +213,5 @@ export async function buildOutputFromReleaseNotes(
     llm.pr_body = appendFallbackNote(llm.pr_body, fallbackReasons);
   }
 
-  return { llm, aiUsed, fallbackReasons };
+  return { llm, draft: activeDraft, aiUsed, fallbackReasons };
 }

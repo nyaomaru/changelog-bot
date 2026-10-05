@@ -1,4 +1,5 @@
-import type { LLMInput, LLMOutput, ProviderName } from '@/types/llm.js';
+import type { LLMInput, ProviderName } from '@/types/llm.js';
+import type { EditorialOutput } from '@/schema/editorial.js';
 import type {
   ClassificationChange,
   ClassificationResult,
@@ -38,8 +39,8 @@ export type ClassifyChangesOptions = {
  * Implementations should normalize outputs at this boundary.
  */
 export interface Provider extends ProviderInfo {
-  /** Generate structured output from normalized input. */
-  generate(input: LLMInput): Promise<LLMOutput>;
+  /** Generate structured editorial output from normalized input. */
+  generate(input: LLMInput): Promise<EditorialOutput>;
   /** Classify canonical release changes into changelog categories. */
   classifyChanges(
     changes: ClassificationChange[],

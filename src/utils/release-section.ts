@@ -6,17 +6,27 @@ import {
   demoteAdditionalSectionHeadings,
 } from '@/utils/release-markdown.js';
 
-function formatReleaseItemBullet(item: ReleaseChange): string {
+import { DEFAULT_WHY_LABEL } from '@/constants/why.js';
+
+function appendReleaseItemBullet(
+  lines: string[],
+  item: ReleaseChange,
+  whyLabel: string,
+): void {
   let line = `- ${item.title}`;
   if (item.author) line += ` by @${item.author}`;
   if (item.pr && item.url) line += ` in [#${item.pr}](${item.url})`;
-  return line;
+  lines.push(line);
+  if (item.why) {
+    lines.push(`  - ${whyLabel}: ${item.why}`);
+  }
 }
 
 function appendCategorizedReleaseSections(
   lines: string[],
   changes: ReleaseChange[],
   assignments: CategoryAssignments,
+  whyLabel: string,
 ): void {
   for (const section of SECTION_ORDER) {
     const entries = changes.filter(
@@ -25,7 +35,7 @@ function appendCategorizedReleaseSections(
     if (!entries.length) continue;
 
     lines.push(`### ${section}`, '');
-    for (const item of entries) lines.push(formatReleaseItemBullet(item));
+    for (const item of entries) appendReleaseItemBullet(lines, item, whyLabel);
     lines.push('');
   }
 }
@@ -56,11 +66,19 @@ export function buildSectionFromRelease(params: {
   assignments: CategoryAssignments;
   fullChangelog?: string;
   sections?: ReleaseSection[];
+  whyLabel?: string;
 }): string {
-  const { version, date, changes, assignments, sections = [] } = params;
+  const {
+    version,
+    date,
+    changes,
+    assignments,
+    sections = [],
+    whyLabel = DEFAULT_WHY_LABEL,
+  } = params;
   const lines: string[] = [`## [v${version}] - ${date}`, ''];
 
-  appendCategorizedReleaseSections(lines, changes, assignments);
+  appendCategorizedReleaseSections(lines, changes, assignments, whyLabel);
   appendAdditionalReleaseSections(lines, sections);
 
   if (params.fullChangelog) {

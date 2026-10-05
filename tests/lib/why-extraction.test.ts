@@ -294,4 +294,79 @@ describe('runWhyExtraction', () => {
     expect(result.diagnostics.notesRendered).toBe(0);
     expect(result.llm).toBe(llm);
   });
+
+  test('renders WHY notes deterministically via buildSectionFromRelease when draft is provided', async () => {
+    const selectedProvider = provider();
+    jest.mocked(selectedProvider.extractWhyNotes).mockResolvedValue({
+      items: [
+        {
+          prNumber: 12,
+          why: 'Draft releases publish later and need the same changelog path.',
+          confidence: 'high',
+        },
+      ],
+    });
+    const fetchPRDetails = jest.fn<FetchPRDetails>(async () => ({
+      number: 12,
+      title: 'Restore draft release handling',
+      body: [
+        '## Why',
+        '',
+        'Because draft releases can be created first and published later, the workflow must listen to publication.',
+      ].join('\n'),
+      author: 'alice',
+      url: 'https://github.com/octo/repo/pull/12',
+    }));
+
+    const draft = {
+      version: '1.2.3',
+      date: '2026-10-04',
+      changes: [
+        {
+          id: 'pr:12' as const,
+          origin: { kind: 'pull-request' as const, number: 12 },
+          title: 'Restore draft release handling',
+          pr: 12,
+          url: 'https://github.com/octo/repo/pull/12',
+          author: 'alice',
+        },
+      ],
+      assignments: {
+        'pr:12': 'Fixed' as const,
+      },
+    };
+
+    const result = await runWhyExtraction({
+      cli,
+      llm: {
+        new_section_markdown: 'fallback section',
+        pr_title: 'docs(changelog): 1.2.3',
+        pr_body: 'Generated changelog.',
+      },
+      draft,
+      changelogAiUsed: true,
+      provider: selectedProvider,
+      hasProviderKey: true,
+      owner: 'octo',
+      repo: 'repo',
+      token: 'token',
+      githubApiBase: 'https://api.github.com',
+      fetchPRDetails,
+    });
+
+    expect(draft.changes[0].why).toBe(
+      'Draft releases publish later and need the same changelog path.',
+    );
+    expect(result.llm.new_section_markdown).toContain(
+      '## [v1.2.3] - 2026-10-04',
+    );
+    expect(result.llm.new_section_markdown).toContain('### Fixed');
+    expect(result.llm.new_section_markdown).toContain(
+      '- Restore draft release handling by @alice in [#12](https://github.com/octo/repo/pull/12)',
+    );
+    expect(result.llm.new_section_markdown).toContain(
+      '  - Why: Draft releases publish later and need the same changelog path.',
+    );
+    expect(result.diagnostics.notesRendered).toBe(1);
+  });
 });

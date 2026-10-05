@@ -31,5 +31,6 @@ export function buildLLMInput(input: BuildLLMInput): LLMInput {
     changelogPreview,
     language: input.language,
     customInstructions: input.customInstructions,
+    ...(input.changes !== undefined && { changes: input.changes }),
   };
 }

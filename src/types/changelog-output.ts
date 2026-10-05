@@ -3,6 +3,7 @@ import type { CommitLite } from '@/types/commit.js';
 import type { LLMOutput } from '@/types/llm.js';
 import type { Provider } from '@/types/provider.js';
 import type { PullRef } from '@/types/github.js';
+import type { ReleaseDraft } from '@/types/release.js';
 
 /** Mapping from normalized title to pull request number. */
 export type TitleToPrMap = Record<string, number>;
@@ -64,6 +65,8 @@ export type BuildChangelogLlmOutputParams = {
 export type BuildLlmOutputResult = {
   /** Normalized changelog and PR payload. */
   llm: LLMOutput;
+  /** Canonical release draft produced before optional enrichment. */
+  draft?: ReleaseDraft;
   /** Whether any provider call was used successfully. */
   aiUsed: boolean;
   /** Reasons explaining fallback behavior when AI was skipped or failed. */

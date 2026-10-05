@@ -26,7 +26,7 @@ describe('GeminiProvider', () => {
     global.fetch = originalFetch;
   });
 
-  test('generates structured changelog output via generateContent', async () => {
+  test('generates structured editorial output via generateContent', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       text: async () =>
@@ -37,11 +37,12 @@ describe('GeminiProvider', () => {
                 parts: [
                   {
                     text: JSON.stringify({
-                      new_section_markdown: '## [v1.0.0] - 2026-05-23',
-                      insert_after_anchor: '## [Unreleased]',
-                      pr_title: 'docs(changelog): 1.0.0',
-                      pr_body: 'Update changelog.',
-                      labels: ['changelog'],
+                      changes: {
+                        'pr:10': {
+                          title: 'Add feature',
+                          category: 'Added',
+                        },
+                      },
                     }),
                   },
                 ],
@@ -67,9 +68,17 @@ describe('GeminiProvider', () => {
       mergedPRs: '',
       changelogPreview: '',
       language: 'en',
+      changes: [{ id: 'pr:10', title: 'raw title', category: 'Added' }],
     });
 
-    expect(output.pr_title).toBe('docs(changelog): 1.0.0');
+    expect(output).toEqual({
+      changes: {
+        'pr:10': {
+          title: 'Add feature',
+          category: 'Added',
+        },
+      },
+    });
     expect(global.fetch).toHaveBeenCalledWith(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-test-model:generateContent',
       expect.objectContaining({
