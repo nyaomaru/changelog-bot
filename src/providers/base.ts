@@ -4,7 +4,8 @@ import type {
   ClassificationChange,
   ClassificationResult,
 } from '@/types/changelog.js';
-import type { LLMInput, LLMOutput } from '@/types/llm.js';
+import type { LLMInput } from '@/types/llm.js';
+import type { EditorialOutput } from '@/schema/editorial.js';
 import type { ClassifyChangesOptions, Provider } from '@/types/provider.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
 
@@ -47,11 +48,11 @@ export abstract class ProviderBase implements Provider {
   }
 
   /**
-   * Generate release-note content from structured changelog input.
+   * Propose sparse editorial adjustments from structured changelog input.
    * @param input Release data and prompt context.
-   * @returns Generated release-note and pull-request metadata.
+   * @returns Proposed editorial changes keyed by stable ID.
    */
-  abstract generate(input: LLMInput): Promise<LLMOutput>;
+  abstract generate(input: LLMInput): Promise<EditorialOutput>;
 
   /**
    * Classify normalized release changes into changelog categories.

@@ -1,8 +1,13 @@
+import { SECTION_ORDER } from '@/constants/changelog.js';
+
+const ALLOWED_CATEGORIES_STRING = SECTION_ORDER.join(', ');
+
 /**
  * Shared system prompt guiding LLM providers to produce sparse editorial adjustments.
  * WHY: In Phase 4, the deterministic pipeline authors Markdown and delivery metadata.
  * The LLM provider is strictly an editorial assistant proposing title polish and
  * permissible category corrections for canonical changes keyed by stable IDs.
+ * Deriving category options from SECTION_ORDER prevents prompt/schema drift.
  */
 export const EDITORIAL_SYSTEM_PROMPT = `You are a release changelog editor for a repository.
 You are provided with a complete release draft containing canonical changes, each with a stable ID and category.
@@ -12,7 +17,7 @@ Output MUST be a SINGLE JSON object (no Markdown fences, no explanation) matchin
   "changes": {
     "<change-id>": {
       "title": "Concise, imperative title without commit hash or PR reference",
-      "category": "One of: Breaking Changes, Added, Changed, Deprecated, Removed, Fixed, Security, Docs, Test, Chore, Reverted, Merged PRs"
+      "category": "One of: ${ALLOWED_CATEGORIES_STRING}"
     }
   }
 }
@@ -22,6 +27,7 @@ Rules:
 - Only include change IDs that you want to improve or re-categorize. Omit unchanged items.
 - NEVER invent, rename, or drop change IDs. Use only the provided stable IDs.
 - Title MUST be a single line (no newlines, no bullet prefixes, no Markdown headings).
+- Category MUST be one of: ${ALLOWED_CATEGORIES_STRING}.
 - Do not author Markdown sections, headings, anchors, compare links, or PR metadata.
 - Follow custom instructions and requested output language when present.
 - Never wrap the JSON in backticks or markdown formatting.`;

@@ -114,4 +114,57 @@ describe('AnthropicProvider', () => {
       outputTokens: 45,
     });
   });
+
+  test('generates structured editorial output via Messages API', async () => {
+    const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          content: [
+            {
+              text: JSON.stringify({
+                changes: {
+                  'pr:20': {
+                    title: 'Refactor auth provider',
+                    category: 'Changed',
+                  },
+                },
+              }),
+            },
+          ],
+        }),
+      ),
+    );
+    global.fetch = fetchMock;
+    const provider = new AnthropicProvider({
+      apiKey: 'anthropic-test',
+      model: 'claude-test-model',
+    });
+
+    const output = await provider.generate({
+      repo: 'octo/repo',
+      version: '1.0.0',
+      date: '2026-10-05',
+      releaseTag: 'v1.0.0',
+      prevTag: 'v0.9.0',
+      releaseBody: '',
+      gitLog: 'abcdef1 refactor: auth',
+      mergedPRs: '',
+      changelogPreview: '',
+      language: 'en',
+      changes: [{ id: 'pr:20', title: 'raw title', category: 'Changed' }],
+    });
+
+    expect(output).toEqual({
+      changes: {
+        'pr:20': {
+          title: 'Refactor auth provider',
+          category: 'Changed',
+        },
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.anthropic.com/v1/messages',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
 });

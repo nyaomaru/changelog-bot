@@ -1,4 +1,5 @@
-import type { LLMInput, LLMOutput } from '@/types/llm.js';
+import type { LLMInput } from '@/types/llm.js';
+import type { EditorialOutput } from '@/schema/editorial.js';
 import type { ProviderRuntimeConfig } from '@/types/config.js';
 import type { ClassifyChangesOptions } from '@/types/provider.js';
 import type { WhyExtractionInput, WhyExtractionOutput } from '@/types/why.js';
@@ -78,7 +79,7 @@ export class AnthropicProvider extends ProviderBase {
     super(config);
   }
 
-  async generate(input: LLMInput): Promise<LLMOutput> {
+  async generate(input: LLMInput): Promise<EditorialOutput> {
     const payload: Record<string, unknown> = {
       model: this.modelName,
       max_tokens: LLM_GENERATE_MAX_TOKENS,
@@ -114,7 +115,7 @@ export class AnthropicProvider extends ProviderBase {
       'Anthropic error',
     );
     const outputText = json.content?.[0]?.text ?? '';
-    return extractJsonObject<LLMOutput>(outputText);
+    return extractJsonObject<EditorialOutput>(outputText);
   }
 
   async classifyChanges(
