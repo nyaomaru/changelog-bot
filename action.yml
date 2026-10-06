@@ -19,7 +19,7 @@ inputs:
     description: 'Base branch for the PR'
     required: false
   provider:
-    description: 'LLM provider to use (openai|anthropic|gemini)'
+    description: 'LLM provider to use (openai|anthropic|gemini|xai)'
     required: false
   release-tag:
     description: 'Git ref (tag or HEAD) to generate changelog for'
@@ -237,4 +237,5 @@ runs:
 #     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 #     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 #     GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+#     XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
 #     TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}

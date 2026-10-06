@@ -14,6 +14,7 @@ import {
   PROVIDER_ANTHROPIC,
   PROVIDER_GEMINI,
   PROVIDER_OPENAI,
+  PROVIDER_XAI,
 } from '@/constants/provider.js';
 import {
   DEFAULT_WHY_CONFIDENCE,
@@ -130,6 +131,12 @@ describe('cli-args', () => {
     ]);
 
     expect(out.provider).toBe(PROVIDER_GEMINI);
+  });
+
+  test('parses xai provider', async () => {
+    const out = await parseCliArgs(['node', 'cli', '--provider', PROVIDER_XAI]);
+
+    expect(out.provider).toBe(PROVIDER_XAI);
   });
 
   test('loads default config file from cwd', async () => {

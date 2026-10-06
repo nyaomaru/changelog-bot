@@ -1,6 +1,7 @@
 import { OpenAIProvider } from '@/providers/openai.js';
 import { AnthropicProvider } from '@/providers/anthropic.js';
 import { GeminiProvider } from '@/providers/gemini.js';
+import { XAIProvider } from '@/providers/xai.js';
 import type {
   ProviderRuntimeConfig,
   ProviderRuntimeConfigMap,
@@ -14,6 +15,7 @@ const PROVIDER_REGISTRY: Record<ProviderName, ProviderConstructor> = {
   openai: OpenAIProvider,
   anthropic: AnthropicProvider,
   gemini: GeminiProvider,
+  xai: XAIProvider,
 };
 
 /**

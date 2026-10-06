@@ -2,6 +2,7 @@ import { EnvSchema } from '@/schema/env.js';
 import { DEFAULT_OPENAI_MODEL } from '@/constants/openai.js';
 import { DEFAULT_ANTHROPIC_MODEL } from '@/constants/anthropic.js';
 import { DEFAULT_GEMINI_MODEL } from '@/constants/gemini.js';
+import { DEFAULT_XAI_MODEL } from '@/constants/xai.js';
 import { GITHUB_API_BASE_DEFAULT } from '@/constants/github.js';
 import type {
   AppConfig,
@@ -33,6 +34,10 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     gemini: {
       apiKey: runtimeEnv.GEMINI_API_KEY,
       model: runtimeEnv.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+    },
+    xai: {
+      apiKey: runtimeEnv.XAI_API_KEY,
+      model: runtimeEnv.XAI_MODEL || DEFAULT_XAI_MODEL,
     },
   };
 

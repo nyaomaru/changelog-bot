@@ -1,5 +1,5 @@
 /** Supported LLM provider identifiers. */
-export type ProviderName = 'openai' | 'anthropic' | 'gemini';
+export type ProviderName = 'openai' | 'anthropic' | 'gemini' | 'xai';
 
 /** Canonical change sent to editorial provider. */
 export type EditorialPromptChange = {

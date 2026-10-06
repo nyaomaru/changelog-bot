@@ -20,6 +20,7 @@ function providerFromConfig(
     openai: config,
     anthropic: config,
     gemini: config,
+    xai: config,
   } satisfies ProviderRuntimeConfigMap;
   return providerFactory(providerName, providerConfigs);
 }
