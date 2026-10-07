@@ -5,10 +5,12 @@ import { providerFactory } from '@/utils/provider.js';
 import { OpenAIProvider } from '@/providers/openai.js';
 import { AnthropicProvider } from '@/providers/anthropic.js';
 import { GeminiProvider } from '@/providers/gemini.js';
+import { XAIProvider } from '@/providers/xai.js';
 import {
   PROVIDER_OPENAI,
   PROVIDER_ANTHROPIC,
   PROVIDER_GEMINI,
+  PROVIDER_XAI,
 } from '@/constants/provider.js';
 
 describe('providerFactory', () => {
@@ -40,5 +42,12 @@ describe('providerFactory', () => {
 
     expect(provider).toBeInstanceOf(GeminiProvider);
     expect(provider.name).toBe(PROVIDER_GEMINI);
+  });
+
+  test('returns XAIProvider for xai', () => {
+    const provider = providerFactory(PROVIDER_XAI, loadAppConfig({}).providers);
+
+    expect(provider).toBeInstanceOf(XAIProvider);
+    expect(provider.name).toBe(PROVIDER_XAI);
   });
 });

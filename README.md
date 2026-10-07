@@ -42,30 +42,30 @@ Using it in CI? Jump to [GitHub Actions integration](#github-actions-integration
 
 ### Options
 
-| Option                   | Description                                           | Default                                |
-| ------------------------ | ----------------------------------------------------- | -------------------------------------- |
-| `--repo-path`            | Path to repository root                               | `.`                                    |
-| `--config`               | Path to JSON config file                              | `changelog-bot.config.json` if present |
-| `--changelog-path`       | Path to CHANGELOG file                                | `CHANGELOG.md`                         |
-| `--base-branch`          | Base branch for PR                                    | `main`                                 |
-| `--provider`             | LLM provider (`openai`, `anthropic`, or `gemini`)     | `openai`                               |
-| `--release-tag`          | Git ref (tag or HEAD) to generate release for         | latest tag or HEAD                     |
-| `--release-name`         | Display name for version (without `v`)                | derived from tag                       |
-| `--release-body`         | Additional release notes body                         | `""`                                   |
-| `--language`             | Language for generated changelog prose                | `en`                                   |
-| `--instructions`         | Additional changelog writing/grouping instructions    | unset                                  |
-| `--instructions-file`    | Path to a file with additional instructions           | unset                                  |
-| `--dry-run`              | Print updated CHANGELOG to stdout, don’t write file   | `false`                                |
-| `--dry-run-json-report`  | Print dry-run provider diagnostics as JSON            | `false`                                |
-| `--fail-on-llm-error`    | Fail instead of falling back when provider calls fail | `false`                                |
-| `--require-provider`     | Fail when the selected provider API key is missing    | `false`                                |
-| `--no-ai`                | Skip all provider calls and use deterministic output  | `false`                                |
-| `--why`                  | Extract short WHY notes from PR descriptions          | `false`                                |
-| `--why-engine`           | WHY engine (`llm` or experimental `jev`)              | `llm`                                  |
-| `--why-max-prs`          | Maximum PRs to inspect for WHY extraction             | `30`                                   |
-| `--why-max-chars-per-pr` | Maximum candidate characters sent per PR              | `800`                                  |
-| `--why-confidence`       | Minimum WHY confidence (`low`, `medium`, `high`)      | `medium`                               |
-| `--why-label`            | Label rendered before WHY notes                       | `Why`                                  |
+| Option                   | Description                                              | Default                                |
+| ------------------------ | -------------------------------------------------------- | -------------------------------------- |
+| `--repo-path`            | Path to repository root                                  | `.`                                    |
+| `--config`               | Path to JSON config file                                 | `changelog-bot.config.json` if present |
+| `--changelog-path`       | Path to CHANGELOG file                                   | `CHANGELOG.md`                         |
+| `--base-branch`          | Base branch for PR                                       | `main`                                 |
+| `--provider`             | LLM provider (`openai`, `anthropic`, `gemini`, or `xai`) | `openai`                               |
+| `--release-tag`          | Git ref (tag or HEAD) to generate release for            | latest tag or HEAD                     |
+| `--release-name`         | Display name for version (without `v`)                   | derived from tag                       |
+| `--release-body`         | Additional release notes body                            | `""`                                   |
+| `--language`             | Language for generated changelog prose                   | `en`                                   |
+| `--instructions`         | Additional changelog writing/grouping instructions       | unset                                  |
+| `--instructions-file`    | Path to a file with additional instructions              | unset                                  |
+| `--dry-run`              | Print updated CHANGELOG to stdout, don’t write file      | `false`                                |
+| `--dry-run-json-report`  | Print dry-run provider diagnostics as JSON               | `false`                                |
+| `--fail-on-llm-error`    | Fail instead of falling back when provider calls fail    | `false`                                |
+| `--require-provider`     | Fail when the selected provider API key is missing       | `false`                                |
+| `--no-ai`                | Skip all provider calls and use deterministic output     | `false`                                |
+| `--why`                  | Extract short WHY notes from PR descriptions             | `false`                                |
+| `--why-engine`           | WHY engine (`llm` or experimental `jev`)                 | `llm`                                  |
+| `--why-max-prs`          | Maximum PRs to inspect for WHY extraction                | `30`                                   |
+| `--why-max-chars-per-pr` | Maximum candidate characters sent per PR                 | `800`                                  |
+| `--why-confidence`       | Minimum WHY confidence (`low`, `medium`, `high`)         | `medium`                               |
+| `--why-label`            | Label rendered before WHY notes                          | `Why`                                  |
 
 ## Examples
 

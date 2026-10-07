@@ -90,6 +90,8 @@ on:
         required: false
       GEMINI_API_KEY:
         required: false
+      XAI_API_KEY:
+        required: false
       TYPESAFE_API_KEY:
         required: false
 
@@ -137,4 +139,5 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
