@@ -1,5 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 import { buildReleaseDraft } from '@/utils/release-draft.js';
+import { buildPrMapBySha, buildTitleToPr } from '@/utils/pr-mapping.js';
 
 describe('buildReleaseDraft', () => {
   test('builds complete ReleaseDraft from commit list without PR metadata', () => {
@@ -49,5 +50,32 @@ describe('buildReleaseDraft', () => {
     expect(draft.changes[0].id).toBe('pr:42');
     expect(draft.changes[0].author).toBe('octocat');
     expect(draft.assignments['pr:42']).toBe('Added');
+    expect(draft.changes[0].url).toBe('https://github.com/acme/tool/pull/42');
+  });
+
+  test('does not link an issue reference from the commit subject as a pull request', () => {
+    const commitList = [
+      {
+        sha: 'abc123',
+        subject: 'feat(providers): add xAI Grok provider support (#225)',
+      },
+    ];
+    const prMapBySha = buildPrMapBySha({
+      commitList,
+      prsLog: '',
+      repoPath: '.',
+    });
+    const draft = buildReleaseDraft({
+      version: '0.8.0',
+      date: '2026-10-06',
+      commitList,
+      titleToPr: buildTitleToPr(commitList, '', prMapBySha),
+      owner: 'nyaomaru',
+      repo: 'changelog-bot',
+    });
+
+    expect(draft.changes[0].pr).toBeUndefined();
+    expect(draft.changes[0].url).toBeUndefined();
+    expect(draft.changes[0].title).toContain('(#225)');
   });
 });

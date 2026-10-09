@@ -15,7 +15,6 @@ describe('fallbackSection', () => {
       version: '0.2.0',
       date: '2024-01-02',
       logs,
-      prs: '',
       prMapBySha: {
         abc1234: [101],
         def5678: [202],
@@ -45,5 +44,16 @@ describe('fallbackSection', () => {
     expect(md).toContain('- Remove legacy parsing');
     expect(md).not.toContain('### Added');
     expect(md).not.toContain('### Fixed');
+  });
+
+  test('keeps an issue reference in the subject instead of treating it as a pull request', () => {
+    const md = fallbackSection({
+      version: '0.8.0',
+      date: '2026-10-06',
+      logs: 'abc1234 feat: add xAI provider support (#225)',
+    });
+
+    expect(md).toContain('- add xAI provider support (#225)');
+    expect(md.match(/#225/g)).toHaveLength(1);
   });
 });

@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { HEAD_REF } from '@/constants/git.js';
 import { GitError } from '@/lib/errors.js';
-import { isError, isNull } from '@/utils/is.js';
+import { isError } from '@/utils/is.js';
 
 /**
  * Pattern that whitelists simple tag or branch names (alphanumeric plus ._-).
@@ -191,18 +191,4 @@ export function dateForRef(ref: string, cwd?: string): string | null {
   assertSafeGitRef(ref, 'ref');
   // %cs is the committer date in YYYY-MM-DD; --date=short ensures format for older git versions
   return tryRun(['show', '-s', '--date=short', '--format=%cs', ref], cwd);
-}
-
-/**
- * Extract PR numbers (e.g., "#123") from text.
- * @returns Numeric PR identifiers (deduped).
- */
-export function extractPrRefsFromText(text: string): number[] {
-  const numbers = new Set<number>();
-  const regExp = /#(\d+)/g;
-  let match: RegExpExecArray | null;
-  while (!isNull((match = regExp.exec(text)))) {
-    numbers.add(Number(match[1]));
-  }
-  return [...numbers];
 }
