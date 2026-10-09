@@ -1,4 +1,4 @@
-import { commitsFromMerge, extractPrRefsFromText } from '@/lib/git.js';
+import { commitsFromMerge } from '@/lib/git.js';
 import { CONVENTIONAL_PREFIX_RE } from '@/constants/conventional.js';
 import type { CommitLite } from '@/types/commit.js';
 
@@ -15,22 +15,8 @@ function normalizeTitle(title: string): string {
 }
 
 /**
- * Collect PR number hints embedded in commit subjects (e.g., "(#123)").
- * @param commitList Commits to inspect.
- * @returns Map from commit SHA to inline-detected PR numbers.
- */
-function collectInlinePrHints(commitList: CommitLite[]): PrNumbersBySha {
-  const hints: PrNumbersBySha = {};
-  for (const commit of commitList) {
-    const numbers = extractPrRefsFromText(commit.subject);
-    if (numbers.length) hints[commit.sha] = numbers;
-  }
-  return hints;
-}
-
-/**
  * Merge multiple PR number iterables into a deduplicated array.
- * @param sources Collections of PR numbers gathered from hints or API data.
+ * @param sources Collections of pull request numbers from API metadata.
  * @returns Deduplicated list of PR numbers.
  */
 function mergePrNumbers(...sources: Array<Iterable<number>>): number[] {
@@ -71,10 +57,10 @@ function expandMergePrs(
 }
 
 /**
- * Build a mapping from commit SHA to PR numbers by combining:
- * - inline commit hints (e.g., "#123" in subject)
- * - API-provided commit->PR associations
- * - merge commit expansion to propagate PR to contained commits
+ * Build a mapping from commit SHA to pull request numbers.
+ * WHY: `#123` in a commit subject may be an issue, not a pull request.
+ * Only GitHub pull-request metadata is authoritative; those numbers are then
+ * expanded from merge commits onto the commits they contain.
  * @param options Inputs including `commitList`, `prsLog`, `repoPath`, and optional `apiPrMap`.
  * @returns Mapping of commit SHA to associated PR numbers (deduped).
  */
@@ -86,14 +72,13 @@ export function buildPrMapBySha(options: {
 }): PrNumbersBySha {
   const { commitList, prsLog, repoPath, apiPrMap } = options;
 
-  const prHintsBySha = collectInlinePrHints(commitList);
   const prMapBySha: PrNumbersBySha = {};
 
   for (const commit of commitList) {
-    const hintNumbers = prHintsBySha[commit.sha] ?? [];
-    const apiNumbers = (apiPrMap?.[commit.sha] ?? []).map((pr) => pr.number);
-    const merged = mergePrNumbers(hintNumbers, apiNumbers);
-    if (merged.length) prMapBySha[commit.sha] = merged;
+    const apiNumbers = mergePrNumbers(
+      (apiPrMap?.[commit.sha] ?? []).map((pullRequest) => pullRequest.number),
+    );
+    if (apiNumbers.length) prMapBySha[commit.sha] = apiNumbers;
   }
 
   // WHY: A merge commit may represent a PR; expand its PR number to contained commits

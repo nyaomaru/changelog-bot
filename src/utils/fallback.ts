@@ -1,9 +1,6 @@
 import { SECTION_ORDER } from '@/constants/changelog.js';
 import type { BucketName } from '@/types/changelog.js';
-import {
-  CONVENTIONAL_PREFIX_RE,
-  INLINE_PR_NUMBER_RE,
-} from '@/constants/conventional.js';
+import { CONVENTIONAL_PREFIX_RE } from '@/constants/conventional.js';
 import { classifyTitleDeterministically } from '@/utils/deterministic-classification.js';
 
 /**
@@ -22,7 +19,6 @@ function formatBulletWithPrRef(title: string, prNumbers?: number[]) {
 
 // WHY: Centralize patterns/keywords to avoid scattered magic literals and
 // make the classification/stripping logic easier to maintain.
-const PR_REF_REGEX = INLINE_PR_NUMBER_RE;
 const TYPE_SCOPE_REGEX = CONVENTIONAL_PREFIX_RE;
 
 // BucketName centralized in types/changelog.ts
@@ -38,8 +34,6 @@ interface FallbackSectionParams {
   date: string;
   /** Raw `git log` output used to build buckets. */
   logs: string;
-  /** Optional preformatted PR list used when LLM output is unavailable. */
-  prs?: string;
   /** Optional lookup of PR numbers keyed by commit SHA. */
   prMapBySha?: PrNumbersBySha;
 }
@@ -78,42 +72,20 @@ function normalizeSubject(subject: string): string {
 }
 
 /**
- * Extract PR numbers from either provided map or inline references in the subject.
- * @param sha Commit SHA used to look up precomputed mappings.
- * @param subject Commit subject for inline extraction.
- * @param prMapBySha Optional mapping of commits to PR numbers.
- * @returns List of PR numbers or undefined when none found.
- */
-function extractPrNumbers(
-  sha: string,
-  subject: string,
-  prMapBySha?: PrNumbersBySha,
-): number[] | undefined {
-  if (prMapBySha?.[sha]?.length) {
-    return prMapBySha[sha];
-  }
-
-  const inlineRefs = subject.match(PR_REF_REGEX) || [];
-  if (!inlineRefs.length) return undefined;
-  return inlineRefs.map((matchText) => Number(matchText.slice(1)));
-}
-
-/**
  * Build a deterministic changelog section when LLM output is unavailable.
  * Uses the same canonical classification precedence as release-note output.
  */
 export function fallbackSection(params: FallbackSectionParams): string {
-  const { version, date, logs, prMapBySha: providedPrMap } = params;
+  const { version, date, logs, prMapBySha } = params;
   const lines = (logs || '').split('\n').filter(Boolean);
   const buckets = buildEmptyBuckets();
-
-  const prMapBySha: PrNumbersBySha = providedPrMap ? { ...providedPrMap } : {};
 
   for (const logLine of lines) {
     const { sha, subject } = parseLogLine(logLine);
     const normalizedTitle = normalizeSubject(subject);
     const bucket = classifyTitleDeterministically(subject).category;
-    const prNumbers = extractPrNumbers(sha, subject, prMapBySha);
+    // WHY: Subject text like `(#225)` may be an issue. Only confirmed PR metadata is attached.
+    const prNumbers = prMapBySha?.[sha];
 
     buckets[bucket].push(formatBulletWithPrRef(normalizedTitle, prNumbers));
   }

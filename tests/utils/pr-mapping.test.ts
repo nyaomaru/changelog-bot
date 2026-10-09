@@ -3,10 +3,6 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 
 // With ESM + ts-jest, mock modules before importing the SUT using unstable_mockModule.
 await jest.unstable_mockModule('@/lib/git.js', () => ({
-  extractPrRefsFromText: (text: string) => {
-    const matches = text.match(/#(\d+)/g) || [];
-    return [...new Set(matches.map((s) => Number(s.slice(1))))];
-  },
   commitsFromMerge: jest.fn(() => ['c2', 'c3']),
 }));
 
@@ -18,7 +14,7 @@ describe('pr-mapping utils', () => {
     jest.clearAllMocks();
   });
 
-  test('buildPrMapBySha merges hints, api map, and expands via merges', () => {
+  test('buildPrMapBySha uses API pull requests and expands them via merges', () => {
     const commitList = [
       { sha: 'm1', subject: 'merge commit' },
       { sha: 'c1', subject: 'feat: add feature #10' },
@@ -40,11 +36,36 @@ describe('pr-mapping utils', () => {
       apiPrMap,
     });
 
-    expect(out.c1).toEqual([10]);
+    // #10 in the subject is not a confirmed pull request
+    expect(out.c1).toBeUndefined();
     // c2 already has 10; expand from merge keeps 10
     expect(out.c2).toContain(10);
     // c3 had 11 from API, gets 10 from merge expansion too
     expect(new Set(out.c3)).toEqual(new Set([11, 10]));
+  });
+
+  test('does not treat an issue number in the commit subject as a pull request', () => {
+    const commitList = [
+      {
+        sha: 'c1',
+        subject: 'feat(providers): add xAI Grok provider support (#225)',
+      },
+    ];
+
+    const withoutPullRequest = buildPrMapBySha({
+      commitList,
+      prsLog: '',
+      repoPath: '.',
+    });
+    const withPullRequest = buildPrMapBySha({
+      commitList,
+      prsLog: '',
+      repoPath: '.',
+      apiPrMap: { c1: [{ number: 226 }] },
+    });
+
+    expect(withoutPullRequest.c1).toBeUndefined();
+    expect(withPullRequest.c1).toEqual([226]);
   });
 
   test('buildTitleToPr maps normalized titles from commits and merges', () => {
