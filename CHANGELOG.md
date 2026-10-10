@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.8.0] - 2026-10-10
+
+### Added
+
+- add xAI (Grok) provider support (#225) by @johnnylemonny in [#226](https://github.com/nyaomaru/changelog-bot/pull/226)
+  - Why: This PR adds xAI (Grok) as a supported LLM provider for changelog generation, classification, and WHY extraction.
+
+### Fixed
+
+- override brace-expansion to patched version by @johnnylemonny in [#219](https://github.com/nyaomaru/changelog-bot/pull/219)
+- distinguish issue references from pull request links by @nyaomaru in [#229](https://github.com/nyaomaru/changelog-bot/pull/229)
+  - Why: Stop treating every `#<number>` in a commit subject as a pull request to ensure accurate changelog links.
+- override handlebars to patched version by @nyaomaru in [#232](https://github.com/nyaomaru/changelog-bot/pull/232)
+
+### Changed
+
+- render changelog structure deterministically (v1 Phase 4) by @johnnylemonny in [#224](https://github.com/nyaomaru/changelog-bot/pull/224)
+- Release: 0.8.0 by [bot] by @github-actions in [#228](https://github.com/nyaomaru/changelog-bot/pull/228)
+
+### Docs
+
+- 0.7.0 by [bot] by @github-actions in [#218](https://github.com/nyaomaru/changelog-bot/pull/218)
+- revise v1 deterministic-first pipeline design by @nyaomaru in [#222](https://github.com/nyaomaru/changelog-bot/pull/222)
+- note Cloud Agent install and dry-run requirements by @nyaomaru in [#230](https://github.com/nyaomaru/changelog-bot/pull/230)
+
+### Chore
+
+- bump the actions group with 2 updates by [bot] by @dependabot in [#220](https://github.com/nyaomaru/changelog-bot/pull/220)
+- bump the minor-and-patch group across 1 directory with 7 updates by [bot] by @dependabot in [#223](https://github.com/nyaomaru/changelog-bot/pull/223)
+- bump the minor-and-patch group with 5 updates by [bot] by @dependabot in [#231](https://github.com/nyaomaru/changelog-bot/pull/231)
+
+### What's new 🚀
+
+Phase 4 of the v1 deterministic-first pipeline is here. `changelog-bot` now builds a complete, valid release draft from commits and PR metadata before any AI call. AI is an optional editorial enrichment layer rather than a requirement for producing a usable changelog.
+
+- Release structure is rendered deterministically by the backend, giving every generation path—including no-AI and WHY-enriched runs—a single consistent renderer.
+- Editorial suggestions are now sparse, stable-ID-based refinements. Unknown entries are rejected, missing entries retain their deterministic source data, and hard classification rules remain authoritative.
+- WHY extraction now enriches structured release data before rendering, instead of modifying already-generated Markdown.
+- Pull-request links no longer incorrectly point issue-only references to non-existent PRs.
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.7.0...v0.8.0
+
+[v0.8.0]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.8.0
+
 ## [v0.7.0] - 2026-10-02
 
 ### Added
