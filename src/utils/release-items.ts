@@ -1,6 +1,7 @@
 import type { CommitLite } from '@/types/commit.js';
 import type { PullRef } from '@/types/github.js';
 import type {
+  ExcludedReleaseChange,
   ReleaseChange,
   ReleaseChangeId,
   ReleaseChangeOrigin,
@@ -37,10 +38,12 @@ export function buildReleaseChangeId(
  * WHY: Display titles may be duplicated or rewritten, so downstream stages
  * need an identity that does not depend on title matching.
  * @param items Parsed release-note items in source order.
+ * @param excludedChanges Optional collector for tracked duplicate exclusions.
  * @returns Canonical release changes with PR- or position-based identities.
  */
 export function identifyReleaseItems(
   items: readonly ReleaseItem[],
+  excludedChanges?: ExcludedReleaseChange[],
 ): ReleaseChange[] {
   const changes = items.map((item, itemIndex) => {
     const origin: ReleaseChangeOrigin =
@@ -54,7 +57,7 @@ export function identifyReleaseItems(
     };
   });
 
-  return deduplicateReleaseChangesByPullRequest(changes);
+  return deduplicateReleaseChangesByPullRequest(changes, excludedChanges);
 }
 
 /**
@@ -62,10 +65,12 @@ export function identifyReleaseItems(
  * WHY: Title-based enrichment runs after initial identification and can reveal
  * that separately parsed release-note rows refer to the same pull request.
  * @param changes Canonical changes after any available PR enrichment.
+ * @param excludedChanges Optional collector for tracked duplicate exclusions.
  * @returns Source-ordered changes containing at most one entry per PR number.
  */
 export function deduplicateReleaseChangesByPullRequest(
   changes: readonly ReleaseChange[],
+  excludedChanges?: ExcludedReleaseChange[],
 ): ReleaseChange[] {
   const deduplicatedChanges: ReleaseChange[] = [];
   const changesByPrNumber = new Map<number, ReleaseChange>();
@@ -81,6 +86,13 @@ export function deduplicateReleaseChangesByPullRequest(
       // Keep the first display entry while retaining metadata found later.
       existingChange.author ??= change.author;
       existingChange.url ??= change.url;
+      if (excludedChanges && change.id !== existingChange.id) {
+        excludedChanges.push({
+          change,
+          reason: 'duplicate',
+          detail: `Duplicate change for PR #${change.pr}`,
+        });
+      }
       continue;
     }
 
@@ -97,11 +109,13 @@ export function deduplicateReleaseChangesByPullRequest(
  * open PR whose title and author are the stable parent changelog item.
  * @param commits Commits included in the release range.
  * @param pullRequestsBySha Pull request metadata keyed by commit SHA.
+ * @param excludedChanges Optional collector for commits collapsed into parent PRs.
  * @returns PR-level and unmapped commit items, or an empty array without PR metadata.
  */
 export function buildReleaseItemsFromPullRequests(
   commits: readonly CommitLite[],
   pullRequestsBySha: Readonly<Record<string, readonly PullRef[]>>,
+  excludedChanges?: ExcludedReleaseChange[],
 ): ReleaseChange[] {
   if (commits.length === 0) return [];
 
@@ -144,6 +158,25 @@ export function buildReleaseItemsFromPullRequests(
       };
       itemsByPrNumber.set(pullRequest.number, item);
       items.push(item);
+    } else {
+      if (excludedChanges) {
+        const commitOrigin: ReleaseChangeOrigin = {
+          kind: 'commit',
+          sha: commit.sha,
+        };
+        excludedChanges.push({
+          change: {
+            id: buildReleaseChangeId(commitOrigin),
+            origin: commitOrigin,
+            title: stripConventionalPrefix(commit.subject),
+            rawTitle: commit.subject,
+            pr: pullRequest.number,
+            url: pullRequest.url,
+          },
+          reason: 'collapsed-into-pr',
+          detail: `Commit ${commit.sha} collapsed into PR #${pullRequest.number}`,
+        });
+      }
     }
   }
 

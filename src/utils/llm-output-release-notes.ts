@@ -30,8 +30,13 @@ import {
   resolvePrFromTitles,
 } from '@/utils/llm-output-common.js';
 import { isError } from '@/utils/is.js';
-import type { ReleaseChange, ReleaseDraft } from '@/types/release.js';
+import type {
+  ExcludedReleaseChange,
+  ReleaseChange,
+  ReleaseDraft,
+} from '@/types/release.js';
 import type { CategoryAssignments } from '@/types/changelog.js';
+import { validateReleaseResult } from '@/utils/release-validation.js';
 
 /**
  * Fill missing PR numbers/URLs/authors for release note items when possible.
@@ -100,12 +105,17 @@ export async function buildOutputFromReleaseNotes(
   } = params;
 
   const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
-  let releaseChanges = identifyReleaseItems(parsedRelease.items);
+  const excludedChanges: ExcludedReleaseChange[] = [];
+  let releaseChanges = identifyReleaseItems(
+    parsedRelease.items,
+    excludedChanges,
+  );
   let usedPullRequestMetadata = false;
   if (!releaseChanges.length && !parsedRelease.sections?.length) {
     releaseChanges = buildReleaseItemsFromPullRequests(
       params.commitList,
       params.pullRequestsBySha ?? {},
+      excludedChanges,
     );
     usedPullRequestMetadata = releaseChanges.length > 0;
   }
@@ -127,7 +137,10 @@ export async function buildOutputFromReleaseNotes(
     titleToPr,
     items: releaseChanges,
   });
-  releaseChanges = deduplicateReleaseChangesByPullRequest(releaseChanges);
+  releaseChanges = deduplicateReleaseChangesByPullRequest(
+    releaseChanges,
+    excludedChanges,
+  );
 
   const changesForClassification =
     buildChangesForClassification(releaseChanges);
@@ -147,6 +160,7 @@ export async function buildOutputFromReleaseNotes(
     date,
     changes: releaseChanges,
     assignments: baselineAssignments,
+    excludedChanges,
     fullChangelog: parsedRelease.fullChangelog,
     sections: parsedRelease.sections,
   };
@@ -197,9 +211,19 @@ export async function buildOutputFromReleaseNotes(
     }
   }
 
-  const section = buildSectionFromRelease({
-    ...activeDraft,
-  });
+  // Phase 5: Enforce completeness and empty-release behavior via validateReleaseResult
+  const allSourceChanges = [
+    ...draft.changes,
+    ...(draft.excludedChanges ?? []).map((entry) => entry.change),
+  ];
+  const outcome = validateReleaseResult(activeDraft, allSourceChanges);
+
+  const section =
+    outcome.kind === 'release'
+      ? buildSectionFromRelease({
+          ...activeDraft,
+        })
+      : '';
 
   const llm: LLMOutput = {
     new_section_markdown: section,
@@ -213,5 +237,5 @@ export async function buildOutputFromReleaseNotes(
     llm.pr_body = appendFallbackNote(llm.pr_body, fallbackReasons);
   }
 
-  return { llm, draft: activeDraft, aiUsed, fallbackReasons };
+  return { llm, draft: activeDraft, aiUsed, fallbackReasons, outcome };
 }

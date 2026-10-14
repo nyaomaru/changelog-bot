@@ -1,6 +1,7 @@
 import type { CommitLite } from '@/types/commit.js';
 import type { PullRef } from '@/types/github.js';
 import type {
+  ExcludedReleaseChange,
   ReleaseChange,
   ReleaseChangeOrigin,
   ReleaseDraft,
@@ -63,12 +64,13 @@ export function buildReleaseDraft(
   } = params;
 
   let changes: ReleaseChange[] = [];
+  const excludedChanges: ExcludedReleaseChange[] = [];
   let fullChangelog = params.fullChangelog;
   let sections = undefined;
 
   if (releaseBody?.trim()) {
     const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
-    changes = identifyReleaseItems(parsedRelease.items);
+    changes = identifyReleaseItems(parsedRelease.items, excludedChanges);
     sections = parsedRelease.sections;
     if (parsedRelease.fullChangelog) {
       fullChangelog = parsedRelease.fullChangelog;
@@ -76,7 +78,11 @@ export function buildReleaseDraft(
   }
 
   if (changes.length === 0) {
-    changes = buildReleaseItemsFromPullRequests(commitList, pullRequestsBySha);
+    changes = buildReleaseItemsFromPullRequests(
+      commitList,
+      pullRequestsBySha,
+      excludedChanges,
+    );
   }
 
   if (changes.length === 0 && commitList.length > 0) {
@@ -108,7 +114,7 @@ export function buildReleaseDraft(
     }
   }
 
-  changes = deduplicateReleaseChangesByPullRequest(changes);
+  changes = deduplicateReleaseChangesByPullRequest(changes, excludedChanges);
 
   // Deterministic classification across all changes
   const changesForClassification = buildChangesForClassification(changes);
@@ -124,6 +130,7 @@ export function buildReleaseDraft(
     date,
     changes,
     assignments,
+    excludedChanges,
     fullChangelog,
     sections,
   };

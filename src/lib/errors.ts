@@ -52,6 +52,13 @@ export class ValidationError extends AppError {
   }
 }
 
+/** Release data completeness or integrity validation failure. */
+export class ReleaseValidationError extends AppError {
+  constructor(message: string) {
+    super(message, EXIT_VALIDATION);
+  }
+}
+
 /**
  * Map unknown errors to a stable process exit code.
  * @param error Arbitrary thrown value.

@@ -56,4 +56,16 @@ describe('fallbackSection', () => {
     expect(md).toContain('- add xAI provider support (#225)');
     expect(md.match(/#225/g)).toHaveLength(1);
   });
+
+  test('does not fabricate Summary of changes when log is empty', () => {
+    const md = fallbackSection({
+      version: '0.1.0',
+      date: '2026-10-14',
+      logs: '',
+    });
+
+    expect(md).toBe('## [v0.1.0] - 2026-10-14');
+    expect(md).not.toContain('Summary of changes');
+    expect(md).not.toContain('### Changed');
+  });
 });

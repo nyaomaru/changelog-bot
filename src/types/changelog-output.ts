@@ -3,7 +3,7 @@ import type { CommitLite } from '@/types/commit.js';
 import type { LLMOutput } from '@/types/llm.js';
 import type { Provider } from '@/types/provider.js';
 import type { PullRef } from '@/types/github.js';
-import type { ReleaseDraft } from '@/types/release.js';
+import type { ReleaseDraft, ReleaseOutcome } from '@/types/release.js';
 
 /** Mapping from normalized title to pull request number. */
 export type TitleToPrMap = Record<string, number>;
@@ -71,4 +71,6 @@ export type BuildLlmOutputResult = {
   aiUsed: boolean;
   /** Reasons explaining fallback behavior when AI was skipped or failed. */
   fallbackReasons: string[];
+  /** Typed outcome of release validation before rendering. */
+  outcome?: ReleaseOutcome;
 };

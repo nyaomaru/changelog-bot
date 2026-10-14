@@ -97,8 +97,5 @@ export function fallbackSection(params: FallbackSectionParams): string {
       output.push(`### ${sectionName}`, ...sectionItems, '');
     }
   }
-
-  const hasAnyItems = SECTION_ORDER.some((section) => buckets[section]?.length);
-  if (!hasAnyItems) output.push('### Changed', '- Summary of changes', '');
   return output.join('\n');
 }

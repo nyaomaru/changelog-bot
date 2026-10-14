@@ -78,4 +78,88 @@ describe('buildReleaseDraft', () => {
     expect(draft.changes[0].url).toBeUndefined();
     expect(draft.changes[0].title).toContain('(#225)');
   });
+
+  test('tracks collapsed-into-pr exclusions when multiple commits map to the same PR', () => {
+    const draft = buildReleaseDraft({
+      version: '0.8.0',
+      date: '2026-10-14',
+      commitList: [
+        { sha: 'aaa', subject: 'feat: add first part of feature' },
+        { sha: 'bbb', subject: 'fix: add second part of feature' },
+      ],
+      pullRequestsBySha: {
+        aaa: [
+          {
+            number: 42,
+            title: 'feat: add complete feature',
+            author: 'octocat',
+            url: 'https://github.com/acme/tool/pull/42',
+          },
+        ],
+        bbb: [
+          {
+            number: 42,
+            title: 'feat: add complete feature',
+            author: 'octocat',
+            url: 'https://github.com/acme/tool/pull/42',
+          },
+        ],
+      },
+      owner: 'acme',
+      repo: 'tool',
+    });
+
+    expect(draft.changes).toHaveLength(1);
+    expect(draft.changes[0].id).toBe('pr:42');
+    expect(draft.excludedChanges).toHaveLength(1);
+    expect(draft.excludedChanges[0].change.id).toBe('commit:bbb');
+    expect(draft.excludedChanges[0].reason).toBe('collapsed-into-pr');
+    expect(draft.excludedChanges[0].detail).toBe(
+      'Commit bbb collapsed into PR #42',
+    );
+  });
+
+  test('deduplicates repeated explicit PR references in release notes into one canonical change', () => {
+    const draft = buildReleaseDraft({
+      version: '0.8.0',
+      date: '2026-10-14',
+      releaseBody: [
+        "## What's Changed",
+        '- feat: add feature in #42',
+        '- fix: additional fix for #42',
+      ].join('\n'),
+      commitList: [],
+      owner: 'acme',
+      repo: 'tool',
+    });
+
+    expect(draft.changes).toHaveLength(1);
+    expect(draft.changes[0].id).toBe('pr:42');
+    expect(draft.excludedChanges).toEqual([]);
+  });
+
+  test('tracks duplicate exclusions when release note item resolves to an existing PR via title mapping', () => {
+    const draft = buildReleaseDraft({
+      version: '0.8.0',
+      date: '2026-10-14',
+      releaseBody: [
+        "## What's Changed",
+        '- feat: add feature in #42',
+        '- fix: additional fix for feature',
+      ].join('\n'),
+      titleToPr: {
+        'fix: additional fix for feature': 42,
+      },
+      commitList: [],
+      owner: 'acme',
+      repo: 'tool',
+    });
+
+    expect(draft.changes).toHaveLength(1);
+    expect(draft.changes[0].id).toBe('pr:42');
+    expect(draft.excludedChanges).toHaveLength(1);
+    expect(draft.excludedChanges[0].change.id).toBe('release-note:1');
+    expect(draft.excludedChanges[0].reason).toBe('duplicate');
+    expect(draft.excludedChanges[0].detail).toBe('Duplicate change for PR #42');
+  });
 });

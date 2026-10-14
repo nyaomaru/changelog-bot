@@ -5,7 +5,7 @@ import type { WhyExtractor } from '@/types/why-extractor.js';
 import type { WhyDiagnostics } from '@/types/why.js';
 import type { ChangelogRunDependencies } from '@/lib/changelog-run-dependencies.js';
 
-import type { ReleaseDraft } from '@/types/release.js';
+import type { ReleaseDraft, ReleaseOutcome } from '@/types/release.js';
 
 type ChangelogRunOutputDependencies = Pick<
   ChangelogRunDependencies,
@@ -50,6 +50,8 @@ export type FinalizeChangelogRunOutputParams = {
   githubApiBase: string;
   /** Output finalization and WHY extraction adapters. */
   deps: ChangelogRunOutputDependencies;
+  /** Typed outcome of release validation before rendering. */
+  outcome?: ReleaseOutcome;
 };
 
 /** Final changelog artifacts and enrichment diagnostics. */
@@ -60,6 +62,8 @@ export type FinalizeChangelogRunOutputResult = {
   updatedChangelog: string;
   /** Diagnostics from optional WHY extraction. */
   whyDiagnostics: WhyDiagnostics;
+  /** Typed outcome of release validation before rendering. */
+  outcome?: ReleaseOutcome;
 };
 
 /**
@@ -73,6 +77,26 @@ export type FinalizeChangelogRunOutputResult = {
 export async function finalizeChangelogRunOutput(
   params: FinalizeChangelogRunOutputParams,
 ): Promise<FinalizeChangelogRunOutputResult> {
+  if (params.outcome?.kind === 'no-changes') {
+    return {
+      llm: params.llm,
+      updatedChangelog: params.existingChangelog,
+      whyDiagnostics: {
+        enabled: false,
+        engine: params.cli.whyEngine,
+        selectionDiagnostics: [],
+        aiUsed: false,
+        targetsFound: 0,
+        prBodiesFetched: 0,
+        skippedBeforeFetch: 0,
+        skippedLowTrust: 0,
+        notesRendered: 0,
+        fallbackReasons: [],
+      },
+      outcome: params.outcome,
+    };
+  }
+
   const finalize = (llm: LLMOutput) =>
     params.deps.finalizeChangelogUpdate({
       owner: params.owner,
@@ -112,5 +136,6 @@ export async function finalizeChangelogRunOutput(
     llm: finalized.llm,
     updatedChangelog: finalized.updated,
     whyDiagnostics: whyOutput.diagnostics,
+    outcome: params.outcome,
   };
 }

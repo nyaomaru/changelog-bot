@@ -100,6 +100,7 @@ export async function executeChangelogRun(params: {
     titleToPr,
     token,
     githubApiBase: appConfig.github.apiBase,
+    outcome: llmOutput.outcome,
     deps,
   });
   const { llm, updatedChangelog, whyDiagnostics } = finalizedOutput;
@@ -117,7 +118,13 @@ export async function executeChangelogRun(params: {
       hasProviderKey,
       whyDiagnostics,
       updated: updatedChangelog,
+      outcome: llmOutput.outcome,
     });
+    return;
+  }
+
+  if (llmOutput.outcome?.kind === 'no-changes') {
+    log(`No changes found for release v${version}; skipping PR creation.`);
     return;
   }
 

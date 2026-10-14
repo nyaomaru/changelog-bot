@@ -2,6 +2,7 @@ import type { CliOptions } from '@/schema/cli.js';
 import type { ProviderName } from '@/types/llm.js';
 import type { WhyDiagnostics } from '@/types/why.js';
 import type { CustomInstructionsResolution } from '@/lib/customization.js';
+import type { ReleaseOutcome } from '@/types/release.js';
 import {
   formatDryRunDiagnostics,
   formatDryRunJsonReport,
@@ -58,6 +59,8 @@ export type WriteDryRunOutputParams = {
   whyDiagnostics: WhyDiagnostics;
   /** Changelog content produced by the run. */
   updated: string;
+  /** Typed outcome of release validation before rendering. */
+  outcome?: ReleaseOutcome;
 };
 
 /**
@@ -78,9 +81,16 @@ export function writeDryRunOutput(params: WriteDryRunOutputParams): void {
     hasProviderKey,
     whyDiagnostics,
     updated,
+    outcome,
   } = params;
 
   log('==== DRY RUN (no PR) ====');
+
+  if (outcome?.kind === 'no-changes') {
+    log(`No changes found in release range (v${outcome.version})`);
+    return;
+  }
+
   const diagnosticsInput = {
     providerName,
     modelName,
