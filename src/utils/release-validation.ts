@@ -6,17 +6,23 @@ import type {
 } from '@/types/release.js';
 import { ReleaseValidationError } from '@/lib/errors.js';
 
+import { SECTION_ORDER } from '@/constants/changelog.js';
+
 export { ReleaseValidationError };
 
+const ALLOWED_CATEGORIES: ReadonlySet<string> = new Set(SECTION_ORDER);
+
 /**
- * Validate a release draft or result for completeness, disjointness, and absence of duplicate change IDs.
+ * Validate a release draft or result for completeness, disjointness, assignment bijection, and absence of duplicate change IDs.
  * WHY: Enforces Phase 5 completeness: every source change must be accounted for either in
  * included changes or in excludedChanges with a typed reason. Rejects duplicate IDs in changes.
+ * Enforces bijection between result.changes and result.assignments matching SECTION_ORDER so no
+ * change is silently dropped by the Markdown renderer and no unknown assignment keys linger.
  * Returns a typed ReleaseOutcome indicating either a populated release or no changes.
  * @param result The release result or draft to validate.
  * @param sourceChanges Optional list of original source changes to verify complete accounting.
  * @returns Discriminated union of either a validated release result or a typed no-changes outcome.
- * @throws {ReleaseValidationError} When duplicate IDs or unaccounted/overlapping changes are found.
+ * @throws {ReleaseValidationError} When duplicate IDs, unaccounted/overlapping changes, or invalid/missing assignments are found.
  */
 export function validateReleaseResult(
   result: ReleaseResult,
@@ -31,6 +37,23 @@ export function validateReleaseResult(
       );
     }
     seenChangeIds.add(change.id);
+
+    const category = result.assignments?.[change.id];
+    if (!category || !ALLOWED_CATEGORIES.has(category)) {
+      throw new ReleaseValidationError(
+        `Missing or invalid category assignment for change '${change.id}': ${category}`,
+      );
+    }
+  }
+
+  if (result.assignments) {
+    for (const assignmentId of Object.keys(result.assignments)) {
+      if (!seenChangeIds.has(assignmentId as ReleaseChangeId)) {
+        throw new ReleaseValidationError(
+          `Assignment found for unknown change ID '${assignmentId}'`,
+        );
+      }
+    }
   }
 
   const seenExcludedIds = new Set<ReleaseChangeId>();

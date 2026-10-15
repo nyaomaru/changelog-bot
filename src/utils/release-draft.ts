@@ -7,9 +7,9 @@ import type {
   ReleaseDraft,
 } from '@/types/release.js';
 import {
+  buildIdentifiedReleaseItems,
   buildReleaseItemsFromPullRequests,
   deduplicateReleaseChangesByPullRequest,
-  identifyReleaseItems,
   buildReleaseChangeId,
 } from '@/utils/release-items.js';
 import { parseReleaseNotes } from '@/utils/release-notes.js';
@@ -65,12 +65,18 @@ export function buildReleaseDraft(
 
   let changes: ReleaseChange[] = [];
   const excludedChanges: ExcludedReleaseChange[] = [];
+  let sourceChanges: ReleaseChange[] = [];
   let fullChangelog = params.fullChangelog;
   let sections = undefined;
 
   if (releaseBody?.trim()) {
     const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
-    changes = identifyReleaseItems(parsedRelease.items, excludedChanges);
+    const identified = buildIdentifiedReleaseItems(parsedRelease.items);
+    sourceChanges = [...identified];
+    changes = deduplicateReleaseChangesByPullRequest(
+      identified,
+      excludedChanges,
+    );
     sections = parsedRelease.sections;
     if (parsedRelease.fullChangelog) {
       fullChangelog = parsedRelease.fullChangelog;
@@ -83,6 +89,12 @@ export function buildReleaseDraft(
       pullRequestsBySha,
       excludedChanges,
     );
+    if (changes.length > 0) {
+      sourceChanges = [
+        ...changes,
+        ...excludedChanges.map((entry) => entry.change),
+      ];
+    }
   }
 
   if (changes.length === 0 && commitList.length > 0) {
@@ -98,6 +110,7 @@ export function buildReleaseDraft(
         rawTitle: commit.subject,
       };
     });
+    sourceChanges = [...changes];
   }
 
   // Backfill PR numbers from title mapping when missing
@@ -133,5 +146,6 @@ export function buildReleaseDraft(
     excludedChanges,
     fullChangelog,
     sections,
+    sourceChanges,
   };
 }

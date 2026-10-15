@@ -34,6 +34,35 @@ export function buildReleaseChangeId(
 }
 
 /**
+ * Assign stable identities to items parsed from ordered release notes before transforms.
+ * WHY: Display titles may be duplicated or rewritten, so downstream stages need an
+ * identity that does not depend on title matching. The first occurrence of a pull request
+ * receives a PR-based identity, while duplicate references receive position-based
+ * release-note identities to prevent ID collisions and enable tracking in excludedChanges.
+ * @param items Parsed release-note items in source order.
+ * @returns Pre-transform release changes with unique identities.
+ */
+export function buildIdentifiedReleaseItems(
+  items: readonly ReleaseItem[],
+): ReleaseChange[] {
+  const seenPrNumbers = new Set<number>();
+  return items.map((item, itemIndex) => {
+    let origin: ReleaseChangeOrigin;
+    if (item.pr !== undefined && !seenPrNumbers.has(item.pr)) {
+      seenPrNumbers.add(item.pr);
+      origin = { kind: 'pull-request', number: item.pr };
+    } else {
+      origin = { kind: 'release-note', index: itemIndex };
+    }
+    return {
+      ...item,
+      id: buildReleaseChangeId(origin),
+      origin,
+    };
+  });
+}
+
+/**
  * Assign stable identities to items parsed from ordered release notes.
  * WHY: Display titles may be duplicated or rewritten, so downstream stages
  * need an identity that does not depend on title matching.
@@ -45,18 +74,7 @@ export function identifyReleaseItems(
   items: readonly ReleaseItem[],
   excludedChanges?: ExcludedReleaseChange[],
 ): ReleaseChange[] {
-  const changes = items.map((item, itemIndex) => {
-    const origin: ReleaseChangeOrigin =
-      item.pr !== undefined
-        ? { kind: 'pull-request', number: item.pr }
-        : { kind: 'release-note', index: itemIndex };
-    return {
-      ...item,
-      id: buildReleaseChangeId(origin),
-      origin,
-    };
-  });
-
+  const changes = buildIdentifiedReleaseItems(items);
   return deduplicateReleaseChangesByPullRequest(changes, excludedChanges);
 }
 

@@ -86,11 +86,6 @@ export function writeDryRunOutput(params: WriteDryRunOutputParams): void {
 
   log('==== DRY RUN (no PR) ====');
 
-  if (outcome?.kind === 'no-changes') {
-    log(`No changes found in release range (v${outcome.version})`);
-    return;
-  }
-
   const diagnosticsInput = {
     providerName,
     modelName,
@@ -108,12 +103,22 @@ export function writeDryRunOutput(params: WriteDryRunOutputParams): void {
       }),
     },
     why: whyDiagnostics,
+    outcome,
   };
   log(
     cli.dryRunJsonReport
       ? formatDryRunJsonReport(diagnosticsInput)
       : formatDryRunDiagnostics(diagnosticsInput),
   );
+
+  if (outcome?.kind === 'no-changes') {
+    if (!cli.dryRunJsonReport) {
+      log('');
+      log(`No changes found in release range (v${outcome.version})`);
+    }
+    return;
+  }
+
   log('');
   log(updated);
 }

@@ -194,4 +194,55 @@ describe('validateReleaseResult', () => {
       expect(outcome.result.sections).toHaveLength(1);
     }
   });
+
+  test('throws ReleaseValidationError when a change is missing a category assignment', () => {
+    const result: ReleaseResult = {
+      version: '1.0.0',
+      date: '2026-10-14',
+      changes: [change1],
+      assignments: {},
+      excludedChanges: [],
+    };
+
+    expect(() => validateReleaseResult(result)).toThrow(ReleaseValidationError);
+    expect(() => validateReleaseResult(result)).toThrow(
+      "Missing or invalid category assignment for change 'pr:101'",
+    );
+  });
+
+  test('throws ReleaseValidationError when an assignment has a category not in SECTION_ORDER', () => {
+    const result: ReleaseResult = {
+      version: '1.0.0',
+      date: '2026-10-14',
+      changes: [change1],
+      assignments: {
+        'pr:101':
+          'NonExistentCategory' as unknown as import('@/types/changelog.js').BucketName,
+      },
+      excludedChanges: [],
+    };
+
+    expect(() => validateReleaseResult(result)).toThrow(ReleaseValidationError);
+    expect(() => validateReleaseResult(result)).toThrow(
+      "Missing or invalid category assignment for change 'pr:101': NonExistentCategory",
+    );
+  });
+
+  test('throws ReleaseValidationError when assignments contain an unknown change ID', () => {
+    const result: ReleaseResult = {
+      version: '1.0.0',
+      date: '2026-10-14',
+      changes: [change1],
+      assignments: {
+        'pr:101': 'Added',
+        'pr:999': 'Fixed',
+      },
+      excludedChanges: [],
+    };
+
+    expect(() => validateReleaseResult(result)).toThrow(ReleaseValidationError);
+    expect(() => validateReleaseResult(result)).toThrow(
+      "Assignment found for unknown change ID 'pr:999'",
+    );
+  });
 });

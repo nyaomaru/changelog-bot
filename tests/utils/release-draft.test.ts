@@ -135,7 +135,13 @@ describe('buildReleaseDraft', () => {
 
     expect(draft.changes).toHaveLength(1);
     expect(draft.changes[0].id).toBe('pr:42');
-    expect(draft.excludedChanges).toEqual([]);
+    expect(draft.excludedChanges).toHaveLength(1);
+    expect(draft.excludedChanges[0].change.id).toBe('release-note:1');
+    expect(draft.excludedChanges[0].reason).toBe('duplicate');
+    expect(draft.excludedChanges[0].detail).toBe('Duplicate change for PR #42');
+    expect(draft.sourceChanges).toHaveLength(2);
+    expect(draft.sourceChanges?.[0].id).toBe('pr:42');
+    expect(draft.sourceChanges?.[1].id).toBe('release-note:1');
   });
 
   test('tracks duplicate exclusions when release note item resolves to an existing PR via title mapping', () => {
@@ -161,5 +167,24 @@ describe('buildReleaseDraft', () => {
     expect(draft.excludedChanges[0].change.id).toBe('release-note:1');
     expect(draft.excludedChanges[0].reason).toBe('duplicate');
     expect(draft.excludedChanges[0].detail).toBe('Duplicate change for PR #42');
+  });
+
+  test('preserves independent pre-transform sourceChanges ledger across commits', () => {
+    const draft = buildReleaseDraft({
+      version: '0.8.0',
+      date: '2026-10-14',
+      commitList: [
+        { sha: 'aaa', subject: 'feat: add first change' },
+        { sha: 'bbb', subject: 'fix: add second change' },
+      ],
+      owner: 'acme',
+      repo: 'tool',
+    });
+
+    expect(draft.sourceChanges).toHaveLength(2);
+    expect(draft.sourceChanges?.map((change) => change.id)).toEqual([
+      'commit:aaa',
+      'commit:bbb',
+    ]);
   });
 });

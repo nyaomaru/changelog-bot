@@ -135,11 +135,7 @@ export async function buildOutputFromModelOrFallback(
   }
 
   // Phase 5: Enforce completeness and empty-release behavior via validateReleaseResult
-  const allSourceChanges = [
-    ...draft.changes,
-    ...(draft.excludedChanges ?? []).map((entry) => entry.change),
-  ];
-  const outcome = validateReleaseResult(activeDraft, allSourceChanges);
+  const outcome = validateReleaseResult(activeDraft, draft.sourceChanges);
 
   // Phase 4: Deterministic renderer is the sole Markdown author for both AI and fallback paths
   const section =

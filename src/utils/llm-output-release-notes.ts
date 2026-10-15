@@ -1,8 +1,8 @@
 import { fetchPRInfo } from '@/lib/github.js';
 import {
+  buildIdentifiedReleaseItems,
   buildReleaseItemsFromPullRequests,
   deduplicateReleaseChangesByPullRequest,
-  identifyReleaseItems,
   parseReleaseNotes,
   buildSectionFromRelease,
 } from '@/utils/release.js';
@@ -106,10 +106,18 @@ export async function buildOutputFromReleaseNotes(
 
   const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
   const excludedChanges: ExcludedReleaseChange[] = [];
-  let releaseChanges = identifyReleaseItems(
-    parsedRelease.items,
-    excludedChanges,
-  );
+  let sourceChanges: ReleaseChange[] = [];
+  let releaseChanges: ReleaseChange[] = [];
+
+  if (parsedRelease.items.length) {
+    const identified = buildIdentifiedReleaseItems(parsedRelease.items);
+    sourceChanges = [...identified];
+    releaseChanges = deduplicateReleaseChangesByPullRequest(
+      identified,
+      excludedChanges,
+    );
+  }
+
   let usedPullRequestMetadata = false;
   if (!releaseChanges.length && !parsedRelease.sections?.length) {
     releaseChanges = buildReleaseItemsFromPullRequests(
@@ -117,6 +125,12 @@ export async function buildOutputFromReleaseNotes(
       params.pullRequestsBySha ?? {},
       excludedChanges,
     );
+    if (releaseChanges.length > 0) {
+      sourceChanges = [
+        ...releaseChanges,
+        ...excludedChanges.map((entry) => entry.change),
+      ];
+    }
     usedPullRequestMetadata = releaseChanges.length > 0;
   }
   const hasAdditionalSections = Boolean(parsedRelease.sections?.length);
@@ -163,6 +177,7 @@ export async function buildOutputFromReleaseNotes(
     excludedChanges,
     fullChangelog: parsedRelease.fullChangelog,
     sections: parsedRelease.sections,
+    sourceChanges,
   };
 
   let activeDraft = draft;
@@ -212,11 +227,7 @@ export async function buildOutputFromReleaseNotes(
   }
 
   // Phase 5: Enforce completeness and empty-release behavior via validateReleaseResult
-  const allSourceChanges = [
-    ...draft.changes,
-    ...(draft.excludedChanges ?? []).map((entry) => entry.change),
-  ];
-  const outcome = validateReleaseResult(activeDraft, allSourceChanges);
+  const outcome = validateReleaseResult(activeDraft, sourceChanges);
 
   const section =
     outcome.kind === 'release'
