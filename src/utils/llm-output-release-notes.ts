@@ -1,5 +1,6 @@
 import { fetchPRInfo } from '@/lib/github.js';
 import {
+  buildCommitReleaseChanges,
   buildIdentifiedReleaseItems,
   buildReleaseItemsFromPullRequests,
   deduplicateReleaseChangesByPullRequest,
@@ -120,17 +121,12 @@ export async function buildOutputFromReleaseNotes(
 
   let usedPullRequestMetadata = false;
   if (!releaseChanges.length && !parsedRelease.sections?.length) {
+    sourceChanges = buildCommitReleaseChanges(params.commitList);
     releaseChanges = buildReleaseItemsFromPullRequests(
       params.commitList,
       params.pullRequestsBySha ?? {},
       excludedChanges,
     );
-    if (releaseChanges.length > 0) {
-      sourceChanges = [
-        ...releaseChanges,
-        ...excludedChanges.map((entry) => entry.change),
-      ];
-    }
     usedPullRequestMetadata = releaseChanges.length > 0;
   }
   const hasAdditionalSections = Boolean(parsedRelease.sections?.length);

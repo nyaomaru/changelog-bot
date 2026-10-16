@@ -3,17 +3,15 @@ import type { PullRef } from '@/types/github.js';
 import type {
   ExcludedReleaseChange,
   ReleaseChange,
-  ReleaseChangeOrigin,
   ReleaseDraft,
 } from '@/types/release.js';
 import {
+  buildCommitReleaseChanges,
   buildIdentifiedReleaseItems,
   buildReleaseItemsFromPullRequests,
   deduplicateReleaseChangesByPullRequest,
-  buildReleaseChangeId,
 } from '@/utils/release-items.js';
 import { parseReleaseNotes } from '@/utils/release-notes.js';
-import { stripConventionalPrefix } from '@/utils/title-normalize.js';
 import { buildChangesForClassification } from '@/utils/classify-pre.js';
 import {
   applyDeterministicClassification,
@@ -84,33 +82,16 @@ export function buildReleaseDraft(
   }
 
   if (changes.length === 0) {
+    sourceChanges = buildCommitReleaseChanges(commitList);
     changes = buildReleaseItemsFromPullRequests(
       commitList,
       pullRequestsBySha,
       excludedChanges,
     );
-    if (changes.length > 0) {
-      sourceChanges = [
-        ...changes,
-        ...excludedChanges.map((entry) => entry.change),
-      ];
-    }
   }
 
   if (changes.length === 0 && commitList.length > 0) {
-    changes = commitList.map((commit) => {
-      const origin: ReleaseChangeOrigin = {
-        kind: 'commit',
-        sha: commit.sha,
-      };
-      return {
-        id: buildReleaseChangeId(origin),
-        origin,
-        title: stripConventionalPrefix(commit.subject),
-        rawTitle: commit.subject,
-      };
-    });
-    sourceChanges = [...changes];
+    changes = [...sourceChanges];
   }
 
   // Backfill PR numbers from title mapping when missing

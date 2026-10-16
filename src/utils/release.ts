@@ -2,6 +2,7 @@
 // commit mapping, and rendering in independently maintainable modules.
 export { buildReleaseItemsFromPullRequests } from '@/utils/release-items.js';
 export {
+  buildCommitReleaseChanges,
   buildIdentifiedReleaseItems,
   buildReleaseChangeId,
   deduplicateReleaseChangesByPullRequest,

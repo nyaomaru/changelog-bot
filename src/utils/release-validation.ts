@@ -26,7 +26,7 @@ const ALLOWED_CATEGORIES: ReadonlySet<string> = new Set(SECTION_ORDER);
  */
 export function validateReleaseResult(
   result: ReleaseResult,
-  sourceChanges?: readonly ReleaseChange[],
+  sourceChanges: readonly ReleaseChange[] = result.sourceChanges,
 ): ReleaseOutcome {
   const seenChangeIds = new Set<ReleaseChangeId>();
 

@@ -80,7 +80,7 @@ export type ReleaseDraft = {
   /** Extra Markdown sections preserved from GitHub release notes. */
   sections?: ReleaseSection[];
   /** Independent source changes ledger captured before transforms. */
-  sourceChanges?: ReleaseChange[];
+  sourceChanges: ReleaseChange[];
 };
 
 /** Final validated release payload ready for deterministic rendering. */

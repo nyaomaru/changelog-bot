@@ -122,6 +122,30 @@ export function deduplicateReleaseChangesByPullRequest(
 }
 
 /**
+ * Assign stable commit-based identities to commits in the release range before transforms.
+ * WHY: Establishes an independent pre-transform ledger for commit-based sources, ensuring
+ * that every commit subsequently replaced by or collapsed into a PR item is accounted for.
+ * @param commits Commits included in the release range.
+ * @returns Pre-transform release changes with unique commit identities.
+ */
+export function buildCommitReleaseChanges(
+  commits: readonly CommitLite[],
+): ReleaseChange[] {
+  return commits.map((commit) => {
+    const origin: ReleaseChangeOrigin = {
+      kind: 'commit',
+      sha: commit.sha,
+    };
+    return {
+      id: buildReleaseChangeId(origin),
+      origin,
+      title: stripConventionalPrefix(commit.subject),
+      rawTitle: commit.subject,
+    };
+  });
+}
+
+/**
  * Build release items from authoritative commit-to-PR associations.
  * WHY: HEAD may have no release body, while its commits already belong to an
  * open PR whose title and author are the stable parent changelog item.
@@ -176,25 +200,28 @@ export function buildReleaseItemsFromPullRequests(
       };
       itemsByPrNumber.set(pullRequest.number, item);
       items.push(item);
-    } else {
-      if (excludedChanges) {
-        const commitOrigin: ReleaseChangeOrigin = {
-          kind: 'commit',
-          sha: commit.sha,
-        };
-        excludedChanges.push({
-          change: {
-            id: buildReleaseChangeId(commitOrigin),
-            origin: commitOrigin,
-            title: stripConventionalPrefix(commit.subject),
-            rawTitle: commit.subject,
-            pr: pullRequest.number,
-            url: pullRequest.url,
-          },
-          reason: 'collapsed-into-pr',
-          detail: `Commit ${commit.sha} collapsed into PR #${pullRequest.number}`,
-        });
-      }
+    }
+
+    // WHY: Every source commit replaced by a PR-level item must be recorded
+    // in excludedChanges with an explicit reason so that the pre-transform commit ledger
+    // is independently and completely accounted for.
+    if (excludedChanges) {
+      const commitOrigin: ReleaseChangeOrigin = {
+        kind: 'commit',
+        sha: commit.sha,
+      };
+      excludedChanges.push({
+        change: {
+          id: buildReleaseChangeId(commitOrigin),
+          origin: commitOrigin,
+          title: stripConventionalPrefix(commit.subject),
+          rawTitle: commit.subject,
+          pr: pullRequest.number,
+          url: pullRequest.url,
+        },
+        reason: 'collapsed-into-pr',
+        detail: `Commit ${commit.sha} collapsed into PR #${pullRequest.number}`,
+      });
     }
   }
 

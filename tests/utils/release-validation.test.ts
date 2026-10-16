@@ -58,6 +58,7 @@ describe('validateReleaseResult', () => {
       changes: [change1, change2],
       assignments: { 'pr:101': 'Added', 'commit:abcdef': 'Fixed' },
       excludedChanges: [excluded1],
+      sourceChanges: [change1, change2, excluded1.change],
     };
 
     const outcome = validateReleaseResult(result, [
@@ -81,6 +82,7 @@ describe('validateReleaseResult', () => {
       changes: [],
       assignments: {},
       excludedChanges: [excluded1, excluded2, excluded3],
+      sourceChanges: [excluded1.change, excluded2.change, excluded3.change],
     };
 
     const outcome = validateReleaseResult(result);
@@ -109,6 +111,7 @@ describe('validateReleaseResult', () => {
       changes: [change1, duplicateChange],
       assignments: { 'pr:101': 'Added' },
       excludedChanges: [],
+      sourceChanges: [change1],
     };
 
     expect(() => validateReleaseResult(result)).toThrow(ReleaseValidationError);
@@ -129,6 +132,7 @@ describe('validateReleaseResult', () => {
       changes: [change1],
       assignments: { 'pr:101': 'Added' },
       excludedChanges: [overlappingExcluded],
+      sourceChanges: [change1],
     };
 
     expect(() => validateReleaseResult(result)).toThrow(ReleaseValidationError);
@@ -144,6 +148,7 @@ describe('validateReleaseResult', () => {
       changes: [change1],
       assignments: { 'pr:101': 'Added' },
       excludedChanges: [excluded1, excluded1],
+      sourceChanges: [change1, excluded1.change],
     };
 
     expect(() => validateReleaseResult(result)).toThrow(ReleaseValidationError);
@@ -165,6 +170,7 @@ describe('validateReleaseResult', () => {
       changes: [change1],
       assignments: { 'pr:101': 'Added' },
       excludedChanges: [],
+      sourceChanges: [change1, missingChange],
     };
 
     expect(() =>
@@ -185,6 +191,7 @@ describe('validateReleaseResult', () => {
       assignments: {},
       excludedChanges: [],
       sections: [{ heading: "What's New", body: 'Release highlights.' }],
+      sourceChanges: [],
     };
 
     const outcome = validateReleaseResult(result);
@@ -202,6 +209,7 @@ describe('validateReleaseResult', () => {
       changes: [change1],
       assignments: {},
       excludedChanges: [],
+      sourceChanges: [change1],
     };
 
     expect(() => validateReleaseResult(result)).toThrow(ReleaseValidationError);
@@ -220,6 +228,7 @@ describe('validateReleaseResult', () => {
           'NonExistentCategory' as unknown as import('@/types/changelog.js').BucketName,
       },
       excludedChanges: [],
+      sourceChanges: [change1],
     };
 
     expect(() => validateReleaseResult(result)).toThrow(ReleaseValidationError);
@@ -238,6 +247,7 @@ describe('validateReleaseResult', () => {
         'pr:999': 'Fixed',
       },
       excludedChanges: [],
+      sourceChanges: [change1],
     };
 
     expect(() => validateReleaseResult(result)).toThrow(ReleaseValidationError);

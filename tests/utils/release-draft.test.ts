@@ -111,12 +111,20 @@ describe('buildReleaseDraft', () => {
 
     expect(draft.changes).toHaveLength(1);
     expect(draft.changes[0].id).toBe('pr:42');
-    expect(draft.excludedChanges).toHaveLength(1);
-    expect(draft.excludedChanges[0].change.id).toBe('commit:bbb');
+    expect(draft.excludedChanges).toHaveLength(2);
+    expect(draft.excludedChanges[0].change.id).toBe('commit:aaa');
     expect(draft.excludedChanges[0].reason).toBe('collapsed-into-pr');
     expect(draft.excludedChanges[0].detail).toBe(
+      'Commit aaa collapsed into PR #42',
+    );
+    expect(draft.excludedChanges[1].change.id).toBe('commit:bbb');
+    expect(draft.excludedChanges[1].reason).toBe('collapsed-into-pr');
+    expect(draft.excludedChanges[1].detail).toBe(
       'Commit bbb collapsed into PR #42',
     );
+    expect(draft.sourceChanges).toHaveLength(2);
+    expect(draft.sourceChanges[0].id).toBe('commit:aaa');
+    expect(draft.sourceChanges[1].id).toBe('commit:bbb');
   });
 
   test('deduplicates repeated explicit PR references in release notes into one canonical change', () => {
@@ -182,9 +190,60 @@ describe('buildReleaseDraft', () => {
     });
 
     expect(draft.sourceChanges).toHaveLength(2);
-    expect(draft.sourceChanges?.map((change) => change.id)).toEqual([
+    expect(draft.sourceChanges.map((change) => change.id)).toEqual([
       'commit:aaa',
       'commit:bbb',
     ]);
+  });
+
+  test('commit-source ledger is independent of PR mapping and tracks all collapsed commits', () => {
+    const draft = buildReleaseDraft({
+      version: '0.8.0',
+      date: '2026-10-14',
+      commitList: [
+        { sha: 'aaa', subject: 'feat: add first change' },
+        { sha: 'bbb', subject: 'fix: add second change' },
+        { sha: 'ccc', subject: 'chore: standalone unmapped commit' },
+      ],
+      pullRequestsBySha: {
+        aaa: [
+          {
+            number: 42,
+            title: 'feat: complete PR feature',
+            author: 'octocat',
+            url: 'https://github.com/acme/tool/pull/42',
+          },
+        ],
+        bbb: [
+          {
+            number: 42,
+            title: 'feat: complete PR feature',
+            author: 'octocat',
+            url: 'https://github.com/acme/tool/pull/42',
+          },
+        ],
+      },
+      owner: 'acme',
+      repo: 'tool',
+    });
+
+    // Ledger is captured from commitList before any PR mapping runs
+    expect(draft.sourceChanges).toEqual([
+      expect.objectContaining({ id: 'commit:aaa' }),
+      expect.objectContaining({ id: 'commit:bbb' }),
+      expect.objectContaining({ id: 'commit:ccc' }),
+    ]);
+
+    // Changes contains the promoted PR and the unmapped commit
+    expect(draft.changes).toHaveLength(2);
+    expect(draft.changes[0].id).toBe('pr:42');
+    expect(draft.changes[1].id).toBe('commit:ccc');
+
+    // Both source commits that were collapsed into PR #42 are tracked with typed reason
+    expect(draft.excludedChanges).toHaveLength(2);
+    expect(draft.excludedChanges[0].change.id).toBe('commit:aaa');
+    expect(draft.excludedChanges[0].reason).toBe('collapsed-into-pr');
+    expect(draft.excludedChanges[1].change.id).toBe('commit:bbb');
+    expect(draft.excludedChanges[1].reason).toBe('collapsed-into-pr');
   });
 });
