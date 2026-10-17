@@ -7,7 +7,7 @@ overrides:
   brace-expansion@<2.0.0: 1.1.21
   brace-expansion@>=2.0.0 <3.0.0: 2.1.7
   handlebars: 4.7.10
-  js-yaml: 4.1.0
+  js-yaml: 4.3.2
 
 allowBuilds:
   '@parcel/watcher': false
