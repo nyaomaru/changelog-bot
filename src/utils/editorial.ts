@@ -35,6 +35,7 @@ export function reconcileEditorialOutput(
         ...draft,
         changes: draft.changes.map((change) => ({ ...change })),
         assignments: { ...draft.assignments },
+        excludedChanges: [...draft.excludedChanges],
       },
       diagnostics,
     };
@@ -88,6 +89,7 @@ export function reconcileEditorialOutput(
     ...draft,
     changes: updatedChanges,
     assignments: finalizedAssignments,
+    excludedChanges: [...draft.excludedChanges],
   };
 
   return {

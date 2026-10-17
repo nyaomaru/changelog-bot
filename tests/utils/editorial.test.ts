@@ -31,6 +31,8 @@ describe('editorial reconciliation', () => {
       'pr:20': 'Breaking Changes',
       'commit:abc1234': 'Changed',
     },
+    excludedChanges: [],
+    sourceChanges: [],
   };
 
   test('returns draft unchanged when editorial output is undefined', () => {

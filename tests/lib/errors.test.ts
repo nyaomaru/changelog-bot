@@ -5,6 +5,7 @@ import {
   ConfigError,
   GitError,
   LlmError,
+  ReleaseValidationError,
   ValidationError,
   mapErrorToExitCode,
 } from '@/lib/errors.js';
@@ -39,6 +40,13 @@ describe('typed errors and exit codes', () => {
     const err = new ValidationError('schema mismatch');
     expect(err.exitCode).toBe(EXIT_VALIDATION);
     expect(mapErrorToExitCode(err)).toBe(EXIT_VALIDATION);
+  });
+
+  test('ReleaseValidationError maps to EXIT_VALIDATION', () => {
+    const err = new ReleaseValidationError('data incomplete');
+    expect(err.exitCode).toBe(EXIT_VALIDATION);
+    expect(mapErrorToExitCode(err)).toBe(EXIT_VALIDATION);
+    expect(err.name).toBe('ReleaseValidationError');
   });
 
   test('AppError preserves custom exit code', () => {

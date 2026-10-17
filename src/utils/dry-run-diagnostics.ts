@@ -11,6 +11,8 @@ export type DryRunPromptCustomizationDiagnostics =
     reason: string;
   };
 
+import type { ReleaseOutcome } from '@/types/release.js';
+
 /** Inputs required to render dry-run execution diagnostics. */
 export type DryRunDiagnosticsInput = {
   /** Provider selected for the run. */
@@ -25,6 +27,8 @@ export type DryRunDiagnosticsInput = {
   promptCustomization?: DryRunPromptCustomizationDiagnostics;
   /** WHY extraction diagnostics when requested. */
   why?: WhyDiagnostics;
+  /** Validated release outcome when available. */
+  outcome?: ReleaseOutcome;
 };
 
 /** Machine-readable dry-run report printed when requested by CLI flag. */
@@ -41,6 +45,8 @@ export type DryRunJsonReport = {
   promptCustomization?: DryRunPromptCustomizationDiagnostics;
   /** WHY extraction diagnostics when requested. */
   why?: WhyDiagnostics;
+  /** Validated release outcome when available. */
+  outcome?: ReleaseOutcome;
 };
 
 /**
@@ -109,6 +115,10 @@ export function formatDryRunDiagnostics(input: DryRunDiagnosticsInput): string {
     }
   }
 
+  if (input.outcome) {
+    lines.push(`Release outcome: ${input.outcome.kind}`);
+  }
+
   return lines.join('\n');
 }
 
@@ -127,6 +137,7 @@ export function formatDryRunJsonReport(input: DryRunDiagnosticsInput): string {
       ? { promptCustomization: input.promptCustomization }
       : {}),
     ...(input.why?.enabled ? { why: input.why } : {}),
+    ...(input.outcome ? { outcome: input.outcome } : {}),
   };
 
   return JSON.stringify(report, null, 2);

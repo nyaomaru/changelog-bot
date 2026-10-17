@@ -1,18 +1,17 @@
 import type { CommitLite } from '@/types/commit.js';
 import type { PullRef } from '@/types/github.js';
 import type {
+  ExcludedReleaseChange,
   ReleaseChange,
-  ReleaseChangeOrigin,
   ReleaseDraft,
 } from '@/types/release.js';
 import {
+  buildCommitReleaseChanges,
+  buildIdentifiedReleaseItems,
   buildReleaseItemsFromPullRequests,
   deduplicateReleaseChangesByPullRequest,
-  identifyReleaseItems,
-  buildReleaseChangeId,
 } from '@/utils/release-items.js';
 import { parseReleaseNotes } from '@/utils/release-notes.js';
-import { stripConventionalPrefix } from '@/utils/title-normalize.js';
 import { buildChangesForClassification } from '@/utils/classify-pre.js';
 import {
   applyDeterministicClassification,
@@ -63,12 +62,19 @@ export function buildReleaseDraft(
   } = params;
 
   let changes: ReleaseChange[] = [];
+  const excludedChanges: ExcludedReleaseChange[] = [];
+  let sourceChanges: ReleaseChange[] = [];
   let fullChangelog = params.fullChangelog;
   let sections = undefined;
 
   if (releaseBody?.trim()) {
     const parsedRelease = parseReleaseNotes(releaseBody, { owner, repo });
-    changes = identifyReleaseItems(parsedRelease.items);
+    const identified = buildIdentifiedReleaseItems(parsedRelease.items);
+    sourceChanges = [...identified];
+    changes = deduplicateReleaseChangesByPullRequest(
+      identified,
+      excludedChanges,
+    );
     sections = parsedRelease.sections;
     if (parsedRelease.fullChangelog) {
       fullChangelog = parsedRelease.fullChangelog;
@@ -76,22 +82,16 @@ export function buildReleaseDraft(
   }
 
   if (changes.length === 0) {
-    changes = buildReleaseItemsFromPullRequests(commitList, pullRequestsBySha);
+    sourceChanges = buildCommitReleaseChanges(commitList);
+    changes = buildReleaseItemsFromPullRequests(
+      commitList,
+      pullRequestsBySha,
+      excludedChanges,
+    );
   }
 
   if (changes.length === 0 && commitList.length > 0) {
-    changes = commitList.map((commit) => {
-      const origin: ReleaseChangeOrigin = {
-        kind: 'commit',
-        sha: commit.sha,
-      };
-      return {
-        id: buildReleaseChangeId(origin),
-        origin,
-        title: stripConventionalPrefix(commit.subject),
-        rawTitle: commit.subject,
-      };
-    });
+    changes = [...sourceChanges];
   }
 
   // Backfill PR numbers from title mapping when missing
@@ -108,7 +108,7 @@ export function buildReleaseDraft(
     }
   }
 
-  changes = deduplicateReleaseChangesByPullRequest(changes);
+  changes = deduplicateReleaseChangesByPullRequest(changes, excludedChanges);
 
   // Deterministic classification across all changes
   const changesForClassification = buildChangesForClassification(changes);
@@ -124,7 +124,9 @@ export function buildReleaseDraft(
     date,
     changes,
     assignments,
+    excludedChanges,
     fullChangelog,
     sections,
+    sourceChanges,
   };
 }

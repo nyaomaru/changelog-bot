@@ -3,6 +3,7 @@ import { parseOrRetryLLMOutput } from '@/utils/llm-parse.js';
 import { buildReleaseDraft } from '@/utils/release-draft.js';
 import { buildSectionFromRelease } from '@/utils/release-section.js';
 import { reconcileEditorialOutput } from '@/utils/editorial.js';
+import { validateReleaseResult } from '@/utils/release-validation.js';
 import {
   DEFAULT_PR_LABELS,
   PR_TITLE_PREFIX,
@@ -109,7 +110,9 @@ export async function buildOutputFromModelOrFallback(
   let aiUsed = false;
   let activeDraft = draft;
 
-  if (noAi) {
+  if (draft.changes.length === 0) {
+    // Empty release has no changes to edit or classify; skip provider call.
+  } else if (noAi) {
     // The caller has already recorded the flag in fallbackReasons.
   } else if (!hasProviderKey) {
     fallbackReasons.push(`Missing API key for provider: ${provider.name}`);
@@ -131,10 +134,16 @@ export async function buildOutputFromModelOrFallback(
     }
   }
 
+  // Phase 5: Enforce completeness and empty-release behavior via validateReleaseResult
+  const outcome = validateReleaseResult(activeDraft, draft.sourceChanges);
+
   // Phase 4: Deterministic renderer is the sole Markdown author for both AI and fallback paths
-  const section = buildSectionFromRelease({
-    ...activeDraft,
-  });
+  const section =
+    outcome.kind === 'release'
+      ? buildSectionFromRelease({
+          ...activeDraft,
+        })
+      : '';
 
   const llm: LLMOutput = {
     new_section_markdown: section,
@@ -148,5 +157,5 @@ export async function buildOutputFromModelOrFallback(
     llm.pr_body = appendFallbackNote(llm.pr_body, fallbackReasons);
   }
 
-  return { llm, draft: activeDraft, aiUsed, fallbackReasons };
+  return { llm, draft: activeDraft, aiUsed, fallbackReasons, outcome };
 }

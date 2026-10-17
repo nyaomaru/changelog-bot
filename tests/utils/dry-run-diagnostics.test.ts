@@ -90,4 +90,51 @@ describe('formatDryRunDiagnostics', () => {
       },
     });
   });
+
+  test('renders machine-readable JSON report with outcome', () => {
+    expect(
+      JSON.parse(
+        formatDryRunJsonReport({
+          providerName: 'openai',
+          modelName: 'gpt-4o-mini',
+          aiUsed: false,
+          fallbackReasons: [],
+          outcome: {
+            kind: 'no-changes',
+            version: '1.0.0',
+            date: '2026-10-14',
+            excludedChanges: [],
+          },
+        }),
+      ),
+    ).toEqual({
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      aiUsed: false,
+      fallbackReasons: [],
+      outcome: {
+        kind: 'no-changes',
+        version: '1.0.0',
+        date: '2026-10-14',
+        excludedChanges: [],
+      },
+    });
+  });
+
+  test('renders release outcome in text diagnostics when present', () => {
+    expect(
+      formatDryRunDiagnostics({
+        providerName: 'openai',
+        modelName: 'gpt-4o-mini',
+        aiUsed: false,
+        fallbackReasons: [],
+        outcome: {
+          kind: 'no-changes',
+          version: '1.0.0',
+          date: '2026-10-14',
+          excludedChanges: [],
+        },
+      }),
+    ).toContain('Release outcome: no-changes');
+  });
 });

@@ -452,6 +452,7 @@ describe('llm-output', () => {
     await expect(
       buildChangelogLlmOutput(
         buildBaseParams({
+          commitList: [{ sha: 'abcdef1', subject: 'fix: patch bug' }],
           provider: providerWithFailure,
           providerConfig: { apiKey: 'sk-test', model: 'mock-model' },
           hasProviderKey: true,
@@ -532,5 +533,19 @@ describe('llm-output', () => {
     expect(result.llm.new_section_markdown).not.toContain(
       'Hallucinated markdown',
     );
+  });
+
+  test('does not call LLM provider when release has no changes', async () => {
+    const result = await buildChangelogLlmOutput(
+      buildBaseParams({
+        hasProviderKey: true,
+        failOnLlmError: true,
+        commitList: [],
+        releaseBody: '',
+      }),
+    );
+
+    expect(result.aiUsed).toBe(false);
+    expect(result.outcome?.kind).toBe('no-changes');
   });
 });

@@ -364,4 +364,237 @@ describe('executeChangelogRun', () => {
       },
     });
   });
+
+  test('dry-run reports when there are no changes in the release range', async () => {
+    const log = jest.fn<(message: string) => void>();
+    const deps: Partial<ChangelogRunDependencies> = {
+      providerFactory: jest.fn(() => provider),
+      getRepoFullName: jest.fn(() => 'octo/repo'),
+      resolveReleasePlan: jest.fn(() => ({
+        owner: 'octo',
+        repo: 'repo',
+        repoPath: '.',
+        changelogPath: 'CHANGELOG.md',
+        releaseRef: 'v1.2.3',
+        version: '1.2.3',
+        prevRef: 'v1.2.2',
+        date: '2026-05-23',
+      })),
+      gitMergedPRs: jest.fn(() => ''),
+      commitsInRange: jest.fn(() => []),
+      prepareExistingChangelog: jest.fn(() => 'existing changelog'),
+      resolveRunCredentials: jest.fn(async () => ({
+        token: undefined,
+        hasProviderKey: false,
+      })),
+      mapCommitsToPrs: jest.fn(async () => ({})),
+      fetchReleaseBody: jest.fn<ChangelogRunDependencies['fetchReleaseBody']>(
+        async () => '',
+      ),
+      resolveCustomInstructionsWithDiagnostics: jest.fn<
+        ChangelogRunDependencies['resolveCustomInstructionsWithDiagnostics']
+      >(() => unresolvedCustomization),
+      buildPrMapBySha: jest.fn(() => ({})),
+      buildTitleToPr: jest.fn(() => ({})),
+      getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
+      buildChangelogLlmOutput: jest.fn<
+        ChangelogRunDependencies['buildChangelogLlmOutput']
+      >(async () => ({
+        llm: createLlmOutput({ new_section_markdown: '' }),
+        aiUsed: false,
+        fallbackReasons: [],
+        outcome: {
+          kind: 'no-changes',
+          version: '1.2.3',
+          date: '2026-05-23',
+          excludedChanges: [],
+        },
+      })),
+      finalizeChangelogUpdate: jest.fn<
+        ChangelogRunDependencies['finalizeChangelogUpdate']
+      >(() => ({
+        llm: createLlmOutput(),
+        updated: 'existing changelog',
+      })),
+      writeChangelog: jest.fn(),
+      ensureGithubTokenRequired: jest.fn(),
+      createPR: jest.fn<ChangelogRunDependencies['createPR']>(async () => 1),
+    };
+
+    await executeChangelogRun({
+      cli: { ...cli, dryRun: true },
+      appConfig,
+      log,
+      deps,
+    });
+
+    expect(deps.writeChangelog).not.toHaveBeenCalled();
+    expect(deps.createPR).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith('==== DRY RUN (no PR) ====');
+    expect(log).toHaveBeenCalledWith(
+      'No changes found in release range (v1.2.3)',
+    );
+  });
+
+  test('dry-run with dryRunJsonReport outputs JSON report including outcome for empty release', async () => {
+    const log = jest.fn<(message: string) => void>();
+    const deps: Partial<ChangelogRunDependencies> = {
+      providerFactory: jest.fn(() => provider),
+      getRepoFullName: jest.fn(() => 'octo/repo'),
+      resolveReleasePlan: jest.fn(() => ({
+        owner: 'octo',
+        repo: 'repo',
+        repoPath: '.',
+        changelogPath: 'CHANGELOG.md',
+        releaseRef: 'v1.2.3',
+        version: '1.2.3',
+        prevRef: 'v1.2.2',
+        date: '2026-05-23',
+      })),
+      gitMergedPRs: jest.fn(() => ''),
+      commitsInRange: jest.fn(() => []),
+      prepareExistingChangelog: jest.fn(() => 'existing changelog'),
+      resolveRunCredentials: jest.fn(async () => ({
+        token: undefined,
+        hasProviderKey: false,
+      })),
+      mapCommitsToPrs: jest.fn(async () => ({})),
+      fetchReleaseBody: jest.fn<ChangelogRunDependencies['fetchReleaseBody']>(
+        async () => '',
+      ),
+      resolveCustomInstructionsWithDiagnostics: jest.fn<
+        ChangelogRunDependencies['resolveCustomInstructionsWithDiagnostics']
+      >(() => unresolvedCustomization),
+      buildPrMapBySha: jest.fn(() => ({})),
+      buildTitleToPr: jest.fn(() => ({})),
+      getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
+      buildChangelogLlmOutput: jest.fn<
+        ChangelogRunDependencies['buildChangelogLlmOutput']
+      >(async () => ({
+        llm: createLlmOutput({ new_section_markdown: '' }),
+        aiUsed: false,
+        fallbackReasons: [],
+        outcome: {
+          kind: 'no-changes',
+          version: '1.2.3',
+          date: '2026-05-23',
+          excludedChanges: [],
+        },
+      })),
+      finalizeChangelogUpdate: jest.fn<
+        ChangelogRunDependencies['finalizeChangelogUpdate']
+      >(() => ({
+        llm: createLlmOutput(),
+        updated: 'existing changelog',
+      })),
+      writeChangelog: jest.fn(),
+      ensureGithubTokenRequired: jest.fn(),
+      createPR: jest.fn<ChangelogRunDependencies['createPR']>(async () => 1),
+    };
+
+    await executeChangelogRun({
+      cli: { ...cli, dryRun: true, dryRunJsonReport: true },
+      appConfig,
+      log,
+      deps,
+    });
+
+    expect(deps.writeChangelog).not.toHaveBeenCalled();
+    expect(deps.createPR).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith('==== DRY RUN (no PR) ====');
+
+    const jsonLogCall = log.mock.calls.find((call) => {
+      try {
+        const parsed = JSON.parse(call[0]);
+        return parsed && typeof parsed === 'object' && 'outcome' in parsed;
+      } catch {
+        return false;
+      }
+    });
+
+    expect(jsonLogCall).toBeDefined();
+    const parsedReport = JSON.parse(jsonLogCall![0]);
+    expect(parsedReport.outcome).toEqual({
+      kind: 'no-changes',
+      version: '1.2.3',
+      date: '2026-05-23',
+      excludedChanges: [],
+    });
+    // Ensure markdown text wasn't output
+    expect(log).not.toHaveBeenCalledWith('existing changelog');
+    expect(log).not.toHaveBeenCalledWith(
+      'No changes found in release range (v1.2.3)',
+    );
+  });
+
+  test('normal mode skips writing changelog and PR creation for empty releases', async () => {
+    const log = jest.fn<(message: string) => void>();
+    const deps: Partial<ChangelogRunDependencies> = {
+      providerFactory: jest.fn(() => provider),
+      getRepoFullName: jest.fn(() => 'octo/repo'),
+      resolveReleasePlan: jest.fn(() => ({
+        owner: 'octo',
+        repo: 'repo',
+        repoPath: '.',
+        changelogPath: 'CHANGELOG.md',
+        releaseRef: 'v1.2.3',
+        version: '1.2.3',
+        prevRef: 'v1.2.2',
+        date: '2026-05-23',
+      })),
+      gitMergedPRs: jest.fn(() => ''),
+      commitsInRange: jest.fn(() => []),
+      prepareExistingChangelog: jest.fn(() => 'existing changelog'),
+      resolveRunCredentials: jest.fn(async () => ({
+        token: 'mock-token',
+        hasProviderKey: false,
+      })),
+      mapCommitsToPrs: jest.fn(async () => ({})),
+      fetchReleaseBody: jest.fn<ChangelogRunDependencies['fetchReleaseBody']>(
+        async () => '',
+      ),
+      resolveCustomInstructionsWithDiagnostics: jest.fn<
+        ChangelogRunDependencies['resolveCustomInstructionsWithDiagnostics']
+      >(() => unresolvedCustomization),
+      buildPrMapBySha: jest.fn(() => ({})),
+      buildTitleToPr: jest.fn(() => ({})),
+      getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
+      buildChangelogLlmOutput: jest.fn<
+        ChangelogRunDependencies['buildChangelogLlmOutput']
+      >(async () => ({
+        llm: createLlmOutput({ new_section_markdown: '' }),
+        aiUsed: false,
+        fallbackReasons: [],
+        outcome: {
+          kind: 'no-changes',
+          version: '1.2.3',
+          date: '2026-05-23',
+          excludedChanges: [],
+        },
+      })),
+      finalizeChangelogUpdate: jest.fn<
+        ChangelogRunDependencies['finalizeChangelogUpdate']
+      >(() => ({
+        llm: createLlmOutput(),
+        updated: 'existing changelog',
+      })),
+      writeChangelog: jest.fn(),
+      ensureGithubTokenRequired: jest.fn(),
+      createPR: jest.fn<ChangelogRunDependencies['createPR']>(async () => 1),
+    };
+
+    await executeChangelogRun({
+      cli: { ...cli, dryRun: false },
+      appConfig,
+      log,
+      deps,
+    });
+
+    expect(deps.ensureGithubTokenRequired).not.toHaveBeenCalled();
+    expect(deps.writeChangelog).not.toHaveBeenCalled();
+    expect(deps.createPR).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(
+      'No changes found for release v1.2.3; skipping PR creation.',
+    );
+  });
 });

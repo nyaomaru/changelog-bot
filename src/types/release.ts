@@ -50,6 +50,19 @@ export type ParsedRelease = {
   sections?: ReleaseSection[];
 };
 
+/** Reason explaining why a source change was omitted from the final release. */
+export type ExclusionReason = 'collapsed-into-pr' | 'filtered' | 'duplicate';
+
+/** Record of an omitted source change with its rationale. */
+export type ExcludedReleaseChange = {
+  /** The source change that was omitted. */
+  change: ReleaseChange;
+  /** The typed reason for omission. */
+  reason: ExclusionReason;
+  /** Optional contextual detail (e.g. parent PR number). */
+  detail?: string;
+};
+
 /** Complete, structurally valid changelog draft produced before optional AI. */
 export type ReleaseDraft = {
   /** Target version string without the leading 'v'. */
@@ -60,11 +73,28 @@ export type ReleaseDraft = {
   changes: ReleaseChange[];
   /** Category assignments mapping each change ID to its bucket name. */
   assignments: import('@/types/changelog.js').CategoryAssignments;
+  /** Tracked exclusions with typed reasons. */
+  excludedChanges: ExcludedReleaseChange[];
   /** Full changelog compare link URL, when provided. */
   fullChangelog?: string;
   /** Extra Markdown sections preserved from GitHub release notes. */
   sections?: ReleaseSection[];
+  /** Independent source changes ledger captured before transforms. */
+  sourceChanges: ReleaseChange[];
 };
 
 /** Final validated release payload ready for deterministic rendering. */
 export type ReleaseResult = ReleaseDraft;
+
+/** Typed outcome of release validation before rendering. */
+export type ReleaseOutcome =
+  | {
+      kind: 'release';
+      result: ReleaseResult;
+    }
+  | {
+      kind: 'no-changes';
+      version: string;
+      date: string;
+      excludedChanges: ExcludedReleaseChange[];
+    };
