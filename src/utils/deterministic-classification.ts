@@ -96,6 +96,11 @@ const CHANGE_LIKE_INDICATORS = [
   'finetune',
 ];
 
+// WHY: Only version-only release and publish titles identify automation. Anchoring
+// the pattern avoids reclassifying product changes such as "fix release lookup".
+const RELEASE_AUTOMATION_TITLE_RE =
+  /^(?:(?:release|publish)\s*:?\s+|chore\(release\):\s*)v?\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/i;
+
 const SIGNAL_PRIORITY: Record<ClassificationSignal, number> = {
   breaking: 5,
   conventional: 4,
@@ -136,6 +141,10 @@ function isChangeLikeTitle(rawTitle: string): boolean {
   );
 }
 
+function isReleaseAutomationTitle(rawTitle: string): boolean {
+  return RELEASE_AUTOMATION_TITLE_RE.test(rawTitle.trim());
+}
+
 function conventionalCategory(rawTitle: string): BucketName | undefined {
   const match = CONVENTIONAL_PREFIX_RE.exec(rawTitle);
   if (!match?.[1]) return undefined;
@@ -171,6 +180,10 @@ export function classifyTitleDeterministically(
 ): DeterministicClassification {
   if (CONVENTIONAL_BREAKING_PREFIX_RE.test(rawTitle)) {
     return { category: SECTION_BREAKING_CHANGES, signal: 'breaking' };
+  }
+
+  if (isReleaseAutomationTitle(rawTitle)) {
+    return { category: SECTION_CHORE, signal: 'strong-semantic' };
   }
 
   const prefixCategory = conventionalCategory(rawTitle);

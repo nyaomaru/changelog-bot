@@ -74,6 +74,18 @@ describe('deterministic classification', () => {
     });
   });
 
+  test.each([
+    'Release: 0.9.0',
+    'release: v0.9.0',
+    'chore(release): 0.9.0',
+    'publish 0.9.0',
+  ])('classifies release automation %s as Chore', (title) => {
+    expect(classifyTitleDeterministically(title)).toEqual({
+      category: 'Chore',
+      signal: 'strong-semantic',
+    });
+  });
+
   test('uses weak score signals before the Chore fallback', () => {
     expect(classifyTitleDeterministically('patch parser handling')).toEqual({
       category: 'Fixed',
@@ -132,6 +144,18 @@ describe('deterministic classification', () => {
     ).toEqual({
       'release-note:0': 'Added',
       'release-note:1': 'Fixed',
+    });
+  });
+
+  test('prevents provider output from promoting release automation', () => {
+    const changes = [releaseNoteChange(0, 'Release: 0.9.0')];
+
+    expect(
+      applyDeterministicClassification(changes, {
+        'release-note:0': 'Added',
+      }),
+    ).toEqual({
+      'release-note:0': 'Chore',
     });
   });
 });
