@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.0] - 2026-10-18
+
+### Added
+
+- Release: 0.9.0 by [bot] by @github-actions in [#244](https://github.com/nyaomaru/changelog-bot/pull/244)
+
+### Fixed
+
+- override js-yaml to 4.1.0 to address Dependabot alert #10 (sprintf-js) by @johnnylemonny in [#238](https://github.com/nyaomaru/changelog-bot/pull/238)
+- override js-yaml to 4.3.2 to address Dependabot alerts #14-#18 by @johnnylemonny in [#242](https://github.com/nyaomaru/changelog-bot/pull/242)
+
+### Changed
+
+- enforce completeness and empty-release behavior (v1 Phase 5) by @johnnylemonny in [#240](https://github.com/nyaomaru/changelog-bot/pull/240)
+
+### Docs
+
+- 0.8.0 by [bot] by @github-actions in [#233](https://github.com/nyaomaru/changelog-bot/pull/233)
+
+### Chore
+
+- bump the minor-and-patch group with 6 updates by [bot] by @dependabot in [#243](https://github.com/nyaomaru/changelog-bot/pull/243)
+
+### What's new 🚀
+
+Phase 5 of the v1 deterministic-first pipeline makes changelog generation more reliable, complete, and transparent.
+
+- Every source change must now be accounted for: it is either included in the release or recorded with an explicit exclusion reason. This prevents changes from silently disappearing during processing.
+- Release validation now rejects duplicate change IDs and ensures every included change has exactly one valid section assignment.
+- Empty release ranges now produce an explicit no-change result instead of inventing a “Summary of changes” entry. Dry runs clearly report the outcome, and PR creation is skipped when there is nothing to release.
+- The pipeline preserves an independent source ledger before commits are consolidated into pull requests, retaining an auditable record of changes that are collapsed into pull requests or otherwise excluded.
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.8.0...v0.9.0
+
+[v0.9.0]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.9.0
+
 ## [v0.8.0] - 2026-10-10
 
 ### Added
