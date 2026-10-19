@@ -112,15 +112,15 @@ jobs:
           version="${{ inputs.npm_version }}"
           version="${version#v}"
 
-          for attempt in {1..20}; do
+          for attempt in {1..30}; do
             if npm view "@nyaomaru/changelog-bot@${version}" version >/dev/null 2>&1; then
               exit 0
             fi
 
-            sleep 5
+            sleep 10
           done
 
-          echo "::error::@nyaomaru/changelog-bot@${version} is not available yet"
+          echo "::error::@nyaomaru/changelog-bot@${version} is not available after 5 minutes"
           exit 1
 
       - name: Run changelog bot action
