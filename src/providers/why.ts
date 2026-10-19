@@ -16,6 +16,7 @@ export const whyExtractionJsonSchema = {
         type: 'object',
         properties: {
           prNumber: { type: 'number' },
+          changeId: { type: 'string' },
           why: { type: 'string' },
           confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
         },
@@ -50,6 +51,7 @@ export function buildWhyExtractionPrompt(input: WhyExtractionInput): unknown {
     },
     items: input.items.map((item) => ({
       prNumber: item.prNumber,
+      changeId: item.changeId,
       title: item.title,
       changelogItem: item.itemText,
       localTrust: {

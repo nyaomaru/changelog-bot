@@ -73,15 +73,37 @@ export function acceptWhyNotes(
   inputItems: readonly WhyExtractionItem[],
   minimumConfidence: WhyConfidence,
 ): AcceptedWhyNotesResult {
-  const itemsByPr = new Map(
-    inputItems.map((item) => [item.prNumber, item] as const),
-  );
+  const itemsByChangeId = new Map<string, WhyExtractionItem>();
+  const itemsListByPr = new Map<number, WhyExtractionItem[]>();
+
+  for (const item of inputItems) {
+    if (item.changeId) {
+      itemsByChangeId.set(item.changeId, item);
+    }
+    const list = itemsListByPr.get(item.prNumber) ?? [];
+    list.push(item);
+    itemsListByPr.set(item.prNumber, list);
+  }
+
   const notes: WhyNote[] = [];
   let skippedLowTrust = 0;
+  const matchedItems = new Set<WhyExtractionItem>();
 
   for (const providerResult of providerOutput.items) {
-    const item = itemsByPr.get(providerResult.prNumber);
+    let item: WhyExtractionItem | undefined;
+    if (providerResult.changeId) {
+      item = itemsByChangeId.get(providerResult.changeId);
+    }
+    if (!item) {
+      const candidates = itemsListByPr.get(providerResult.prNumber);
+      if (candidates) {
+        item =
+          candidates.find((cand) => !matchedItems.has(cand)) ?? candidates[0];
+      }
+    }
     if (!item) continue;
+    matchedItems.add(item);
+
     const requiredConfidence = item.requiresHighConfidence
       ? 'high'
       : minimumConfidence;
@@ -98,6 +120,7 @@ export function acceptWhyNotes(
     if (!why) continue;
     notes.push({
       ...providerResult,
+      changeId: providerResult.changeId ?? item.changeId,
       why,
       sectionTitle: item.sectionTitle,
       trustScore: item.trustScore,

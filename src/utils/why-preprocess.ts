@@ -141,7 +141,9 @@ export function preprocessWhyPrBody(
   details: PullRequestDetails,
   options: PreprocessPrBodyOptions,
 ): PreprocessPrBodyResult {
-  const title = details.title || target.itemText;
+  const title = target.changeId
+    ? target.itemText
+    : details.title || target.itemText;
   if (
     isDependencyUpdateTitle(title) ||
     (details.author && BOT_AUTHOR_RE.test(details.author))
@@ -203,6 +205,7 @@ export function preprocessWhyPrBody(
   return {
     item: {
       prNumber: target.prNumber,
+      changeId: target.changeId,
       itemText: target.itemText,
       sectionTitle: target.sectionTitle,
       title,

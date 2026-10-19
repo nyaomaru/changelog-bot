@@ -9,6 +9,9 @@ import type { AppConfig } from '@/types/config.js';
 import type { LLMOutput } from '@/types/llm.js';
 import type { Provider } from '@/types/provider.js';
 import type { CustomInstructionsResolution } from '@/lib/customization.js';
+import { buildReleaseDraft } from '@/utils/release-draft.js';
+import { runWhyExtraction } from '@/lib/why-extraction.js';
+import { validateReleaseResult } from '@/utils/release-validation.js';
 
 const cli: CliOptions = {
   repoPath: '.',
@@ -596,5 +599,150 @@ describe('executeChangelogRun', () => {
     expect(log).toHaveBeenCalledWith(
       'No changes found for release v1.2.3; skipping PR creation.',
     );
+  });
+
+  test('multi-change PR range generates categorized sub-changes, attaches distinct WHY notes, and passes validateReleaseResult', async () => {
+    // 1. Build draft from a release range containing a multi-change PR
+    const commitList = [
+      { sha: 'sha1', subject: 'feat: add OAuth login provider' },
+      { sha: 'sha2', subject: 'fix: resolve race condition in token refresh' },
+    ];
+    const pullRequestsBySha = {
+      sha1: [
+        {
+          number: 42,
+          title: 'feat: auth and session handling',
+          author: 'alice',
+          url: 'https://github.com/octo/repo/pull/42',
+        },
+      ],
+      sha2: [
+        {
+          number: 42,
+          title: 'feat: auth and session handling',
+          author: 'alice',
+          url: 'https://github.com/octo/repo/pull/42',
+        },
+      ],
+    };
+
+    const draft = buildReleaseDraft({
+      version: '1.3.0',
+      date: '2026-10-19',
+      commitList,
+      pullRequestsBySha,
+      owner: 'octo',
+      repo: 'repo',
+    });
+
+    // Sub-changes discovered and classified deterministically
+    expect(draft.changes).toHaveLength(2);
+    expect(draft.changes[0].id).toBe('pr:42:c1');
+    expect(draft.changes[0].title).toBe('add OAuth login provider');
+    expect(draft.assignments['pr:42:c1']).toBe('Added');
+
+    expect(draft.changes[1].id).toBe('pr:42:c2');
+    expect(draft.changes[1].title).toBe(
+      'resolve race condition in token refresh',
+    );
+    expect(draft.assignments['pr:42:c2']).toBe('Fixed');
+
+    // Source commits properly recorded in excludedChanges
+    expect(draft.excludedChanges).toHaveLength(2);
+    expect(draft.excludedChanges[0].change.id).toBe('commit:sha1');
+    expect(draft.excludedChanges[0].reason).toBe('collapsed-into-pr');
+    expect(draft.excludedChanges[1].change.id).toBe('commit:sha2');
+    expect(draft.excludedChanges[1].reason).toBe('collapsed-into-pr');
+
+    // Pre-transform ledger accounting satisfies validateReleaseResult
+    const initialOutcome = validateReleaseResult(draft);
+    expect(initialOutcome.kind).toBe('release');
+
+    // 2. Run WHY extraction to enrich sub-changes with distinct rationale
+    const selectedProvider: Provider = {
+      ...provider,
+      extractWhyNotes: jest.fn(async () => ({
+        items: [
+          {
+            prNumber: 42,
+            changeId: 'pr:42:c1',
+            why: 'Enables single sign-on across enterprise identity providers.',
+            confidence: 'high' as const,
+          },
+          {
+            prNumber: 42,
+            changeId: 'pr:42:c2',
+            why: 'Prevents intermittent session drops during concurrent token refreshes.',
+            confidence: 'high' as const,
+          },
+        ],
+      })),
+    };
+
+    const fetchPRDetails = jest.fn(async () => ({
+      number: 42,
+      title: 'feat: auth and session handling',
+      body: [
+        '## Why',
+        '',
+        'Because OAuth enables single sign-on across enterprise identity providers, and token refresh locking is needed to prevent intermittent session drops during concurrent refreshes.',
+      ].join('\n'),
+      author: 'alice',
+      url: 'https://github.com/octo/repo/pull/42',
+    }));
+
+    const whyResult = await runWhyExtraction({
+      cli: {
+        ...cli,
+        why: true,
+        whyLabel: 'Why',
+      },
+      llm: {
+        new_section_markdown: '',
+        pr_title: 'docs(changelog): 1.3.0',
+        pr_body: 'Generated changelog.',
+      },
+      draft,
+      changelogAiUsed: true,
+      provider: selectedProvider,
+      hasProviderKey: true,
+      owner: 'octo',
+      repo: 'repo',
+      token: 'token',
+      githubApiBase: 'https://api.github.com',
+      fetchPRDetails,
+    });
+
+    // Single PR fetch performed
+    expect(fetchPRDetails).toHaveBeenCalledTimes(1);
+
+    // Each sub-change receives its distinct WHY note
+    expect(draft.changes[0].why).toBe(
+      'Enables single sign-on across enterprise identity providers.',
+    );
+    expect(draft.changes[1].why).toBe(
+      'Prevents intermittent session drops during concurrent token refreshes.',
+    );
+
+    // Both sections rendered with their respective sub-change bullets and notes
+    expect(whyResult.llm.new_section_markdown).toContain('### Added');
+    expect(whyResult.llm.new_section_markdown).toContain(
+      '- add OAuth login provider by @alice in [#42](https://github.com/octo/repo/pull/42)',
+    );
+    expect(whyResult.llm.new_section_markdown).toContain(
+      '  - Why: Enables single sign-on across enterprise identity providers.',
+    );
+
+    expect(whyResult.llm.new_section_markdown).toContain('### Fixed');
+    expect(whyResult.llm.new_section_markdown).toContain(
+      '- resolve race condition in token refresh by @alice in [#42](https://github.com/octo/repo/pull/42)',
+    );
+    expect(whyResult.llm.new_section_markdown).toContain(
+      '  - Why: Prevents intermittent session drops during concurrent token refreshes.',
+    );
+
+    // Fully validated ReleaseResult after WHY enrichment
+    const finalOutcome = validateReleaseResult(draft);
+    expect(finalOutcome.kind).toBe('release');
   });
 });

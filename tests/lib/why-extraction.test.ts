@@ -369,4 +369,124 @@ describe('runWhyExtraction', () => {
     );
     expect(result.diagnostics.notesRendered).toBe(1);
   });
+
+  test('enriches sub-changes with distinct WHY notes from a single PR fetch and renders both', async () => {
+    const selectedProvider = provider();
+    jest.mocked(selectedProvider.extractWhyNotes).mockResolvedValue({
+      items: [
+        {
+          prNumber: 42,
+          changeId: 'pr:42:c1',
+          why: 'Enables single sign-on across enterprise identity providers.',
+          confidence: 'high',
+        },
+        {
+          prNumber: 42,
+          changeId: 'pr:42:c2',
+          why: 'Prevents intermittent session drops during concurrent token refreshes.',
+          confidence: 'high',
+        },
+      ],
+    });
+
+    const fetchPRDetails = jest.fn<FetchPRDetails>(async () => ({
+      number: 42,
+      title: 'feat: auth and session handling',
+      body: [
+        '## Why',
+        '',
+        'Because OAuth enables single sign-on across enterprise identity providers, and token refresh locking is needed to prevent intermittent session drops during concurrent refreshes.',
+      ].join('\n'),
+      author: 'alice',
+      url: 'https://github.com/octo/repo/pull/42',
+    }));
+
+    const draft = {
+      version: '1.2.3',
+      date: '2026-10-04',
+      changes: [
+        {
+          id: 'pr:42:c1' as const,
+          origin: {
+            kind: 'pull-request-subchange' as const,
+            number: 42,
+            subIndex: 1,
+          },
+          title: 'add OAuth login provider',
+          pr: 42,
+          url: 'https://github.com/octo/repo/pull/42',
+          author: 'alice',
+        },
+        {
+          id: 'pr:42:c2' as const,
+          origin: {
+            kind: 'pull-request-subchange' as const,
+            number: 42,
+            subIndex: 2,
+          },
+          title: 'resolve race condition in token refresh',
+          pr: 42,
+          url: 'https://github.com/octo/repo/pull/42',
+          author: 'alice',
+        },
+      ],
+      assignments: {
+        'pr:42:c1': 'Added' as const,
+        'pr:42:c2': 'Fixed' as const,
+      },
+    };
+
+    const result = await runWhyExtraction({
+      cli,
+      llm: {
+        new_section_markdown: 'fallback section',
+        pr_title: 'docs(changelog): 1.2.3',
+        pr_body: 'Generated changelog.',
+      },
+      draft,
+      changelogAiUsed: true,
+      provider: selectedProvider,
+      hasProviderKey: true,
+      owner: 'octo',
+      repo: 'repo',
+      token: 'token',
+      githubApiBase: 'https://api.github.com',
+      fetchPRDetails,
+    });
+
+    // PR description fetched only ONCE despite two sub-change targets
+    expect(fetchPRDetails).toHaveBeenCalledTimes(1);
+    expect(fetchPRDetails).toHaveBeenCalledWith(
+      'octo',
+      'repo',
+      42,
+      'token',
+      'https://api.github.com',
+    );
+    expect(result.diagnostics.prBodiesFetched).toBe(1);
+    expect(result.diagnostics.notesRendered).toBe(2);
+
+    expect(draft.changes[0].why).toBe(
+      'Enables single sign-on across enterprise identity providers.',
+    );
+    expect(draft.changes[1].why).toBe(
+      'Prevents intermittent session drops during concurrent token refreshes.',
+    );
+
+    expect(result.llm.new_section_markdown).toContain('### Added');
+    expect(result.llm.new_section_markdown).toContain(
+      '- add OAuth login provider by @alice in [#42](https://github.com/octo/repo/pull/42)',
+    );
+    expect(result.llm.new_section_markdown).toContain(
+      '  - Why: Enables single sign-on across enterprise identity providers.',
+    );
+
+    expect(result.llm.new_section_markdown).toContain('### Fixed');
+    expect(result.llm.new_section_markdown).toContain(
+      '- resolve race condition in token refresh by @alice in [#42](https://github.com/octo/repo/pull/42)',
+    );
+    expect(result.llm.new_section_markdown).toContain(
+      '  - Why: Prevents intermittent session drops during concurrent token refreshes.',
+    );
+  });
 });

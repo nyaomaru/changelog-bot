@@ -7,6 +7,7 @@ import type {
   ReleaseChangeOrigin,
   ReleaseItem,
 } from '@/types/release.js';
+import { detectPrSubChangesFromCommits } from '@/utils/sub-changes.js';
 import { stripConventionalPrefix } from '@/utils/title-normalize.js';
 
 /**
@@ -20,6 +21,8 @@ export function buildReleaseChangeId(
   switch (origin.kind) {
     case 'pull-request':
       return `pr:${origin.number}`;
+    case 'pull-request-subchange':
+      return `pr:${origin.number}:c${origin.subIndex}`;
     case 'commit':
       return `commit:${origin.sha}`;
     case 'release-note':
@@ -92,9 +95,25 @@ export function deduplicateReleaseChangesByPullRequest(
 ): ReleaseChange[] {
   const deduplicatedChanges: ReleaseChange[] = [];
   const changesByPrNumber = new Map<number, ReleaseChange>();
+  const changesById = new Map<ReleaseChangeId, ReleaseChange>();
 
   for (const change of changes) {
     if (change.pr === undefined) {
+      deduplicatedChanges.push(change);
+      continue;
+    }
+
+    if (change.origin.kind === 'pull-request-subchange') {
+      const existingChange = changesById.get(change.id);
+      if (existingChange) {
+        existingChange.author ??= change.author;
+        existingChange.url ??= change.url;
+        // WHY: Sibling occurrences of the exact same sub-change ID are dropped from changes
+        // but must NOT be added to excludedChanges with the same ID, because validateReleaseResult
+        // enforces strict disjointness between changes and excludedChanges.
+        continue;
+      }
+      changesById.set(change.id, change);
       deduplicatedChanges.push(change);
       continue;
     }
@@ -161,9 +180,29 @@ export function buildReleaseItemsFromPullRequests(
 ): ReleaseChange[] {
   if (commits.length === 0) return [];
 
+  // Group commits by associated pull request number
+  const commitsByPrNumber = new Map<
+    number,
+    { pullRequest: PullRef; commits: CommitLite[] }
+  >();
+  for (const commit of commits) {
+    const pullRequest = pullRequestsBySha[commit.sha]?.find((candidate) =>
+      candidate.title?.trim(),
+    );
+    if (pullRequest?.title) {
+      let entry = commitsByPrNumber.get(pullRequest.number);
+      if (!entry) {
+        entry = { pullRequest, commits: [] };
+        commitsByPrNumber.set(pullRequest.number, entry);
+      }
+      entry.commits.push(commit);
+    }
+  }
+
   const items: ReleaseChange[] = [];
-  const itemsByPrNumber = new Map<number, ReleaseChange>();
+  const processedPrNumbers = new Set<number>();
   let foundPullRequest = false;
+
   for (const commit of commits) {
     const pullRequest = pullRequestsBySha[commit.sha]?.find((candidate) =>
       candidate.title?.trim(),
@@ -183,26 +222,52 @@ export function buildReleaseItemsFromPullRequests(
     }
 
     foundPullRequest = true;
-    let item = itemsByPrNumber.get(pullRequest.number);
-    if (!item) {
-      const origin: ReleaseChangeOrigin = {
-        kind: 'pull-request',
-        number: pullRequest.number,
-      };
-      item = {
-        id: buildReleaseChangeId(origin),
-        origin,
-        title: stripConventionalPrefix(pullRequest.title),
-        rawTitle: pullRequest.title,
-        author: pullRequest.author,
-        pr: pullRequest.number,
-        url: pullRequest.url,
-      };
-      itemsByPrNumber.set(pullRequest.number, item);
-      items.push(item);
+
+    if (!processedPrNumbers.has(pullRequest.number)) {
+      processedPrNumbers.add(pullRequest.number);
+      const prEntry = commitsByPrNumber.get(pullRequest.number)!;
+      const subChanges = detectPrSubChangesFromCommits(
+        pullRequest.number,
+        prEntry.pullRequest.title ?? '',
+        prEntry.commits,
+      );
+
+      if (subChanges && subChanges.length >= 2) {
+        for (const sub of subChanges) {
+          const origin: ReleaseChangeOrigin = {
+            kind: 'pull-request-subchange',
+            number: pullRequest.number,
+            subIndex: sub.subIndex,
+            commitSha: sub.commitSha,
+          };
+          items.push({
+            id: buildReleaseChangeId(origin),
+            origin,
+            title: sub.title,
+            rawTitle: sub.rawTitle,
+            author: pullRequest.author,
+            pr: pullRequest.number,
+            url: pullRequest.url,
+          });
+        }
+      } else {
+        const origin: ReleaseChangeOrigin = {
+          kind: 'pull-request',
+          number: pullRequest.number,
+        };
+        items.push({
+          id: buildReleaseChangeId(origin),
+          origin,
+          title: stripConventionalPrefix(pullRequest.title),
+          rawTitle: pullRequest.title,
+          author: pullRequest.author,
+          pr: pullRequest.number,
+          url: pullRequest.url,
+        });
+      }
     }
 
-    // WHY: Every source commit replaced by a PR-level item must be recorded
+    // WHY: Every source commit replaced by a PR-level item or sub-change must be recorded
     // in excludedChanges with an explicit reason so that the pre-transform commit ledger
     // is independently and completely accounted for.
     if (excludedChanges) {

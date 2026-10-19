@@ -158,6 +158,7 @@ export function extractWhyTargetsFromChanges(
 
     targets.push({
       prNumber: change.pr,
+      changeId: change.id,
       sectionTitle,
       itemText: change.title,
       author: change.author,
@@ -170,19 +171,51 @@ export function extractWhyTargetsFromChanges(
 /**
  * Attach accepted WHY notes directly to structured release changes.
  * WHY: Phase 4 attaches notes to domain objects so the shared renderer is the
- * sole author of final bullet markdown.
+ * sole author of final bullet markdown. Sub-changes look up their specific WHY note
+ * by changeId, falling back to prNumber for backward compatibility.
  * @param changes Canonical release changes to enrich with why notes.
- * @param notes Accepted WHY notes keyed by PR number.
+ * @param notes Accepted WHY notes keyed by PR number or change ID, or an array of notes.
  * @param assignments Category assignments for section matching.
  */
 export function attachWhyNotesToChanges(
   changes: ReleaseChange[],
-  notesByPr: ReadonlyMap<number, WhyNote>,
+  notes: ReadonlyMap<number | string, WhyNote> | readonly WhyNote[],
   assignments: Record<string, string>,
 ): void {
+  const notesByChangeId = new Map<string, WhyNote>();
+  const notesByPr = new Map<number, WhyNote>();
+
+  if (Array.isArray(notes)) {
+    for (const note of notes) {
+      if (note.changeId) {
+        notesByChangeId.set(note.changeId, note);
+      }
+      if (!notesByPr.has(note.prNumber)) {
+        notesByPr.set(note.prNumber, note);
+      }
+    }
+  } else {
+    for (const [key, note] of (
+      notes as ReadonlyMap<number | string, WhyNote>
+    ).entries()) {
+      if (typeof key === 'string') {
+        notesByChangeId.set(key, note);
+      } else if (typeof key === 'number') {
+        notesByPr.set(key, note);
+      }
+      if (note.changeId) {
+        notesByChangeId.set(note.changeId, note);
+      }
+      if (!notesByPr.has(note.prNumber)) {
+        notesByPr.set(note.prNumber, note);
+      }
+    }
+  }
+
   for (const change of changes) {
-    if (change.pr === undefined) continue;
-    const note = notesByPr.get(change.pr);
+    const note =
+      notesByChangeId.get(change.id) ??
+      (change.pr !== undefined ? notesByPr.get(change.pr) : undefined);
     if (!note) continue;
     if (assignments[change.id] === note.sectionTitle) {
       change.why = note.why;

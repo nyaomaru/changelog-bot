@@ -1,9 +1,12 @@
 import { describe, expect, test } from '@jest/globals';
 
+import type { ReleaseChange } from '@/types/release.js';
 import type { WhyNote } from '@/types/why.js';
 import {
   applyWhyNotesToSection as applyWhyNotesToSectionForRepository,
+  attachWhyNotesToChanges,
   extractWhyTargets as extractWhyTargetsForRepository,
+  extractWhyTargetsFromChanges,
 } from '@/utils/why-targets.js';
 
 const repository = { owner: 'octo', repo: 'repo' };
@@ -310,5 +313,120 @@ describe('why-targets', () => {
         '- Document draft release handling [#12](https://github.com/octo/repo/pull/12)',
       ].join('\n'),
     );
+  });
+
+  describe('sub-change WHY targets and note attachment', () => {
+    test('extractWhyTargetsFromChanges assigns changeId and extracts each sub-change', () => {
+      const changes: ReleaseChange[] = [
+        {
+          id: 'pr:123:c1',
+          origin: {
+            kind: 'pull-request-subchange',
+            number: 123,
+            subIndex: 1,
+          },
+          title: 'add OAuth login provider',
+          author: 'alice',
+          pr: 123,
+          url: 'https://github.com/octo/repo/pull/123',
+        },
+        {
+          id: 'pr:123:c2',
+          origin: {
+            kind: 'pull-request-subchange',
+            number: 123,
+            subIndex: 2,
+          },
+          title: 'resolve race condition in token refresh',
+          author: 'alice',
+          pr: 123,
+          url: 'https://github.com/octo/repo/pull/123',
+        },
+      ];
+
+      const assignments = {
+        'pr:123:c1': 'Added',
+        'pr:123:c2': 'Fixed',
+      };
+
+      const result = extractWhyTargetsFromChanges(changes, assignments);
+
+      expect(result.targets).toEqual([
+        {
+          prNumber: 123,
+          changeId: 'pr:123:c1',
+          sectionTitle: 'Added',
+          itemText: 'add OAuth login provider',
+          author: 'alice',
+        },
+        {
+          prNumber: 123,
+          changeId: 'pr:123:c2',
+          sectionTitle: 'Fixed',
+          itemText: 'resolve race condition in token refresh',
+          author: 'alice',
+        },
+      ]);
+      expect(result.skippedBeforeFetch).toBe(0);
+    });
+
+    test('attachWhyNotesToChanges attaches distinct WHY notes to individual sub-changes under the same PR', () => {
+      const changes: ReleaseChange[] = [
+        {
+          id: 'pr:123:c1',
+          origin: {
+            kind: 'pull-request-subchange',
+            number: 123,
+            subIndex: 1,
+          },
+          title: 'add OAuth login provider',
+          pr: 123,
+        },
+        {
+          id: 'pr:123:c2',
+          origin: {
+            kind: 'pull-request-subchange',
+            number: 123,
+            subIndex: 2,
+          },
+          title: 'resolve race condition in token refresh',
+          pr: 123,
+        },
+      ];
+
+      const note1: WhyNote = {
+        prNumber: 123,
+        changeId: 'pr:123:c1',
+        why: 'Enables single sign-on across enterprise identity providers.',
+        confidence: 'high',
+        sectionTitle: 'Added',
+        trustScore: 9,
+        trustBucket: 'high',
+      };
+
+      const note2: WhyNote = {
+        prNumber: 123,
+        changeId: 'pr:123:c2',
+        why: 'Prevents intermittent session drops during concurrent token refreshes.',
+        confidence: 'high',
+        sectionTitle: 'Fixed',
+        trustScore: 9,
+        trustBucket: 'high',
+      };
+
+      const assignments = {
+        'pr:123:c1': 'Added',
+        'pr:123:c2': 'Fixed',
+      };
+
+      attachWhyNotesToChanges(changes, [note1, note2], assignments);
+
+      expect(changes[0].why).toBe(
+        'Enables single sign-on across enterprise identity providers.',
+      );
+      expect(changes[1].why).toBe(
+        'Prevents intermittent session drops during concurrent token refreshes.',
+      );
+    });
   });
 });
