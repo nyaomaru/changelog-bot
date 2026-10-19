@@ -140,8 +140,6 @@ runs:
 
         MINIMUM_PACKAGE_AGE_DAYS_BASE10="$(( 10#${INPUT_MINIMUM_PACKAGE_AGE_DAYS} ))"
         MINIMUM_PACKAGE_AGE_MINUTES="$(( MINIMUM_PACKAGE_AGE_DAYS_BASE10 * 24 * 60 ))"
-        NPM_VERSION="${INPUT_NPM_VERSION:-latest}"
-        NPM_VERSION="${NPM_VERSION#v}"
         CMD=(
           corepack
           pnpm
@@ -150,7 +148,7 @@ runs:
           # `minimum-release-age`: https://pnpm.io/npmrc#minimumreleaseage
           "--config.minimum-release-age=${MINIMUM_PACKAGE_AGE_MINUTES}"
           dlx
-          @nyaomaru/changelog-bot@"${NPM_VERSION}"
+          @nyaomaru/changelog-bot@"${INPUT_NPM_VERSION:-latest}"
         )
 
         if [ -n "${INPUT_CONFIG_PATH:-}" ]; then
