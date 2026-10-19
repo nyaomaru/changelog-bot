@@ -101,24 +101,6 @@ runs:
         corepack enable
         corepack prepare pnpm@11.22.0 --activate
 
-    - name: Wait for released npm package
-      if: ${{ inputs['npm-version'] != '' && inputs['npm-version'] != 'latest' }}
-      shell: bash
-      run: |
-        version="${{ inputs['npm-version'] }}"
-        version="${version#v}"
-
-        for attempt in {1..20}; do
-          if npm view "@nyaomaru/changelog-bot@${version}" version >/dev/null 2>&1; then
-            exit 0
-          fi
-
-          sleep 5
-        done
-
-        echo "::error::@nyaomaru/changelog-bot@${version} is not available yet"
-        exit 1
-
     - name: Run changelog-bot
       shell: bash
       env:
