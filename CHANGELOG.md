@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.3] - 2026-10-19
+
+### Fixed
+
+- allow more time for npm propagation by @nyaomaru in [#255](https://github.com/nyaomaru/changelog-bot/pull/255)
+  - Why: Extend the changelog workflow’s npm availability wait from ~100 seconds to five minutes.
+- parse GitHub bot authors correctly by @nyaomaru in [#256](https://github.com/nyaomaru/changelog-bot/pull/256)
+
+### Docs
+
+- 0.9.2 by @github-actions[bot] in [#254](https://github.com/nyaomaru/changelog-bot/pull/254)
+
+### Chore
+
+- Release: 0.9.3 by @github-actions[bot] in [#257](https://github.com/nyaomaru/changelog-bot/pull/257)
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.9.2...v0.9.3
+
+[v0.9.3]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.9.3
+
 ## [v0.9.2] - 2026-10-19
 
 ### Added
