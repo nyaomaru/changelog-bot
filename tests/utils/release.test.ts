@@ -7,6 +7,7 @@ import {
   parseReleaseNotes,
   buildSectionFromRelease,
 } from '@/utils/release.js';
+import { applyDeterministicClassification } from '@/utils/deterministic-classification.js';
 
 describe('release utils', () => {
   test('builds one parent release item for commits in the same pull request', () => {
@@ -178,6 +179,43 @@ describe('release utils', () => {
       heading: 'Release Notes',
       body: 'Remember to update configuration files manually.',
     });
+  });
+
+  test('parseReleaseNotes extracts GitHub bot and standard authors', () => {
+    const body = [
+      "## What's Changed",
+      '* Release: 0.9.2 by @github-actions[bot] in https://github.com/nyaomaru/changelog-bot/pull/253',
+      '* Add release summary by @alice in https://github.com/nyaomaru/changelog-bot/pull/254',
+    ].join('\n');
+
+    const parsed = parseReleaseNotes(body, {
+      owner: 'nyaomaru',
+      repo: 'changelog-bot',
+    });
+
+    expect(parsed.items).toEqual([
+      {
+        author: 'github-actions[bot]',
+        rawTitle: 'Release: 0.9.2',
+        title: 'Release: 0.9.2',
+        pr: 253,
+        url: 'https://github.com/nyaomaru/changelog-bot/pull/253',
+      },
+      {
+        author: 'alice',
+        rawTitle: 'Add release summary',
+        title: 'Add release summary',
+        pr: 254,
+        url: 'https://github.com/nyaomaru/changelog-bot/pull/254',
+      },
+    ]);
+
+    const releaseAutomation = identifyReleaseItems([parsed.items[0]]);
+    expect(
+      applyDeterministicClassification(releaseAutomation, {
+        'pr:253': 'Added',
+      }),
+    ).toEqual({ 'pr:253': 'Chore' });
   });
 
   test('parseReleaseNotes preserves custom sections and handles typographic headings', () => {
