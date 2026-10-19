@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.2] - 2026-10-19
+
+### Added
+
+- Release: 0.9.2 by [bot] by @github-actions in [#253](https://github.com/nyaomaru/changelog-bot/pull/253)
+
+### Fixed
+
+- pin changelog generation to the release version by @Anantha-K in [#251](https://github.com/nyaomaru/changelog-bot/pull/251)
+  - Why: The changelog generation was pinned to the release version to ensure it uses the correct version during the release process.
+
+### Docs
+
+- 0.9.1 by [bot] by @github-actions in [#249](https://github.com/nyaomaru/changelog-bot/pull/249)
+
+### New Contributors
+
+- @Anantha-K  made their first contribution in #251
+
+A huge thank you to @Anantha-K for making their first contribution to changelog-bot! 🙌
+
+Thank you for carefully working through the review feedback and helping make the release workflow more reliable! 😸
+
+And if you have some free time again, please feel free to come back and play around with changelog-bot anytime. You’re always welcome! 🚀
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.9.1...v0.9.2
+
+[v0.9.2]: https://github.com/nyaomaru/changelog-bot/compare/v0.9.1...v0.9.2
+
 ## [v0.9.1] - 2026-10-18
 
 ### Added
