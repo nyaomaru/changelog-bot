@@ -21,6 +21,7 @@ jobs:
       why_confidence: medium
       why_label: Why
       dry_run: 'false'
+      npm_version: ${{github.event.release.tag_name}}
     secrets:
       REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
