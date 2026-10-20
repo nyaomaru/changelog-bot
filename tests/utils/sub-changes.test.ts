@@ -1,8 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import {
-  detectPrSubChangesFromChecklist,
-  detectPrSubChangesFromCommits,
-} from '@/utils/sub-changes.js';
+import { detectPrSubChangesFromCommits } from '@/utils/sub-changes.js';
 
 describe('detectPrSubChangesFromCommits', () => {
   test('returns null for single-commit pull request', () => {
@@ -131,75 +128,19 @@ describe('detectPrSubChangesFromCommits', () => {
     // Only 1 user-facing commit left, returns null to preserve invariant
     expect(result).toBeNull();
   });
-});
 
-describe('detectPrSubChangesFromChecklist', () => {
-  test('returns null when PR body has no completed checklists', () => {
-    const body = [
-      '## Description',
-      'This PR improves performance.',
-      '',
-      '- [ ] feat: planned future item',
-      '- [ ] fix: uncompleted task',
-    ].join('\n');
+  test('strictly rejects non-conventional commit messages to avoid false sub-change splitting', () => {
+    const result = detectPrSubChangesFromCommits(
+      104,
+      'refactor: parser overhaul',
+      [
+        { sha: 'c1', subject: 'refactor: extract AST parser helper' },
+        { sha: 'c2', subject: 'add parser tests' },
+        { sha: 'c3', subject: 'rename helper' },
+      ],
+    );
 
-    expect(detectPrSubChangesFromChecklist(42, 'Title', body)).toBeNull();
-  });
-
-  test('returns null when fewer than 2 completed checklist items are user-facing', () => {
-    const body = [
-      '## Checklist',
-      '- [x] feat: add user profile page',
-      '- [x] chore: update dependencies',
-      '- [x] fix: typo',
-    ].join('\n');
-
-    expect(detectPrSubChangesFromChecklist(42, 'Title', body)).toBeNull();
-  });
-
-  test('discovers sub-changes from structured checklist items in PR body', () => {
-    const body = [
-      '## Changes in this PR',
-      '- [x] feat: add CSV export support',
-      '- [x] fix: correct date timezone formatting in exports',
-      '- [ ] optional follow-up',
-    ].join('\n');
-
-    const result = detectPrSubChangesFromChecklist(42, 'Title', body);
-    expect(result).toEqual([
-      {
-        subIndex: 1,
-        title: 'add CSV export support',
-        rawTitle: 'feat: add CSV export support',
-      },
-      {
-        subIndex: 2,
-        title: 'correct date timezone formatting in exports',
-        rawTitle: 'fix: correct date timezone formatting in exports',
-      },
-    ]);
-  });
-
-  test('handles Windows CRLF line endings, uppercase [X], and indented bullets', () => {
-    const body = [
-      '## Checklist\r',
-      '  * [X] feat: add multi-tenant isolation\r',
-      '  - [x] fix: handle database connection pool exhaustion\r',
-      '  - [ ] feat: future enhancement\r',
-    ].join('\n');
-
-    const result = detectPrSubChangesFromChecklist(42, 'Title', body);
-    expect(result).toEqual([
-      {
-        subIndex: 1,
-        title: 'add multi-tenant isolation',
-        rawTitle: 'feat: add multi-tenant isolation',
-      },
-      {
-        subIndex: 2,
-        title: 'handle database connection pool exhaustion',
-        rawTitle: 'fix: handle database connection pool exhaustion',
-      },
-    ]);
+    // "add parser tests" and "rename helper" lack conventional prefixes and are rejected
+    expect(result).toBeNull();
   });
 });

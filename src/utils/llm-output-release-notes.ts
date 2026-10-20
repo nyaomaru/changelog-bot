@@ -4,6 +4,7 @@ import {
   buildIdentifiedReleaseItems,
   buildReleaseItemsFromPullRequests,
   deduplicateReleaseChangesByPullRequest,
+  expandReleaseChangesWithSubChanges,
   parseReleaseNotes,
   buildSectionFromRelease,
 } from '@/utils/release.js';
@@ -115,6 +116,12 @@ export async function buildOutputFromReleaseNotes(
     sourceChanges = [...identified];
     releaseChanges = deduplicateReleaseChangesByPullRequest(
       identified,
+      excludedChanges,
+    );
+    releaseChanges = expandReleaseChangesWithSubChanges(
+      releaseChanges,
+      params.commitList,
+      params.pullRequestsBySha ?? {},
       excludedChanges,
     );
   }

@@ -292,3 +292,98 @@ export function buildReleaseItemsFromPullRequests(
 
   return foundPullRequest ? items : [];
 }
+
+/**
+ * Expand PR-level release changes into sub-changes when associated commit history proves
+ * multiple independently identifiable user-facing changes.
+ * WHY: GitHub Release Notes flow parses PR-level items upfront from 'What's Changed'.
+ * This function ensures multi-change sub-discovery runs for normal releaseBody flows as well as
+ * commit-fallback flows, while recording expanded parent PRs in excludedChanges.
+ * @param changes Release changes (parsed from release notes or commits).
+ * @param commits Commits in the release range.
+ * @param pullRequestsBySha PR references mapped by commit SHA.
+ * @param excludedChanges Collector for parent PR items replaced by sub-changes.
+ * @returns Release changes with qualified PR items expanded into sub-changes.
+ */
+export function expandReleaseChangesWithSubChanges(
+  changes: readonly ReleaseChange[],
+  commits: readonly CommitLite[],
+  pullRequestsBySha: Readonly<Record<string, readonly PullRef[]>>,
+  excludedChanges?: ExcludedReleaseChange[],
+): ReleaseChange[] {
+  if (changes.length === 0 || commits.length === 0) {
+    return [...changes];
+  }
+
+  // Group commits by pull request number
+  const commitsByPrNumber = new Map<number, CommitLite[]>();
+  for (const commit of commits) {
+    const pullRequest = pullRequestsBySha[commit.sha]?.find((candidate) =>
+      candidate.title?.trim(),
+    );
+    if (pullRequest?.number) {
+      let list = commitsByPrNumber.get(pullRequest.number);
+      if (!list) {
+        list = [];
+        commitsByPrNumber.set(pullRequest.number, list);
+      }
+      list.push(commit);
+    }
+  }
+
+  const result: ReleaseChange[] = [];
+
+  for (const change of changes) {
+    if (change.pr === undefined || change.origin.kind !== 'pull-request') {
+      result.push(change);
+      continue;
+    }
+
+    const prCommits = commitsByPrNumber.get(change.pr);
+    if (!prCommits || prCommits.length < 2) {
+      result.push(change);
+      continue;
+    }
+
+    const subChanges = detectPrSubChangesFromCommits(
+      change.pr,
+      change.rawTitle ?? change.title,
+      prCommits,
+    );
+
+    if (!subChanges || subChanges.length < 2) {
+      result.push(change);
+      continue;
+    }
+
+    // Expand into sub-changes
+    for (const sub of subChanges) {
+      const origin: ReleaseChangeOrigin = {
+        kind: 'pull-request-subchange',
+        number: change.pr,
+        subIndex: sub.subIndex,
+        commitSha: sub.commitSha,
+      };
+      result.push({
+        id: buildReleaseChangeId(origin),
+        origin,
+        title: sub.title,
+        rawTitle: sub.rawTitle,
+        author: change.author,
+        pr: change.pr,
+        url: change.url,
+      });
+    }
+
+    // Record original parent PR in excludedChanges
+    if (excludedChanges) {
+      excludedChanges.push({
+        change,
+        reason: 'collapsed-into-pr',
+        detail: `Expanded into sub-changes for PR #${change.pr}`,
+      });
+    }
+  }
+
+  return result;
+}

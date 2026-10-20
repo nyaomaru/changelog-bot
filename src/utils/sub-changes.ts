@@ -41,30 +41,31 @@ const TRIVIAL_OR_NOISE_RE =
 const PARTIAL_COMMIT_RE =
   /\b(?:first|second|third|fourth|fifth|initial|final|additional|another|follow[- ]up)\s+(?:part|step|change|phase|commit)\b|\bpart\s+(?:of|\d+)\b|\bstep\s+\d+\b/i;
 
-const CHECKLIST_ITEM_RE = /^\s*[-*]\s+\[[xX]\]\s+(?<itemText>[^\n]+)$/gm;
-
 /**
- * Inspect a change subject or checklist line to determine whether it represents a non-trivial user-facing change.
- * @param subject Git commit subject line or checklist item.
+ * Inspect a change subject line to determine whether it represents a non-trivial user-facing change.
+ * WHY: Commit discovery is strictly restricted to explicit user-facing Conventional Commit types
+ * (feat, fix, perf, refactor) so non-conventional lines (e.g. "add tests", "rename helper") never
+ * cause false sub-change splits.
+ * @param subject Git commit subject line.
  * @returns True if the change represents an eligible user-facing sub-change.
  */
 function isUserFacingChange(subject: string): boolean {
   if (GIT_FIXUP_RE.test(subject)) return false;
   if (MERGE_COMMIT_RE.test(subject)) return false;
 
-  const stripped = stripConventionalPrefix(subject);
-  if (TRIVIAL_OR_NOISE_RE.test(stripped) || TRIVIAL_OR_NOISE_RE.test(subject)) {
-    return false;
-  }
-
   const prefixMatch = subject.match(CONVENTIONAL_PREFIX_RE);
   if (!prefixMatch) {
-    // Non-conventional line: accept if not trivial noise and of sufficient length
-    return stripped.length >= 4;
+    // WHY: Strict Conventional Commit types only; reject non-conventional subjects to avoid false splits
+    return false;
   }
 
   const commitType = prefixMatch[1]?.toLowerCase();
   if (!commitType || !USER_FACING_COMMIT_TYPES.has(commitType)) {
+    return false;
+  }
+
+  const stripped = stripConventionalPrefix(subject);
+  if (TRIVIAL_OR_NOISE_RE.test(stripped) || TRIVIAL_OR_NOISE_RE.test(subject)) {
     return false;
   }
 
@@ -140,55 +141,5 @@ export function detectPrSubChangesFromCommits(
     title: stripConventionalPrefix(commit.subject),
     rawTitle: commit.subject,
     commitSha: commit.sha,
-  }));
-}
-
-/**
- * Deterministically discover sub-changes from structured markdown checklists in a PR body.
- * WHY: Authors often list independent sub-changes as completed markdown checklist tasks.
- * @param prNumber Pull request number.
- * @param prTitle Pull request title.
- * @param prBody Raw pull request body markdown.
- * @returns Array of 2 or more sub-change descriptors, or null if below confidence threshold.
- */
-export function detectPrSubChangesFromChecklist(
-  prNumber: number,
-  prTitle: string,
-  prBody: string,
-): PrSubChangeDescriptor[] | null {
-  if (!prBody.trim()) {
-    return null;
-  }
-
-  const items: string[] = [];
-  const seenSemanticKeys = new Set<string>();
-  let match: RegExpExecArray | null;
-
-  const regex = new RegExp(CHECKLIST_ITEM_RE.source, CHECKLIST_ITEM_RE.flags);
-  while ((match = regex.exec(prBody)) !== null) {
-    const rawItem = match.groups?.itemText?.trim();
-    if (!rawItem) continue;
-
-    if (!isUserFacingChange(rawItem)) {
-      continue;
-    }
-
-    const semanticKey = normalizeTitle(rawItem);
-    if (!semanticKey || seenSemanticKeys.has(semanticKey)) {
-      continue;
-    }
-
-    seenSemanticKeys.add(semanticKey);
-    items.push(rawItem);
-  }
-
-  if (items.length < 2) {
-    return null;
-  }
-
-  return items.map((rawItem, index) => ({
-    subIndex: index + 1,
-    title: stripConventionalPrefix(rawItem),
-    rawTitle: rawItem,
   }));
 }

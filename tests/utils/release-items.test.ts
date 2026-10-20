@@ -3,6 +3,7 @@ import {
   buildReleaseChangeId,
   buildReleaseItemsFromPullRequests,
   deduplicateReleaseChangesByPullRequest,
+  expandReleaseChangesWithSubChanges,
 } from '@/utils/release-items.js';
 import type {
   ExcludedReleaseChange,
@@ -200,6 +201,96 @@ describe('deduplicateReleaseChangesByPullRequest with sub-changes', () => {
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('pr:42:c1');
     // Sibling sub-change duplicate must NOT be added to excludedChanges with the same ID
+    expect(excludedChanges).toHaveLength(0);
+  });
+});
+
+describe('expandReleaseChangesWithSubChanges', () => {
+  test('expands PR change into sub-changes when commits demonstrate multiple distinct changes', () => {
+    const parentPrChange: ReleaseChange = {
+      id: 'pr:42',
+      origin: { kind: 'pull-request', number: 42 },
+      title: 'multi-feature PR',
+      pr: 42,
+      author: 'alice',
+      url: 'https://github.com/acme/tool/pull/42',
+    };
+    const standaloneChange: ReleaseChange = {
+      id: 'pr:43',
+      origin: { kind: 'pull-request', number: 43 },
+      title: 'single fix',
+      pr: 43,
+      author: 'bob',
+    };
+
+    const commits = [
+      { sha: 'c1', subject: 'feat: add user authentication' },
+      { sha: 'c2', subject: 'fix: resolve race condition in token refresh' },
+      { sha: 'c3', subject: 'fix: button alignment' },
+    ];
+    const pullRequestsBySha = {
+      c1: [{ number: 42, title: 'multi-feature PR' }],
+      c2: [{ number: 42, title: 'multi-feature PR' }],
+      c3: [{ number: 43, title: 'single fix' }],
+    };
+
+    const excludedChanges: ExcludedReleaseChange[] = [];
+    const result = expandReleaseChangesWithSubChanges(
+      [parentPrChange, standaloneChange],
+      commits,
+      pullRequestsBySha,
+      excludedChanges,
+    );
+
+    expect(result).toHaveLength(3);
+    expect(result[0]).toMatchObject({
+      id: 'pr:42:c1',
+      title: 'add user authentication',
+      pr: 42,
+    });
+    expect(result[1]).toMatchObject({
+      id: 'pr:42:c2',
+      title: 'resolve race condition in token refresh',
+      pr: 42,
+    });
+    expect(result[2]).toMatchObject({
+      id: 'pr:43',
+      title: 'single fix',
+      pr: 43,
+    });
+
+    // Parent item is recorded in excludedChanges
+    expect(excludedChanges).toHaveLength(1);
+    expect(excludedChanges[0].change.id).toBe('pr:42');
+    expect(excludedChanges[0].reason).toBe('collapsed-into-pr');
+  });
+
+  test('preserves PR changes without changes when commits do not meet multi-change threshold', () => {
+    const parentPrChange: ReleaseChange = {
+      id: 'pr:42',
+      origin: { kind: 'pull-request', number: 42 },
+      title: 'feature with chore',
+      pr: 42,
+    };
+    const commits = [
+      { sha: 'c1', subject: 'feat: add feature' },
+      { sha: 'c2', subject: 'chore: lint fix' },
+    ];
+    const pullRequestsBySha = {
+      c1: [{ number: 42, title: 'feature with chore' }],
+      c2: [{ number: 42, title: 'feature with chore' }],
+    };
+
+    const excludedChanges: ExcludedReleaseChange[] = [];
+    const result = expandReleaseChangesWithSubChanges(
+      [parentPrChange],
+      commits,
+      pullRequestsBySha,
+      excludedChanges,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('pr:42');
     expect(excludedChanges).toHaveLength(0);
   });
 });

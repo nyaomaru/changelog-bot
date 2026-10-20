@@ -10,6 +10,7 @@ import {
   buildIdentifiedReleaseItems,
   buildReleaseItemsFromPullRequests,
   deduplicateReleaseChangesByPullRequest,
+  expandReleaseChangesWithSubChanges,
 } from '@/utils/release-items.js';
 import { parseReleaseNotes } from '@/utils/release-notes.js';
 import { buildChangesForClassification } from '@/utils/classify-pre.js';
@@ -73,6 +74,12 @@ export function buildReleaseDraft(
     sourceChanges = [...identified];
     changes = deduplicateReleaseChangesByPullRequest(
       identified,
+      excludedChanges,
+    );
+    changes = expandReleaseChangesWithSubChanges(
+      changes,
+      commitList,
+      pullRequestsBySha,
       excludedChanges,
     );
     sections = parsedRelease.sections;

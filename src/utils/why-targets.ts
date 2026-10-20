@@ -7,6 +7,7 @@ import {
 } from '@/utils/markdown-sections.js';
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
 import { escapeRegExp } from '@/utils/escape.js';
+import { isNumber, isString } from '@/utils/is.js';
 import {
   parseWhyBullet,
   type WhyRepository,
@@ -198,9 +199,9 @@ export function attachWhyNotesToChanges(
     for (const [key, note] of (
       notes as ReadonlyMap<number | string, WhyNote>
     ).entries()) {
-      if (typeof key === 'string') {
+      if (isString(key)) {
         notesByChangeId.set(key, note);
-      } else if (typeof key === 'number') {
+      } else if (isNumber(key)) {
         notesByPr.set(key, note);
       }
       if (note.changeId) {
