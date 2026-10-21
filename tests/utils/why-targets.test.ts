@@ -428,5 +428,52 @@ describe('why-targets', () => {
         'Prevents intermittent session drops during concurrent token refreshes.',
       );
     });
+
+    test('does not leak PR-level or sibling WHY note to a sub-change when only one sub-change has a note', () => {
+      const changes: ReleaseChange[] = [
+        {
+          id: 'pr:123:c1',
+          origin: {
+            kind: 'pull-request-subchange',
+            number: 123,
+            subIndex: 1,
+          },
+          title: 'add feature A',
+          pr: 123,
+        },
+        {
+          id: 'pr:123:c2',
+          origin: {
+            kind: 'pull-request-subchange',
+            number: 123,
+            subIndex: 2,
+          },
+          title: 'add feature B',
+          pr: 123,
+        },
+      ];
+
+      const note1: WhyNote = {
+        prNumber: 123,
+        changeId: 'pr:123:c1',
+        why: 'Feature A provides essential user controls.',
+        confidence: 'high',
+        sectionTitle: 'Added',
+        trustScore: 9,
+        trustBucket: 'high',
+      };
+
+      const assignments = {
+        'pr:123:c1': 'Added',
+        'pr:123:c2': 'Added',
+      };
+
+      attachWhyNotesToChanges(changes, [note1], assignments);
+
+      expect(changes[0].why).toBe(
+        'Feature A provides essential user controls.',
+      );
+      expect(changes[1].why).toBeUndefined();
+    });
   });
 });
