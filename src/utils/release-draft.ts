@@ -76,12 +76,6 @@ export function buildReleaseDraft(
       identified,
       excludedChanges,
     );
-    changes = expandReleaseChangesWithSubChanges(
-      changes,
-      commitList,
-      pullRequestsBySha,
-      excludedChanges,
-    );
     sections = parsedRelease.sections;
     if (parsedRelease.fullChangelog) {
       fullChangelog = parsedRelease.fullChangelog;
@@ -116,6 +110,16 @@ export function buildReleaseDraft(
   }
 
   changes = deduplicateReleaseChangesByPullRequest(changes, excludedChanges);
+
+  // WHY: Sub-changes must be expanded after resolving PR numbers via titleToPr
+  // and deduping at the PR level, so that any separate release-note items mapped
+  // to the same PR are deduplicated first rather than lingering alongside sub-changes.
+  changes = expandReleaseChangesWithSubChanges(
+    changes,
+    commitList,
+    pullRequestsBySha,
+    excludedChanges,
+  );
 
   // Deterministic classification across all changes
   const changesForClassification = buildChangesForClassification(changes);

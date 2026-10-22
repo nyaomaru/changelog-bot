@@ -303,4 +303,65 @@ describe('buildReleaseDraft', () => {
     const validation = validateReleaseResult(draft);
     expect(validation.kind).toBe('release');
   });
+
+  test('deduplicates separate release-note items resolved via titleToPr before expanding into sub-changes', () => {
+    const releaseBody = [
+      "## What's Changed",
+      '* Multi-feature update by @alice in #42',
+      '* Extra note referring to same change by @alice',
+      '',
+      '**Full Changelog**: https://github.com/acme/tool/compare/v0.7.0...v0.8.0',
+    ].join('\n');
+
+    const draft = buildReleaseDraft({
+      version: '0.8.0',
+      date: '2026-10-22',
+      releaseBody,
+      commitList: [
+        { sha: 'aaa', subject: 'feat: add OAuth provider' },
+        { sha: 'bbb', subject: 'fix: resolve race condition in token refresh' },
+      ],
+      pullRequestsBySha: {
+        aaa: [{ number: 42, title: 'Multi-feature update', author: 'alice' }],
+        bbb: [{ number: 42, title: 'Multi-feature update', author: 'alice' }],
+      },
+      titleToPr: {
+        'extra note referring to same change': 42,
+      },
+      owner: 'acme',
+      repo: 'tool',
+    });
+
+    // The second release-note item resolved to PR #42 via titleToPr and was deduped,
+    // so PR #42 expands cleanly into exactly two sub-changes without leaving a lingering third item
+    expect(draft.changes).toHaveLength(2);
+    expect(draft.changes[0]).toMatchObject({
+      id: 'pr:42:c1',
+      title: 'add OAuth provider',
+      pr: 42,
+    });
+    expect(draft.changes[1]).toMatchObject({
+      id: 'pr:42:c2',
+      title: 'resolve race condition in token refresh',
+      pr: 42,
+    });
+
+    // The duplicate item was recorded in excludedChanges with reason 'duplicate'
+    const duplicateExcluded = draft.excludedChanges.find(
+      (exc) => exc.reason === 'duplicate',
+    );
+    expect(duplicateExcluded).toBeDefined();
+    expect(duplicateExcluded?.change.pr).toBe(42);
+
+    // Parent item pr:42 was recorded in excludedChanges with reason 'collapsed-into-pr'
+    const parentPrExcluded = draft.excludedChanges.find(
+      (exc) => exc.change.id === 'pr:42',
+    );
+    expect(parentPrExcluded).toBeDefined();
+    expect(parentPrExcluded?.reason).toBe('collapsed-into-pr');
+
+    // Validates cleanly with validateReleaseResult
+    const validation = validateReleaseResult(draft);
+    expect(validation.kind).toBe('release');
+  });
 });
