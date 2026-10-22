@@ -63,6 +63,9 @@ export function appendWhyPreview(
 
 /**
  * Apply deterministic confidence and trust checks to provider WHY results.
+ * WHY: When a PR has multiple candidate targets (sub-changes), a matching changeId is required.
+ * PR-number fallback is only permitted when that PR has exactly one candidate.
+ * Matched item's prNumber must strictly equal providerResult.prNumber to prevent identity mismatches.
  * @param providerOutput Validated provider output.
  * @param inputItems Provider inputs keyed by authoritative PR targets.
  * @param minimumConfidence User-configured minimum provider confidence.
@@ -73,15 +76,58 @@ export function acceptWhyNotes(
   inputItems: readonly WhyExtractionItem[],
   minimumConfidence: WhyConfidence,
 ): AcceptedWhyNotesResult {
-  const itemsByPr = new Map(
-    inputItems.map((item) => [item.prNumber, item] as const),
-  );
+  const itemsByChangeId = new Map<string, WhyExtractionItem>();
+  const itemsListByPr = new Map<number, WhyExtractionItem[]>();
+
+  for (const item of inputItems) {
+    if (item.changeId) {
+      itemsByChangeId.set(item.changeId, item);
+    }
+    const list = itemsListByPr.get(item.prNumber) ?? [];
+    list.push(item);
+    itemsListByPr.set(item.prNumber, list);
+  }
+
   const notes: WhyNote[] = [];
   let skippedLowTrust = 0;
+  const matchedItems = new Set<WhyExtractionItem>();
 
   for (const providerResult of providerOutput.items) {
-    const item = itemsByPr.get(providerResult.prNumber);
-    if (!item) continue;
+    const prCandidates = itemsListByPr.get(providerResult.prNumber);
+    if (!prCandidates || prCandidates.length === 0) continue;
+
+    let item: WhyExtractionItem | undefined;
+
+    if (prCandidates.length > 1) {
+      // WHY: For PRs with multiple sub-change targets, a matching changeId is required.
+      // Positional or PR-number fallback would risk assigning rationale out-of-order or to the wrong sub-change.
+      if (!providerResult.changeId) {
+        continue;
+      }
+      const candidate = itemsByChangeId.get(providerResult.changeId);
+      // WHY: Verify identity integrity: matched item must belong to the same PR number.
+      if (!candidate || candidate.prNumber !== providerResult.prNumber) {
+        continue;
+      }
+      item = candidate;
+    } else {
+      // Exactly 1 candidate for this PR
+      const singleCandidate = prCandidates[0];
+      if (providerResult.changeId) {
+        // If changeId is provided, it must match the candidate's changeId and PR
+        const candidate = itemsByChangeId.get(providerResult.changeId);
+        if (!candidate || candidate.prNumber !== providerResult.prNumber) {
+          continue;
+        }
+        item = candidate;
+      } else {
+        item = singleCandidate;
+      }
+    }
+
+    if (!item || matchedItems.has(item)) continue;
+    matchedItems.add(item);
+
     const requiredConfidence = item.requiresHighConfidence
       ? 'high'
       : minimumConfidence;
@@ -98,6 +144,7 @@ export function acceptWhyNotes(
     if (!why) continue;
     notes.push({
       ...providerResult,
+      changeId: item.changeId,
       why,
       sectionTitle: item.sectionTitle,
       trustScore: item.trustScore,

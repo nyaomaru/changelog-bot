@@ -1,6 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 import { buildReleaseDraft } from '@/utils/release-draft.js';
 import { buildPrMapBySha, buildTitleToPr } from '@/utils/pr-mapping.js';
+import { validateReleaseResult } from '@/utils/release-validation.js';
 
 describe('buildReleaseDraft', () => {
   test('builds complete ReleaseDraft from commit list without PR metadata', () => {
@@ -245,5 +246,122 @@ describe('buildReleaseDraft', () => {
     expect(draft.excludedChanges[0].reason).toBe('collapsed-into-pr');
     expect(draft.excludedChanges[1].change.id).toBe('commit:bbb');
     expect(draft.excludedChanges[1].reason).toBe('collapsed-into-pr');
+  });
+  test('discovers sub-changes when releaseBody contains Whats Changed and PR has distinct commits', () => {
+    const releaseBody = [
+      "## What's Changed",
+      '* Multi-feature update by @alice in #42',
+      '* Standalone fix by @bob in #43',
+      '',
+      '**Full Changelog**: https://github.com/acme/tool/compare/v0.7.0...v0.8.0',
+    ].join('\n');
+
+    const draft = buildReleaseDraft({
+      version: '0.8.0',
+      date: '2026-10-20',
+      releaseBody,
+      commitList: [
+        { sha: 'aaa', subject: 'feat: add OAuth provider' },
+        { sha: 'bbb', subject: 'fix: resolve race condition in token refresh' },
+        { sha: 'ccc', subject: 'fix: button padding' },
+      ],
+      pullRequestsBySha: {
+        aaa: [{ number: 42, title: 'Multi-feature update', author: 'alice' }],
+        bbb: [{ number: 42, title: 'Multi-feature update', author: 'alice' }],
+        ccc: [{ number: 43, title: 'Standalone fix', author: 'bob' }],
+      },
+      owner: 'acme',
+      repo: 'tool',
+    });
+
+    // PR #42 is expanded into two sub-changes, while PR #43 remains a single PR change
+    expect(draft.changes).toHaveLength(3);
+    expect(draft.changes[0]).toMatchObject({
+      id: 'pr:42:c1',
+      title: 'add OAuth provider',
+      pr: 42,
+    });
+    expect(draft.changes[1]).toMatchObject({
+      id: 'pr:42:c2',
+      title: 'resolve race condition in token refresh',
+      pr: 42,
+    });
+    expect(draft.changes[2]).toMatchObject({
+      id: 'pr:43',
+      title: 'Standalone fix',
+      pr: 43,
+    });
+
+    // Parent item pr:42 was recorded in excludedChanges
+    const parentPrExcluded = draft.excludedChanges.find(
+      (exc) => exc.change.id === 'pr:42',
+    );
+    expect(parentPrExcluded).toBeDefined();
+    expect(parentPrExcluded?.reason).toBe('collapsed-into-pr');
+
+    // Validates cleanly with validateReleaseResult
+    const validation = validateReleaseResult(draft);
+    expect(validation.kind).toBe('release');
+  });
+
+  test('deduplicates separate release-note items resolved via titleToPr before expanding into sub-changes', () => {
+    const releaseBody = [
+      "## What's Changed",
+      '* Multi-feature update by @alice in #42',
+      '* Extra note referring to same change by @alice',
+      '',
+      '**Full Changelog**: https://github.com/acme/tool/compare/v0.7.0...v0.8.0',
+    ].join('\n');
+
+    const draft = buildReleaseDraft({
+      version: '0.8.0',
+      date: '2026-10-22',
+      releaseBody,
+      commitList: [
+        { sha: 'aaa', subject: 'feat: add OAuth provider' },
+        { sha: 'bbb', subject: 'fix: resolve race condition in token refresh' },
+      ],
+      pullRequestsBySha: {
+        aaa: [{ number: 42, title: 'Multi-feature update', author: 'alice' }],
+        bbb: [{ number: 42, title: 'Multi-feature update', author: 'alice' }],
+      },
+      titleToPr: {
+        'extra note referring to same change': 42,
+      },
+      owner: 'acme',
+      repo: 'tool',
+    });
+
+    // The second release-note item resolved to PR #42 via titleToPr and was deduped,
+    // so PR #42 expands cleanly into exactly two sub-changes without leaving a lingering third item
+    expect(draft.changes).toHaveLength(2);
+    expect(draft.changes[0]).toMatchObject({
+      id: 'pr:42:c1',
+      title: 'add OAuth provider',
+      pr: 42,
+    });
+    expect(draft.changes[1]).toMatchObject({
+      id: 'pr:42:c2',
+      title: 'resolve race condition in token refresh',
+      pr: 42,
+    });
+
+    // The duplicate item was recorded in excludedChanges with reason 'duplicate'
+    const duplicateExcluded = draft.excludedChanges.find(
+      (exc) => exc.reason === 'duplicate',
+    );
+    expect(duplicateExcluded).toBeDefined();
+    expect(duplicateExcluded?.change.pr).toBe(42);
+
+    // Parent item pr:42 was recorded in excludedChanges with reason 'collapsed-into-pr'
+    const parentPrExcluded = draft.excludedChanges.find(
+      (exc) => exc.change.id === 'pr:42',
+    );
+    expect(parentPrExcluded).toBeDefined();
+    expect(parentPrExcluded?.reason).toBe('collapsed-into-pr');
+
+    // Validates cleanly with validateReleaseResult
+    const validation = validateReleaseResult(draft);
+    expect(validation.kind).toBe('release');
   });
 });

@@ -10,6 +10,7 @@ import {
   buildIdentifiedReleaseItems,
   buildReleaseItemsFromPullRequests,
   deduplicateReleaseChangesByPullRequest,
+  expandReleaseChangesWithSubChanges,
 } from '@/utils/release-items.js';
 import { parseReleaseNotes } from '@/utils/release-notes.js';
 import { buildChangesForClassification } from '@/utils/classify-pre.js';
@@ -109,6 +110,16 @@ export function buildReleaseDraft(
   }
 
   changes = deduplicateReleaseChangesByPullRequest(changes, excludedChanges);
+
+  // WHY: Sub-changes must be expanded after resolving PR numbers via titleToPr
+  // and deduping at the PR level, so that any separate release-note items mapped
+  // to the same PR are deduplicated first rather than lingering alongside sub-changes.
+  changes = expandReleaseChangesWithSubChanges(
+    changes,
+    commitList,
+    pullRequestsBySha,
+    excludedChanges,
+  );
 
   // Deterministic classification across all changes
   const changesForClassification = buildChangesForClassification(changes);

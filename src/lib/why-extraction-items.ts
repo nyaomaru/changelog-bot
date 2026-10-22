@@ -41,22 +41,35 @@ export async function collectWhyExtractionItems(
     fallbackReasons: [],
   };
 
+  const detailsByPrNumber = new Map<
+    number,
+    Awaited<ReturnType<typeof params.fetchPRDetails>>
+  >();
+
   for (const target of targets) {
-    const details = await params.fetchPRDetails(
-      params.owner,
-      params.repo,
-      target.prNumber,
-      params.token,
-      params.githubApiBase,
-    );
+    let details: Awaited<ReturnType<typeof params.fetchPRDetails>> | undefined;
+    if (detailsByPrNumber.has(target.prNumber)) {
+      details = detailsByPrNumber.get(target.prNumber);
+    } else {
+      details = await params.fetchPRDetails(
+        params.owner,
+        params.repo,
+        target.prNumber,
+        params.token,
+        params.githubApiBase,
+      );
+      detailsByPrNumber.set(target.prNumber, details);
+      if (details) {
+        result.prBodiesFetched += 1;
+      }
+    }
+
     if (!details) {
       result.fallbackReasons.push(
         `Skipped PR #${target.prNumber}: PR details unavailable`,
       );
       continue;
     }
-
-    result.prBodiesFetched += 1;
     const preprocessed = preprocessWhyPrBody(target, details, {
       maxCharsPerPr: params.maxCharsPerPr,
     });

@@ -1,3 +1,5 @@
+import type { ReleaseChangeId } from '@/types/release.js';
+
 /** Confidence levels accepted from the WHY extraction model. */
 export type WhyConfidence = 'low' | 'medium' | 'high';
 
@@ -38,6 +40,8 @@ export type WhyTrustBucket = 'none' | 'low' | 'medium' | 'high';
 export type WhyTarget = {
   /** PR number associated with the changelog bullet. */
   prNumber: number;
+  /** Stable identifier of the change being targeted, when available. */
+  changeId?: ReleaseChangeId;
   /** Changelog bullet text without markdown bullet prefix. */
   itemText: string;
   /** Changelog section title, using the bot's internal section names. */
@@ -50,6 +54,8 @@ export type WhyTarget = {
 export type WhyExtractionItem = {
   /** PR number associated with the changelog bullet. */
   prNumber: number;
+  /** Stable identifier of the change being targeted, when available. */
+  changeId?: ReleaseChangeId;
   /** Changelog item text. */
   itemText: string;
   /** Changelog section title where this candidate was found. */
@@ -80,6 +86,8 @@ export type WhyExtractionInput = {
 export type WhyExtractionResult = {
   /** PR number this WHY note belongs to. */
   prNumber: number;
+  /** Stable identifier of the change being targeted, when available. */
+  changeId?: ReleaseChangeId;
   /** Concise reason for the change. */
   why: string;
   /** Provider confidence in the extracted reason. */

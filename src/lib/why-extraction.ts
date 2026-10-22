@@ -207,7 +207,7 @@ export async function runWhyExtraction(
   const targetChanges = params.draft?.changes ?? params.changes;
   const targetAssignments = params.draft?.assignments ?? params.assignments;
   if (targetChanges && targetAssignments) {
-    attachWhyNotesToChanges(targetChanges, notesByPr, targetAssignments);
+    attachWhyNotesToChanges(targetChanges, acceptedNotes, targetAssignments);
   }
   diagnostics.notesRendered = acceptedNotes.length;
 

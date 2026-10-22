@@ -6,6 +6,7 @@ export {
   buildIdentifiedReleaseItems,
   buildReleaseChangeId,
   deduplicateReleaseChangesByPullRequest,
+  expandReleaseChangesWithSubChanges,
   identifyReleaseItems,
 } from '@/utils/release-items.js';
 export { parseReleaseNotes } from '@/utils/release-notes.js';

@@ -16,11 +16,20 @@ export type ReleaseItem = {
 
 /** Stable identity assigned to a release change before classification. */
 export type ReleaseChangeId =
-  `pr:${number}` | `commit:${string}` | `release-note:${number}`;
+  | `pr:${number}`
+  | `pr:${number}:c${number}`
+  | `commit:${string}`
+  | `release-note:${number}`;
 
 /** Source record from which a canonical release change was derived. */
 export type ReleaseChangeOrigin =
   | { kind: 'pull-request'; number: number }
+  | {
+      kind: 'pull-request-subchange';
+      number: number;
+      subIndex: number;
+      commitSha?: string;
+    }
   | { kind: 'commit'; sha: string }
   | { kind: 'release-note'; index: number };
 

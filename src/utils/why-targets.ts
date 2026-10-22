@@ -7,6 +7,7 @@ import {
 } from '@/utils/markdown-sections.js';
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
 import { escapeRegExp } from '@/utils/escape.js';
+import { isNumber, isString } from '@/utils/is.js';
 import {
   parseWhyBullet,
   type WhyRepository,
@@ -158,6 +159,7 @@ export function extractWhyTargetsFromChanges(
 
     targets.push({
       prNumber: change.pr,
+      changeId: change.id,
       sectionTitle,
       itemText: change.title,
       author: change.author,
@@ -168,21 +170,68 @@ export function extractWhyTargetsFromChanges(
 }
 
 /**
+ * Type guard checking if notes collection is an array.
+ * @param notes Collection of notes as a map or array.
+ * @returns True if notes is an array.
+ */
+function isWhyNoteArray(
+  notes: ReadonlyMap<number | string, WhyNote> | readonly WhyNote[],
+): notes is readonly WhyNote[] {
+  return Array.isArray(notes);
+}
+
+/**
  * Attach accepted WHY notes directly to structured release changes.
  * WHY: Phase 4 attaches notes to domain objects so the shared renderer is the
- * sole author of final bullet markdown.
+ * sole author of final bullet markdown. Sub-changes look up their specific WHY note
+ * strictly by changeId, while regular pull requests fall back to prNumber for backward compatibility.
  * @param changes Canonical release changes to enrich with why notes.
- * @param notes Accepted WHY notes keyed by PR number.
+ * @param notes Accepted WHY notes keyed by PR number or change ID, or an array of notes.
  * @param assignments Category assignments for section matching.
  */
 export function attachWhyNotesToChanges(
   changes: ReleaseChange[],
-  notesByPr: ReadonlyMap<number, WhyNote>,
+  notes: ReadonlyMap<number | string, WhyNote> | readonly WhyNote[],
   assignments: Record<string, string>,
 ): void {
+  const notesByChangeId = new Map<string, WhyNote>();
+  const notesByPr = new Map<number, WhyNote>();
+
+  if (isWhyNoteArray(notes)) {
+    for (const note of notes) {
+      if (note.changeId) {
+        notesByChangeId.set(note.changeId, note);
+      }
+      if (!notesByPr.has(note.prNumber)) {
+        notesByPr.set(note.prNumber, note);
+      }
+    }
+  } else {
+    for (const [key, note] of notes.entries()) {
+      if (isString(key)) {
+        notesByChangeId.set(key, note);
+      } else if (isNumber(key)) {
+        notesByPr.set(key, note);
+      }
+      if (note.changeId) {
+        notesByChangeId.set(note.changeId, note);
+      }
+      if (!notesByPr.has(note.prNumber)) {
+        notesByPr.set(note.prNumber, note);
+      }
+    }
+  }
+
   for (const change of changes) {
-    if (change.pr === undefined) continue;
-    const note = notesByPr.get(change.pr);
+    // WHY: Sub-changes have unique changeIds and must strictly match by changeId
+    // to prevent falling back to a PR-level note (or sibling sub-change note) and
+    // erroneously duplicating rationale under multiple sub-changes.
+    const isSubChange = change.origin.kind === 'pull-request-subchange';
+    const note =
+      notesByChangeId.get(change.id) ??
+      (!isSubChange && change.pr !== undefined
+        ? notesByPr.get(change.pr)
+        : undefined);
     if (!note) continue;
     if (assignments[change.id] === note.sectionTitle) {
       change.why = note.why;
