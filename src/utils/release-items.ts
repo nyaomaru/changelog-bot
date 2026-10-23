@@ -120,6 +120,28 @@ export function deduplicateReleaseChangesByPullRequest(
 
     const existingChange = changesByPrNumber.get(change.pr);
     if (existingChange) {
+      if (
+        existingChange.origin.kind === 'release-note' &&
+        change.origin.kind === 'pull-request'
+      ) {
+        // WHY: A title-resolved release note has a positional identity, while an
+        // explicit PR reference is the canonical parent needed for sub-change
+        // expansion. Keep the original position so unrelated entries remain ordered.
+        const existingChangeIndex = deduplicatedChanges.indexOf(existingChange);
+        deduplicatedChanges[existingChangeIndex] = change;
+        changesByPrNumber.set(change.pr, change);
+        change.author ??= existingChange.author;
+        change.url ??= existingChange.url;
+        if (excludedChanges && change.id !== existingChange.id) {
+          excludedChanges.push({
+            change: existingChange,
+            reason: 'duplicate',
+            detail: `Duplicate change for PR #${change.pr}`,
+          });
+        }
+        continue;
+      }
+
       // Keep the first display entry while retaining metadata found later.
       existingChange.author ??= change.author;
       existingChange.url ??= change.url;
