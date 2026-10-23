@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.10.0] - 2026-10-23
+
+### Added
+
+- support sub-change WHY mapping for multi-change pull requests (#235) by @johnnylemonny in [#252](https://github.com/nyaomaru/changelog-bot/pull/252)
+
+### Fixed
+
+- preserve explicit PRs for sub-change expansion by @nyaomaru in [#260](https://github.com/nyaomaru/changelog-bot/pull/260)
+
+### Docs
+
+- 0.9.3 by @github-actions[bot] in [#258](https://github.com/nyaomaru/changelog-bot/pull/258)
+- mark v1 phases 4 and 5 complete by @nyaomaru in [#262](https://github.com/nyaomaru/changelog-bot/pull/262)
+
+### Chore
+
+- Release: 0.10.0 by @github-actions[bot] in [#263](https://github.com/nyaomaru/changelog-bot/pull/263)
+
+### What's new 🚀
+
+The v1 deterministic-first pipeline design now reflects the completed foundation through Phase 5.
+
+- Phases 1–5 are marked as implemented, covering stable change identities, deterministic classification and rendering, completeness validation, and explicit no-change results.
+- Phases 6–7 remain planned v1 work: enrichment diagnostics/concurrency controls and output-destination separation.
+
+Thanks [John](@johnnylemonny)! 👍
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.9.3...v0.10.0
+
+[v0.10.0]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.10.0
+
 ## [v0.9.3] - 2026-10-19
 
 ### Fixed
