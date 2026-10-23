@@ -4,7 +4,7 @@ import {
   PR_TITLE_PREFIX,
   UNRELEASED_ANCHOR,
 } from '@/constants/changelog.js';
-import { isNumber } from '@/utils/is.js';
+import { isNumber, isString } from '@/utils/is.js';
 import type { LLMOutput } from '@/types/llm.js';
 import type { TitleToPrMap } from '@/types/changelog-output.js';
 
@@ -56,8 +56,9 @@ export function resolvePrFromTitles(
   titles: Array<string | undefined>,
 ): number | undefined {
   const candidateKeys = titles
-    .filter(Boolean)
-    .map((value) => value!.toLowerCase());
+    .filter(isString)
+    .filter((title) => title.length > 0)
+    .map((title) => title.toLowerCase());
   return candidateKeys
     .map((key) => titleToPr[key])
     .find((value) => isNumber(value));

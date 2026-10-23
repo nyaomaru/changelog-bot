@@ -1,16 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
-import { isError } from '@/utils/is.js';
+import { isError, isNotNil } from '@/utils/is.js';
 
 export const CUSTOM_INSTRUCTIONS_ENCODING = 'utf8';
 export const CUSTOM_INSTRUCTIONS_MAX_CHARS = 16_000;
 
 /** Resolved status for the optional customization instructions file. */
 export type CustomInstructionsFileStatus =
-  | 'not_provided'
-  | 'loaded'
-  | 'empty'
-  | 'read_failed';
+  'not_provided' | 'loaded' | 'empty' | 'read_failed';
 
 /** Inputs used to resolve optional changelog customization instructions. */
 export type ResolveCustomInstructionsInput = {
@@ -105,12 +102,7 @@ export function resolveCustomInstructionsWithDiagnostics(
     fileInstructions
       ? { source: 'file' as const, text: fileInstructions }
       : null,
-  ].filter(
-    (
-      instructionPart,
-    ): instructionPart is { source: 'inline' | 'file'; text: string } =>
-      Boolean(instructionPart),
-  );
+  ].filter(isNotNil);
 
   const combinedInstructions = instructionParts
     .map((instructionPart) => instructionPart.text)

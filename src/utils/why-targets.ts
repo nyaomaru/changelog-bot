@@ -7,7 +7,7 @@ import {
 } from '@/utils/markdown-sections.js';
 import { isDependencyUpdateTitle } from '@/utils/dependency-update.js';
 import { escapeRegExp } from '@/utils/escape.js';
-import { isNumber, isString } from '@/utils/is.js';
+import { isArray, isNumber, isString } from '@/utils/is.js';
 import {
   parseWhyBullet,
   type WhyRepository,
@@ -170,17 +170,6 @@ export function extractWhyTargetsFromChanges(
 }
 
 /**
- * Type guard checking if notes collection is an array.
- * @param notes Collection of notes as a map or array.
- * @returns True if notes is an array.
- */
-function isWhyNoteArray(
-  notes: ReadonlyMap<number | string, WhyNote> | readonly WhyNote[],
-): notes is readonly WhyNote[] {
-  return Array.isArray(notes);
-}
-
-/**
  * Attach accepted WHY notes directly to structured release changes.
  * WHY: Phase 4 attaches notes to domain objects so the shared renderer is the
  * sole author of final bullet markdown. Sub-changes look up their specific WHY note
@@ -197,7 +186,7 @@ export function attachWhyNotesToChanges(
   const notesByChangeId = new Map<string, WhyNote>();
   const notesByPr = new Map<number, WhyNote>();
 
-  if (isWhyNoteArray(notes)) {
+  if (isArray(notes)) {
     for (const note of notes) {
       if (note.changeId) {
         notesByChangeId.set(note.changeId, note);

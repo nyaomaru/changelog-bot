@@ -6,7 +6,7 @@ import type {
 import type { CategoryAssignments } from '@/types/changelog.js';
 import type { EditorialOutput } from '@/schema/editorial.js';
 import { applyDeterministicClassification } from '@/utils/deterministic-classification.js';
-import { isBucketName } from '@/utils/is.js';
+import { isBucketName, isString } from '@/utils/is.js';
 
 export type ReconcileEditorialResult = {
   /** Updated release result after sparse editorial enrichment and hard rule enforcement. */
@@ -62,7 +62,7 @@ export function reconcileEditorialOutput(
     }
 
     // Apply title polishing if non-empty string is provided (normalize single-line)
-    if (typeof edit.title === 'string' && edit.title.trim().length > 0) {
+    if (isString(edit.title) && edit.title.trim().length > 0) {
       change.title = edit.title.replace(/[\r\n]+/g, ' ').trim();
     }
 

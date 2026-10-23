@@ -1,3 +1,4 @@
+import { runInNewContext } from 'node:vm';
 import { jest, describe, expect, test } from '@jest/globals';
 
 import { WHY_EVALUATION_CORPUS } from '@/evaluation/why-corpus.js';
@@ -283,6 +284,40 @@ describe('evaluateWhySelections', () => {
 });
 
 describe('evaluateEngineWithRepeatedRuns', () => {
+  test.each([
+    [new Error('native failure'), 'native failure'],
+    [runInNewContext('new Error("realm failure")'), 'realm failure'],
+    ['string failure', 'string failure'],
+    [null, 'null'],
+    [undefined, 'undefined'],
+    [{ message: 'plain object' }, '[object Object]'],
+  ])('records a failed run for thrown %p', async (error, expectedMessage) => {
+    const extractor: WhyExtractor = {
+      name: 'test-extractor',
+      async extractWhyNotes() {
+        throw error;
+      },
+    };
+
+    const report = await evaluateEngineWithRepeatedRuns(
+      'test-engine',
+      'test-model',
+      true,
+      extractor,
+      { language: 'en', whyLabel: 'Why', items: [] },
+      0,
+      1,
+    );
+
+    expect(report).toMatchObject({
+      status: 'failed',
+      failureCount: 1,
+      successCount: 0,
+      error: expectedMessage,
+      runs: [{ status: 'failed', error: expectedMessage }],
+    });
+  });
+
   test('skips evaluation when hasApiKey is false', async () => {
     const mockExtractor: WhyExtractor = {
       name: 'test-extractor',
