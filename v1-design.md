@@ -2,9 +2,10 @@
 
 ## Status
 
-Phases 1-3 are implemented. They establish canonical `ReleaseChange`
-identities, ID-based reconciliation, and deterministic classification
-precedence. Phases 4-7 are planned implementation work for v1.
+Phases 1-5 are implemented. They establish canonical `ReleaseChange`
+identities, ID-based reconciliation, deterministic classification, structural
+rendering, completeness validation, and explicit no-change behavior. Phases
+6-7 are planned implementation work for v1.
 
 Each numbered phase should remain a separately reviewable change and preserve
 existing output unless its acceptance criteria explicitly change behavior.
@@ -279,7 +280,7 @@ Acceptance criteria:
 - Existing scoring fixtures continue to pass unless they contradict the
   precedence above.
 
-### 4. Build a deterministic release result and render it structurally
+### 4. Build a deterministic release result and render it structurally (implemented)
 
 Produce canonical release data and deterministic classification before optional
 AI. Build a complete `ReleaseDraft` that is valid with zero provider calls,
@@ -326,7 +327,7 @@ Acceptance criteria:
 - Delivery fields are not provider-controlled.
 - Equivalent structured inputs produce deterministic structural Markdown.
 
-### 5. Enforce completeness and empty-release behavior
+### 5. Enforce completeness and empty-release behavior (implemented)
 
 Validate the final structured `ReleaseResult` before rendering, rather than
 trying to infer completeness from generated Markdown. Replace the fabricated
