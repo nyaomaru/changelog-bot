@@ -364,4 +364,55 @@ describe('buildReleaseDraft', () => {
     const validation = validateReleaseResult(draft);
     expect(validation.kind).toBe('release');
   });
+
+  test('expands sub-changes when a title-resolved release note precedes its explicit PR', () => {
+    const releaseBody = [
+      "## What's Changed",
+      '* Extra note referring to same change by @alice',
+      '* Multi-feature update by @alice in #42',
+      '',
+      '**Full Changelog**: https://github.com/acme/tool/compare/v0.7.0...v0.8.0',
+    ].join('\n');
+
+    const draft = buildReleaseDraft({
+      version: '0.8.0',
+      date: '2026-10-23',
+      releaseBody,
+      commitList: [
+        { sha: 'aaa', subject: 'feat: add OAuth provider' },
+        { sha: 'bbb', subject: 'fix: resolve race condition in token refresh' },
+      ],
+      pullRequestsBySha: {
+        aaa: [{ number: 42, title: 'Multi-feature update', author: 'alice' }],
+        bbb: [{ number: 42, title: 'Multi-feature update', author: 'alice' }],
+      },
+      titleToPr: {
+        'extra note referring to same change': 42,
+      },
+      owner: 'acme',
+      repo: 'tool',
+    });
+
+    expect(draft.changes).toMatchObject([
+      { id: 'pr:42:c1', title: 'add OAuth provider', pr: 42 },
+      {
+        id: 'pr:42:c2',
+        title: 'resolve race condition in token refresh',
+        pr: 42,
+      },
+    ]);
+    expect(draft.excludedChanges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          change: expect.objectContaining({ id: 'release-note:0' }),
+          reason: 'duplicate',
+        }),
+        expect.objectContaining({
+          change: expect.objectContaining({ id: 'pr:42' }),
+          reason: 'collapsed-into-pr',
+        }),
+      ]),
+    );
+    expect(validateReleaseResult(draft).kind).toBe('release');
+  });
 });

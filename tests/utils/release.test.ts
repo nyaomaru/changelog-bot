@@ -138,9 +138,9 @@ describe('release utils', () => {
 
     expect(deduplicateReleaseChangesByPullRequest(changes)).toEqual([
       {
-        id: 'release-note:0',
-        origin: { kind: 'release-note', index: 0 },
-        title: 'Add export support',
+        id: 'pr:42',
+        origin: { kind: 'pull-request', number: 42 },
+        title: 'Explicit export entry',
         author: 'alice',
         pr: 42,
         url: 'https://github.com/acme/repo/pull/42',
