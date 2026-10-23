@@ -5,6 +5,7 @@ import {
   isError as isErrorValue,
   isInstanceOf as createInstanceGuard,
   isNaN as isNaNValue,
+  isNotNil,
   isNull,
   isNumber,
   isObject,
@@ -18,7 +19,7 @@ import {
 import { SECTION_ORDER } from '@/constants/changelog.js';
 import type { BucketName } from '@/types/changelog.js';
 
-export { isNull, isNumber, isPrimitive, isString };
+export { isNotNil, isNull, isNumber, isPrimitive, isString };
 
 /**
  * Create a guard that accepts arrays whose elements all satisfy a guard.

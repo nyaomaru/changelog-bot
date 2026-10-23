@@ -30,6 +30,7 @@ import type {
   WhyExtractor,
 } from '@/types/why-extractor.js';
 import { providerFactory } from '@/utils/provider.js';
+import { isError } from '@/utils/is.js';
 
 const DEFAULT_RUNS_COUNT = 1;
 const DEFAULT_OUTPUT_DIRECTORY = 'evaluations/reports';
@@ -148,7 +149,7 @@ export async function evaluateEngineWithRepeatedRuns(
         tokenUsage: extractor.lastWhyExtractionUsage,
         servedModel: extractor.lastServedModel,
         diagnostics: extractor.lastWhyExtractionDiagnostics,
-        error: error instanceof Error ? error.message : String(error),
+        error: isError(error) ? error.message : String(error),
       });
     }
   }
