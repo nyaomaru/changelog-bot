@@ -30,6 +30,23 @@ describe('changelog file operations', () => {
     }
   });
 
+  test('rethrows errors when the changelog path is a directory', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'changelog-bot-'));
+
+    try {
+      let readError: unknown;
+      try {
+        readChangelog(directory);
+      } catch (error) {
+        readError = error;
+      }
+
+      expect(readError).toMatchObject({ code: 'EISDIR' });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   test('writes UTF-8 content and overwrites an existing changelog', () => {
     const directory = mkdtempSync(join(tmpdir(), 'changelog-bot-'));
     const changelogPath = join(directory, 'CHANGELOG.md');

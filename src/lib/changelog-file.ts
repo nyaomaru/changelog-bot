@@ -10,8 +10,12 @@ const CHANGELOG_FILE_ENCODING = 'utf8';
 export function readChangelog(path: string): string {
   try {
     return readFileSync(path, CHANGELOG_FILE_ENCODING);
-  } catch {
-    return '';
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return '';
+    }
+
+    throw error;
   }
 }
 
