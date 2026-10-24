@@ -1,4 +1,3 @@
-// @ts-nocheck
 const {
   describe,
   test,
@@ -13,6 +12,7 @@ type GetJsonMockFn = (
   headers: Record<string, string>,
   errorPrefix: string,
 ) => Promise<unknown>;
+type GetJsonMock = ReturnType<typeof jestGlobal.fn<GetJsonMockFn>>;
 
 type UnstableMockModule = (
   ...args: Parameters<typeof jestGlobal.mock>
@@ -24,7 +24,7 @@ const unstableMockModule = (
 ).unstable_mockModule;
 
 // Mock the HTTP util before importing the module under test
-let getJsonMock: jest.MockedFunction<GetJsonMockFn>;
+let getJsonMock: GetJsonMock;
 await unstableMockModule('@/utils/http.js', () => ({
   getJson: (...args: Parameters<GetJsonMockFn>) => getJsonMock(...args),
 }));
