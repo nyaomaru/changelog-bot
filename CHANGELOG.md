@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.10.1] - 2026-10-24
+
+### Fixed
+
+- distinguish missing and unreadable files by @jay23606 in [#272](https://github.com/nyaomaru/changelog-bot/pull/272)
+
+### Changed
+
+- use shared guards at runtime boundaries by @KingEmma7 in [#265](https://github.com/nyaomaru/changelog-bot/pull/265)
+- remove TypeScript suppression from GitHub API tests by @Prashaxt in [#274](https://github.com/nyaomaru/changelog-bot/pull/274)
+  - Why: The suppression of TypeScript checks was removed to expose hidden type errors in the GitHub API helper tests.
+
+### Docs
+
+- 0.10.0 by @github-actions[bot] in [#264](https://github.com/nyaomaru/changelog-bot/pull/264)
+- simplify contribution templates by @nyaomaru in [#273](https://github.com/nyaomaru/changelog-bot/pull/273)
+
+### Test
+
+- add focused coverage for release markdown helpers by @mangomac in [#275](https://github.com/nyaomaru/changelog-bot/pull/275)
+- cover WHY extractor selection by @erSpell in [#276](https://github.com/nyaomaru/changelog-bot/pull/276)
+
+### Chore
+
+- bump the minor-and-patch group with 5 updates by @dependabot[bot] in [#269](https://github.com/nyaomaru/changelog-bot/pull/269)
+- Release: 0.10.1 by @github-actions[bot] in [#277](https://github.com/nyaomaru/changelog-bot/pull/277)
+
+### New Contributors
+
+A very warm welcome to our five first-time contributors!
+
+- @KingEmma7 for improving runtime type safety in [#265](https://github.com/nyaomaru/changelog-bot/pull/265)
+- @jay23606 for improving changelog error handling in [#272](https://github.com/nyaomaru/changelog-bot/pull/272)
+- @Prashaxt for cleaning up GitHub API tests in [#274](https://github.com/nyaomaru/changelog-bot/pull/274)
+- @mangomac for adding release Markdown helper tests in [#275](https://github.com/nyaomaru/changelog-bot/pull/275)
+- @erSpell for expanding WHY extractor test coverage in [#276](https://github.com/nyaomaru/changelog-bot/pull/276)
+
+Thank you all for your time, effort, and contributions! Every contribution helps make this project better, and we're happy to have you here. 🐈💕
+
+Looking forward to building more together!
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.10.0...v0.10.1
+
+[v0.10.1]: https://github.com/nyaomaru/changelog-bot/compare/v0.10.0...v0.10.1
+
 ## [v0.10.0] - 2026-10-23
 
 ### Added
