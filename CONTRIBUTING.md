@@ -115,4 +115,8 @@ Types include: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.
 - `GITHUB_TOKEN` required only to create a PR (omit for `--dry-run`)
 - `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` are optional; without them the CLI uses a fallback and continues
 
+## 🔒 Security
+
+If you discover a security vulnerability, please do not open a public issue. Review our [Security Policy](SECURITY.md) for guidelines on reporting vulnerabilities privately.
+
 Thanks again! If you have questions or ideas, open an Issue/PR — we’re friendly. 🚀
