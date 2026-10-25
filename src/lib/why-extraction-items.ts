@@ -1,6 +1,7 @@
 import { WHY_MAX_TOTAL_PAYLOAD_CHARS } from '@/constants/why.js';
 import type { fetchPRDetails } from '@/lib/github.js';
 import type { WhyExtractionItem, WhyTarget } from '@/types/why.js';
+import { formatMetadataFallbackReason } from '@/utils/github-error.js';
 import { preprocessWhyPrBody } from '@/utils/why-preprocess.js';
 
 type CollectWhyExtractionItemsParams = {
@@ -41,36 +42,38 @@ export async function collectWhyExtractionItems(
     fallbackReasons: [],
   };
 
-  const detailsByPrNumber = new Map<
+  const lookupByPrNumber = new Map<
     number,
     Awaited<ReturnType<typeof params.fetchPRDetails>>
   >();
 
   for (const target of targets) {
-    let details: Awaited<ReturnType<typeof params.fetchPRDetails>> | undefined;
-    if (detailsByPrNumber.has(target.prNumber)) {
-      details = detailsByPrNumber.get(target.prNumber);
+    let lookup: Awaited<ReturnType<typeof params.fetchPRDetails>> | undefined;
+    if (lookupByPrNumber.has(target.prNumber)) {
+      lookup = lookupByPrNumber.get(target.prNumber);
     } else {
-      details = await params.fetchPRDetails(
+      lookup = await params.fetchPRDetails(
         params.owner,
         params.repo,
         target.prNumber,
         params.token,
         params.githubApiBase,
       );
-      detailsByPrNumber.set(target.prNumber, details);
-      if (details) {
+      lookupByPrNumber.set(target.prNumber, lookup);
+      if (lookup && lookup.status === 'success') {
         result.prBodiesFetched += 1;
       }
     }
 
-    if (!details) {
-      result.fallbackReasons.push(
-        `Skipped PR #${target.prNumber}: PR details unavailable`,
-      );
+    if (!lookup || lookup.status !== 'success') {
+      const fallbackReason = lookup
+        ? formatMetadataFallbackReason(target.prNumber, lookup)
+        : `Skipped PR #${target.prNumber}: PR details unavailable`;
+      result.fallbackReasons.push(fallbackReason);
       continue;
     }
-    const preprocessed = preprocessWhyPrBody(target, details, {
+
+    const preprocessed = preprocessWhyPrBody(target, lookup.data, {
       maxCharsPerPr: params.maxCharsPerPr,
     });
     if (preprocessed.item) {

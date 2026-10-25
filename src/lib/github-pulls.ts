@@ -9,7 +9,12 @@ import {
   type GitHubCommitPullsItemParsed,
   type GitHubPRInfoParsed,
 } from '@/schema/github.js';
-import type { PullRef, PullRequestDetails } from '@/types/github.js';
+import type {
+  MetadataLookupResult,
+  PullRef,
+  PullRequestDetails,
+} from '@/types/github.js';
+import { classifyGithubError } from '@/utils/github-error.js';
 
 function toPullRef(pullRequest: GitHubCommitPullsItemParsed): PullRef {
   return {
@@ -26,14 +31,20 @@ async function fetchPullRequestData(
   number: number,
   token: string | undefined,
   apiBase: string,
-): Promise<GitHubPRInfoParsed | null> {
+): Promise<MetadataLookupResult<GitHubPRInfoParsed>> {
   const endpoint = `${apiBase}/repos/${owner}/${repo}/pulls/${number}`;
   try {
-    const data = await githubGet<unknown>(endpoint, token);
-    const parsed = GitHubPRInfoSchema.safeParse(data);
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
+    const rawData = await githubGet<unknown>(endpoint, token);
+    const parsed = GitHubPRInfoSchema.safeParse(rawData);
+    if (!parsed.success) {
+      return classifyGithubError(parsed.error, `PR #${number}`);
+    }
+    return {
+      status: 'success',
+      data: parsed.data,
+    };
+  } catch (caughtError) {
+    return classifyGithubError(caughtError, `PR #${number}`);
   }
 }
 
@@ -44,7 +55,7 @@ async function fetchPullRequestData(
  * @param number PR number.
  * @param token Optional GitHub token.
  * @param apiBase GitHub API base URL.
- * @returns Author and URL, or null when the PR is unavailable.
+ * @returns Lookup result with author and URL on success, or structured failure.
  */
 export async function fetchPRInfo(
   owner: string,
@@ -52,18 +63,23 @@ export async function fetchPRInfo(
   number: number,
   token?: string,
   apiBase: string = GITHUB_API_BASE_DEFAULT,
-): Promise<{ author?: string; url?: string } | null> {
-  const pullRequest = await fetchPullRequestData(
+): Promise<MetadataLookupResult<{ author?: string; url?: string }>> {
+  const result = await fetchPullRequestData(
     owner,
     repo,
     number,
     token,
     apiBase,
   );
-  if (!pullRequest) return null;
+  if (result.status !== 'success') {
+    return result;
+  }
   return {
-    author: pullRequest.user?.login,
-    url: pullRequest.html_url,
+    status: 'success',
+    data: {
+      author: result.data.user?.login,
+      url: result.data.html_url,
+    },
   };
 }
 
@@ -74,7 +90,7 @@ export async function fetchPRInfo(
  * @param number PR number.
  * @param token Optional GitHub token.
  * @param apiBase GitHub API base URL.
- * @returns Normalized PR details, or null when unavailable.
+ * @returns Lookup result with normalized PR details on success, or structured failure.
  */
 export async function fetchPRDetails(
   owner: string,
@@ -82,21 +98,27 @@ export async function fetchPRDetails(
   number: number,
   token?: string,
   apiBase: string = GITHUB_API_BASE_DEFAULT,
-): Promise<PullRequestDetails | null> {
-  const pullRequest = await fetchPullRequestData(
+): Promise<MetadataLookupResult<PullRequestDetails>> {
+  const result = await fetchPullRequestData(
     owner,
     repo,
     number,
     token,
     apiBase,
   );
-  if (!pullRequest) return null;
+  if (result.status !== 'success') {
+    return result;
+  }
+  const pullRequest = result.data;
   return {
-    number: pullRequest.number ?? number,
-    title: pullRequest.title ?? '',
-    body: pullRequest.body ?? '',
-    author: pullRequest.user?.login,
-    url: pullRequest.html_url,
+    status: 'success',
+    data: {
+      number: pullRequest.number ?? number,
+      title: pullRequest.title ?? '',
+      body: pullRequest.body ?? '',
+      author: pullRequest.user?.login,
+      url: pullRequest.html_url,
+    },
   };
 }
 

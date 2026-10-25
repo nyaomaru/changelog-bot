@@ -68,15 +68,17 @@ async function enrichReleaseItems(params: {
       }
       if (!item.author) {
         try {
-          const pr = await fetchPRInfo(
+          const lookup = await fetchPRInfo(
             owner,
             repo,
             item.pr,
             token,
             githubApiBase,
           );
-          if (pr?.author) item.author = pr.author;
-          if (pr?.url) item.url = pr.url;
+          if (lookup.status === 'success') {
+            if (lookup.data.author) item.author = lookup.data.author;
+            if (lookup.data.url) item.url = lookup.data.url;
+          }
         } catch {
           console.warn(`Warning: Failed to fetch PR #${item.pr} info`);
         }

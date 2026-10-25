@@ -1,4 +1,7 @@
-export { fetchReleaseBody } from '@/lib/github-releases.js';
+export {
+  fetchReleaseBody,
+  fetchReleaseBodyResult,
+} from '@/lib/github-releases.js';
 export {
   fetchPRDetails,
   fetchPRInfo,
