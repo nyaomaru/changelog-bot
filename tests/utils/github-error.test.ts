@@ -185,7 +185,7 @@ describe('classifyGithubError', () => {
     });
   });
 
-  test('extracts string retry_after or header retry-after', () => {
+  test('extracts string retry_after or direct retryAfter', () => {
     const errorWithStringBodyRetry = {
       status: 429,
       message: 'Too Many Requests',
@@ -198,12 +198,12 @@ describe('classifyGithubError', () => {
       retryAfter: 120,
     });
 
-    const errorWithHeaderRetry = {
+    const errorWithDirectRetry = {
       status: 429,
       message: 'Too Many Requests',
-      headers: { 'retry-after': '45' },
+      retryAfter: '45',
     };
-    expect(classifyGithubError(errorWithHeaderRetry, 'PR #42')).toEqual({
+    expect(classifyGithubError(errorWithDirectRetry, 'PR #42')).toEqual({
       status: 'rate-limited',
       message: 'GitHub API rate limit exceeded: Too Many Requests',
       statusCode: 429,
@@ -271,13 +271,12 @@ describe('formatMetadataFallbackReason', () => {
     expect(reason).toBe('Skipped PR #10: network error fetching PR metadata');
   });
 
-  test('formats fallback message for unexpected failure status', () => {
-    const reason = formatMetadataFallbackReason(10, {
-      status: 'custom-status' as unknown as 'network-error',
-      message: 'Something unexpected happened',
-    });
-    expect(reason).toBe(
-      'Skipped PR #10: PR metadata lookup failed (Something unexpected happened)',
-    );
+  test('throws error for unsupported failure status', () => {
+    expect(() =>
+      formatMetadataFallbackReason(10, {
+        status: 'custom-status' as unknown as 'network-error',
+        message: 'Something unexpected happened',
+      }),
+    ).toThrow('Unsupported metadata lookup failure status: custom-status');
   });
 });

@@ -1,28 +1,28 @@
 import type { MetadataLookupFailure } from '@/types/github.js';
-import { isError, isRecord } from '@/utils/is.js';
+import {
+  isError,
+  isNumber,
+  isRecord,
+  isSafeInteger,
+  isString,
+} from '@/utils/is.js';
 
 function extractHttpStatus(errorCandidate: unknown): number | undefined {
   if (!isRecord(errorCandidate)) return undefined;
-  if (
-    typeof errorCandidate.status === 'number' &&
-    Number.isInteger(errorCandidate.status)
-  ) {
+  if (isSafeInteger(errorCandidate.status)) {
     return errorCandidate.status;
   }
-  if (
-    typeof errorCandidate.statusCode === 'number' &&
-    Number.isInteger(errorCandidate.statusCode)
-  ) {
+  if (isSafeInteger(errorCandidate.statusCode)) {
     return errorCandidate.statusCode;
   }
   return undefined;
 }
 
 function parsePositiveNumber(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+  if (isNumber(value) && Number.isFinite(value) && value >= 0) {
     return value;
   }
-  if (typeof value === 'string') {
+  if (isString(value)) {
     const parsed = Number(value);
     if (Number.isFinite(parsed) && parsed >= 0) {
       return parsed;
@@ -46,32 +46,10 @@ function extractRetryAfterSeconds(errorCandidate: unknown): number | undefined {
 
   // Body retry_after or retryAfter
   if (isRecord(errorCandidate.body)) {
-    const bodyCandidate = errorCandidate.body as Record<string, unknown>;
+    const bodyCandidate = errorCandidate.body;
     const bodyRetryAfter =
       bodyCandidate.retry_after ?? bodyCandidate.retryAfter;
-    const parsedBody = parsePositiveNumber(bodyRetryAfter);
-    if (parsedBody !== undefined) return parsedBody;
-  }
-
-  // Response headers or error headers for retry-after
-  const headers = isRecord(errorCandidate.headers)
-    ? errorCandidate.headers
-    : isRecord(errorCandidate.response) &&
-        isRecord((errorCandidate.response as Record<string, unknown>).headers)
-      ? ((errorCandidate.response as Record<string, unknown>).headers as Record<
-          string,
-          unknown
-        >)
-      : undefined;
-
-  if (headers) {
-    const headerValue =
-      headers['retry-after'] ??
-      (typeof headers.get === 'function'
-        ? (headers.get as (headerName: string) => unknown)('retry-after')
-        : undefined);
-    const parsedHeader = parsePositiveNumber(headerValue);
-    if (parsedHeader !== undefined) return parsedHeader;
+    return parsePositiveNumber(bodyRetryAfter);
   }
 
   return undefined;
@@ -80,15 +58,13 @@ function extractRetryAfterSeconds(errorCandidate: unknown): number | undefined {
 function extractErrorMessage(errorCandidate: unknown): string {
   if (isError(errorCandidate)) return errorCandidate.message;
   if (isRecord(errorCandidate)) {
-    if (typeof errorCandidate.message === 'string')
-      return errorCandidate.message;
-    if (typeof errorCandidate.body === 'string') return errorCandidate.body;
+    if (isString(errorCandidate.message)) return errorCandidate.message;
+    if (isString(errorCandidate.body)) return errorCandidate.body;
     if (
       isRecord(errorCandidate.body) &&
-      typeof (errorCandidate.body as Record<string, unknown>).message ===
-        'string'
+      isString(errorCandidate.body.message)
     ) {
-      return (errorCandidate.body as Record<string, unknown>).message as string;
+      return errorCandidate.body.message;
     }
   }
   return String(errorCandidate);
@@ -132,9 +108,8 @@ export function classifyGithubError(
       const bodyMessage =
         isRecord(caughtError) &&
         isRecord(caughtError.body) &&
-        typeof (caughtError.body as Record<string, unknown>).message ===
-          'string'
-          ? ((caughtError.body as Record<string, unknown>).message as string)
+        isString(caughtError.body.message)
+          ? caughtError.body.message
           : '';
       const lowerCombinedMessage =
         `${errorMessage} ${bodyMessage}`.toLowerCase();
@@ -228,7 +203,11 @@ export function formatMetadataFallbackReason(
       return `Skipped PR #${prNumber}: invalid PR metadata received from GitHub`;
     case 'network-error':
       return `Skipped PR #${prNumber}: network error fetching PR metadata`;
-    default:
-      return `Skipped PR #${prNumber}: PR metadata lookup failed (${(failure as MetadataLookupFailure).message})`;
+    default: {
+      const exhaustiveStatus: never = failure.status;
+      throw new Error(
+        `Unsupported metadata lookup failure status: ${String(exhaustiveStatus)}`,
+      );
+    }
   }
 }
