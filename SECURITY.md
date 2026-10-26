@@ -9,7 +9,7 @@ The following versions of `@nyaomaru/changelog-bot` currently receive security u
 | 0.10.x  | :white_check_mark: |
 | < 0.10  | :x:                |
 
-We strongly recommend always running the latest minor or patch release. From version `1.0.0` onward, `changelog-bot` follows Semantic Versioning (SemVer) with explicit maintenance windows for major release series.
+We strongly recommend always running the latest minor or patch release.
 
 ## Reporting a Vulnerability
 
@@ -47,7 +47,7 @@ To help us triage and resolve the issue quickly, please provide as much context 
 
 - **Initial Acknowledgment**: We aim to acknowledge receipt of security reports within **48 to 72 hours**.
 - **Triage & Assessment**: Maintainers will verify the vulnerability, evaluate severity, and determine affected code paths.
-- **Remediation**: Fixes will be prepared, reviewed, and tested in private branches or drafts before merging.
+- **Remediation**: Fixes will be prepared, reviewed, and tested privately through GitHub Security Advisories before public disclosure.
 - **Coordinated Disclosure**: Once a patched release is published to npm and GitHub, we will release a security advisory detailing the issue and acknowledging the reporter (unless anonymity is requested).
 
 ## Scope and Security Boundaries
