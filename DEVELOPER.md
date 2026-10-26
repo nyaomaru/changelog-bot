@@ -4,12 +4,12 @@ Welcome! This is the developer guide for changelog-bot. It keeps things practica
 
 ## Quick Start
 
-- Requirements: Node 22, pnpm 11
+- Requirements: Node 22.23.4+, 24.22.1+, or 26.12.1+; pnpm 11
 - Recommended: use mise to pin tools and run tasks
 
 ```sh
 # Clone and install
-mise install              # installs Node 22
+mise install              # installs Node 24.22.1
 mise dev_install          # installs dependencies
 
 # Build and try the CLI

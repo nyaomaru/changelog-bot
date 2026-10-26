@@ -11,7 +11,7 @@ We welcome improvements of all kinds: features, fixes, tests, docs, and refactor
 Using mise (recommended):
 
 ```sh
-mise install         # installs Node 22 and pnpm 11.2.2
+mise install         # installs Node 24.22.1 and pnpm 11.22.0
 mise dev_install     # installs dependencies
 ```
 
