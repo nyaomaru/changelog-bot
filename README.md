@@ -27,6 +27,9 @@ Releases should feel exciting, not tedious.
 
 Run the published CLI right away—no local tooling prep required.
 
+Requires Node.js 22.23.4+, 24.22.1+, or 26.12.1+; Node.js 24.22.1 or later in
+the 24.x LTS line is recommended.
+
 ```sh
 pnpm dlx @nyaomaru/changelog-bot --help
 ```
@@ -644,7 +647,7 @@ If you're contributing to `changelog-bot`, the repo ships a `mise.toml` to pin t
 
 ### Mise (toolchain & tasks)
 
-- Tools: Node `22`; pnpm `11.22.0` is pinned through Corepack and `packageManager`.
+- Tools: Node `24.22.1`; pnpm `11.22.0` is pinned through Corepack and `packageManager`.
 - Tasks: `lint`, `build`, `test`, `test_unit`, `test_performance`, `qa`.
 
 Builds use the TypeScript 7 native compiler. TypeScript 6 remains installed
@@ -688,6 +691,9 @@ npx @nyaomaru/changelog-bot --help
 **Compatibility Policy**
 
 - During `v0`, breaking changes may occur as we stabilize flags and output. We avoid breaks when possible and document changes in the changelog.
+- The CLI supports only patched Node.js release lines: `^22.23.4`,
+  `^24.22.1`, and `^26.12.1`. Node.js 20 and earlier are unsupported. The
+  bundled composite action installs Node.js `24.22.1` before running the CLI.
 - To pin versions:
   - Action: use a major tag (`uses: nyaomaru/changelog-bot@v0`) or a specific ref (e.g., `@v0.1.2`).
   - Action + CLI pin: set `npm-version` input (e.g., `npm-version: 0.1.2`). Set `minimum-package-age-days` to a positive value when you want pnpm to block newly published package versions.
