@@ -1,0 +1,28 @@
+# GitHub Code Owners
+# https://docs.github.com/en/repositories/managing-your-repository-s-settings-and-features/customizing-your-repository/about-code-owners
+#
+# These owners will be automatically requested for review when a pull request
+# modifies the corresponding files.
+
+# Global default owner
+* @nyaomaru
+
+# GitHub Actions workflows and CI configurations
+.github/workflows/ @nyaomaru
+
+# Repository templates and configuration
+.github/ @nyaomaru
+
+# Core source code and CLI implementation
+src/ @nyaomaru
+
+# Test suites and test fixtures
+tests/ @nyaomaru
+
+# Documentation and project guidance
+*.md @nyaomaru
+docs/ @nyaomaru
+
+# NOTE: When transitioning to the `necoz` organization, replace or complement
+# the individual maintainer handle above with the organization team, e.g.:
+# * @necoz/maintainers
