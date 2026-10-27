@@ -184,4 +184,35 @@ describe('lib/github API helpers', () => {
     expect(map.b2).toEqual([]); // failure -> empty list
     expect(map.c3).toEqual([]);
   });
+
+  test('mapCommitsToPrs bounds concurrent requests to the configured limit', async () => {
+    let activeRequests = 0;
+    let maxObservedActiveRequests = 0;
+
+    getJsonMock.mockImplementation(async () => {
+      activeRequests += 1;
+      maxObservedActiveRequests = Math.max(
+        maxObservedActiveRequests,
+        activeRequests,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      activeRequests -= 1;
+      return [];
+    });
+
+    const commitShas = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'];
+    const concurrencyLimit = 2;
+    await mapCommitsToPrs(
+      'o',
+      'r',
+      commitShas,
+      't',
+      undefined,
+      concurrencyLimit,
+    );
+
+    expect(maxObservedActiveRequests).toBe(concurrencyLimit);
+    expect(activeRequests).toBe(0);
+    expect(getJsonMock).toHaveBeenCalledTimes(commitShas.length);
+  });
 });
