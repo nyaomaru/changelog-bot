@@ -44,25 +44,37 @@ describe('GitHub pull request details', () => {
     await expect(
       fetchPRDetails('nyaomaru', 'changelog-bot', 42),
     ).resolves.toEqual({
-      number: 42,
-      title: 'feat: split GitHub API responsibilities',
-      body: '',
-      author: 'nyaomaru',
-      url: 'https://github.com/nyaomaru/changelog-bot/pull/42',
+      status: 'success',
+      data: {
+        number: 42,
+        title: 'feat: split GitHub API responsibilities',
+        body: '',
+        author: 'nyaomaru',
+        url: 'https://github.com/nyaomaru/changelog-bot/pull/42',
+      },
     });
     await expect(fetchPRInfo('nyaomaru', 'changelog-bot', 42)).resolves.toEqual(
       {
-        author: 'nyaomaru',
-        url: 'https://github.com/nyaomaru/changelog-bot/pull/42',
+        status: 'success',
+        data: {
+          author: 'nyaomaru',
+          url: 'https://github.com/nyaomaru/changelog-bot/pull/42',
+        },
       },
     );
   });
 
-  test('returns null when the shared PR response is invalid or unavailable', async () => {
+  test('returns typed failure when the shared PR response is invalid or unavailable', async () => {
     getJsonMock.mockResolvedValueOnce({ number: 'invalid' });
     getJsonMock.mockRejectedValueOnce(new Error('unavailable'));
 
-    await expect(fetchPRDetails('o', 'r', 1)).resolves.toBeNull();
-    await expect(fetchPRInfo('o', 'r', 1)).resolves.toBeNull();
+    await expect(fetchPRDetails('o', 'r', 1)).resolves.toEqual({
+      status: 'invalid-response',
+      message: expect.stringContaining('Invalid response schema'),
+    });
+    await expect(fetchPRInfo('o', 'r', 1)).resolves.toEqual({
+      status: 'network-error',
+      message: 'Network error: unavailable',
+    });
   });
 });

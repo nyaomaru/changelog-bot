@@ -82,3 +82,23 @@ export type GitHubAuth = {
   /** ISO timestamp when the token expires (only for App tokens). */
   expiresAt?: string;
 };
+
+/** Typed category for metadata lookup failures. */
+export type MetadataLookupFailureReason =
+  | 'not-found'
+  | 'unauthenticated'
+  | 'rate-limited'
+  | 'invalid-response'
+  | 'network-error';
+
+/** Discriminated failure detail for degraded GitHub metadata lookups. */
+export type MetadataLookupFailure = {
+  status: MetadataLookupFailureReason;
+  message: string;
+  statusCode?: number;
+  retryAfter?: number;
+};
+
+/** Result of fetching GitHub metadata, preserving typed degradation status. */
+export type MetadataLookupResult<T> =
+  { status: 'success'; data: T } | MetadataLookupFailure;

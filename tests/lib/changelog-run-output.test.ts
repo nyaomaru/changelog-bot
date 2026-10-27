@@ -94,7 +94,7 @@ describe('finalizeChangelogRunOutput', () => {
         finalizeChangelogUpdate,
         runWhyExtraction,
         fetchPRDetails: jest.fn<ChangelogRunDependencies['fetchPRDetails']>(
-          async () => null,
+          async () => ({ status: 'not-found', message: 'not found' }),
         ),
       },
     });
@@ -138,7 +138,7 @@ describe('finalizeChangelogRunOutput', () => {
         finalizeChangelogUpdate,
         runWhyExtraction,
         fetchPRDetails: jest.fn<ChangelogRunDependencies['fetchPRDetails']>(
-          async () => null,
+          async () => ({ status: 'not-found', message: 'not found' }),
         ),
       },
     });

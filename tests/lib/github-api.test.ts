@@ -31,6 +31,7 @@ await unstableMockModule('@/utils/http.js', () => ({
 
 const {
   fetchReleaseBody,
+  fetchReleaseBodyResult,
   fetchPRInfo,
   fetchPullRequestsForBranch,
   prsForCommit,
@@ -51,6 +52,31 @@ describe('lib/github API helpers', () => {
     expect(getJsonMock).toHaveBeenCalled();
   });
 
+  test('fetchReleaseBodyResult returns typed result on success and failure', async () => {
+    getJsonMock.mockResolvedValueOnce({ body: 'v1 notes' });
+    const successResult = await fetchReleaseBodyResult('o', 'r', 'v1.0.0', 't');
+    expect(successResult).toEqual({
+      status: 'success',
+      data: 'v1 notes',
+    });
+
+    getJsonMock.mockResolvedValueOnce(null);
+    const parseFailure = await fetchReleaseBodyResult('o', 'r', 'v1.0.0', 't');
+    expect(parseFailure.status).toBe('invalid-response');
+
+    getJsonMock.mockRejectedValueOnce(new Error('connection timeout'));
+    const networkFailure = await fetchReleaseBodyResult(
+      'o',
+      'r',
+      'v1.0.0',
+      't',
+    );
+    expect(networkFailure).toEqual({
+      status: 'network-error',
+      message: 'Network error: connection timeout',
+    });
+  });
+
   test('fetchReleaseBody returns empty string on parse error or exception', async () => {
     // parse error
     getJsonMock.mockResolvedValueOnce(null);
@@ -65,17 +91,23 @@ describe('lib/github API helpers', () => {
     expect(b).toBe('');
   });
 
-  test('fetchPRInfo returns author and url on valid response, null otherwise', async () => {
+  test('fetchPRInfo returns author and url on valid response, typed failure otherwise', async () => {
     getJsonMock.mockResolvedValueOnce({
       user: { login: 'alice' },
       html_url: 'https://x',
     });
     const ok = await fetchPRInfo('o', 'r', 1, 't');
-    expect(ok).toEqual({ author: 'alice', url: 'https://x' });
+    expect(ok).toEqual({
+      status: 'success',
+      data: { author: 'alice', url: 'https://x' },
+    });
 
     getJsonMock.mockResolvedValueOnce(null);
     const bad = await fetchPRInfo('o', 'r', 2, 't');
-    expect(bad).toBeNull();
+    expect(bad).toEqual({
+      status: 'invalid-response',
+      message: expect.stringContaining('Invalid response schema'),
+    });
   });
 
   test('prsForCommit maps PR metadata from response array', async () => {

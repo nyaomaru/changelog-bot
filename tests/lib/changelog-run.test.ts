@@ -680,15 +680,18 @@ describe('executeChangelogRun', () => {
     };
 
     const fetchPRDetails = jest.fn(async () => ({
-      number: 42,
-      title: 'feat: auth and session handling',
-      body: [
-        '## Why',
-        '',
-        'Because OAuth enables single sign-on across enterprise identity providers, and token refresh locking is needed to prevent intermittent session drops during concurrent refreshes.',
-      ].join('\n'),
-      author: 'alice',
-      url: 'https://github.com/octo/repo/pull/42',
+      status: 'success' as const,
+      data: {
+        number: 42,
+        title: 'feat: auth and session handling',
+        body: [
+          '## Why',
+          '',
+          'Because OAuth enables single sign-on across enterprise identity providers, and token refresh locking is needed to prevent intermittent session drops during concurrent refreshes.',
+        ].join('\n'),
+        author: 'alice',
+        url: 'https://github.com/octo/repo/pull/42',
+      },
     }));
 
     const whyResult = await runWhyExtraction({

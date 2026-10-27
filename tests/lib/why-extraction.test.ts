@@ -83,15 +83,18 @@ describe('runWhyExtraction', () => {
       ],
     });
     const fetchPRDetails = jest.fn<FetchPRDetails>(async () => ({
-      number: 12,
-      title: 'Restore draft release handling',
-      body: [
-        '## Why',
-        '',
-        'Because draft releases can be created first and published later, the workflow must listen to publication.',
-      ].join('\n'),
-      author: 'alice',
-      url: 'https://github.com/octo/repo/pull/12',
+      status: 'success',
+      data: {
+        number: 12,
+        title: 'Restore draft release handling',
+        body: [
+          '## Why',
+          '',
+          'Because draft releases can be created first and published later, the workflow must listen to publication.',
+        ].join('\n'),
+        author: 'alice',
+        url: 'https://github.com/octo/repo/pull/12',
+      },
     }));
 
     const result = await runWhyExtraction({
@@ -164,10 +167,13 @@ describe('runWhyExtraction', () => {
       token: 'token',
       githubApiBase: 'https://api.github.com',
       fetchPRDetails: jest.fn<FetchPRDetails>(async () => ({
-        number: 12,
-        title: 'Restore draft release handling',
-        body: '## Why\nBecause draft releases can be published later and need coverage.',
-        author: 'alice',
+        status: 'success',
+        data: {
+          number: 12,
+          title: 'Restore draft release handling',
+          body: '## Why\nBecause draft releases can be published later and need coverage.',
+          author: 'alice',
+        },
       })),
     });
 
@@ -202,10 +208,13 @@ describe('runWhyExtraction', () => {
       token: 'token',
       githubApiBase: 'https://api.github.com',
       fetchPRDetails: jest.fn<FetchPRDetails>(async () => ({
-        number: 12,
-        title: 'Restore draft release handling',
-        body: '## Why\nBecause draft releases can be published later and need coverage.',
-        author: 'alice',
+        status: 'success',
+        data: {
+          number: 12,
+          title: 'Restore draft release handling',
+          body: '## Why\nBecause draft releases can be published later and need coverage.',
+          author: 'alice',
+        },
       })),
     });
 
@@ -247,10 +256,13 @@ describe('runWhyExtraction', () => {
       token: 'token',
       githubApiBase: 'https://api.github.com',
       fetchPRDetails: jest.fn<FetchPRDetails>(async () => ({
-        number: 12,
-        title: 'Restore draft release handling',
-        body: 'ドラフトリリースを後から公開する運用でも、公開時に変更履歴 PR を作れるようにするため。利用者がリリース後に変更内容を確認できるようにする。',
-        author: 'alice',
+        status: 'success',
+        data: {
+          number: 12,
+          title: 'Restore draft release handling',
+          body: 'ドラフトリリースを後から公開する運用でも、公開時に変更履歴 PR を作れるようにするため。利用者がリリース後に変更内容を確認できるようにする。',
+          author: 'alice',
+        },
       })),
     });
 
@@ -283,10 +295,13 @@ describe('runWhyExtraction', () => {
       token: 'token',
       githubApiBase: 'https://api.github.com',
       fetchPRDetails: jest.fn<FetchPRDetails>(async () => ({
-        number: 12,
-        title: 'Restore draft release handling',
-        body: '## Why\nBecause draft releases can be published later and need coverage.',
-        author: 'alice',
+        status: 'success',
+        data: {
+          number: 12,
+          title: 'Restore draft release handling',
+          body: '## Why\nBecause draft releases can be published later and need coverage.',
+          author: 'alice',
+        },
       })),
     });
 
@@ -307,15 +322,18 @@ describe('runWhyExtraction', () => {
       ],
     });
     const fetchPRDetails = jest.fn<FetchPRDetails>(async () => ({
-      number: 12,
-      title: 'Restore draft release handling',
-      body: [
-        '## Why',
-        '',
-        'Because draft releases can be created first and published later, the workflow must listen to publication.',
-      ].join('\n'),
-      author: 'alice',
-      url: 'https://github.com/octo/repo/pull/12',
+      status: 'success',
+      data: {
+        number: 12,
+        title: 'Restore draft release handling',
+        body: [
+          '## Why',
+          '',
+          'Because draft releases can be created first and published later, the workflow must listen to publication.',
+        ].join('\n'),
+        author: 'alice',
+        url: 'https://github.com/octo/repo/pull/12',
+      },
     }));
 
     const draft = {
@@ -390,15 +408,18 @@ describe('runWhyExtraction', () => {
     });
 
     const fetchPRDetails = jest.fn<FetchPRDetails>(async () => ({
-      number: 42,
-      title: 'feat: auth and session handling',
-      body: [
-        '## Why',
-        '',
-        'Because OAuth enables single sign-on across enterprise identity providers, and token refresh locking is needed to prevent intermittent session drops during concurrent refreshes.',
-      ].join('\n'),
-      author: 'alice',
-      url: 'https://github.com/octo/repo/pull/42',
+      status: 'success',
+      data: {
+        number: 42,
+        title: 'feat: auth and session handling',
+        body: [
+          '## Why',
+          '',
+          'Because OAuth enables single sign-on across enterprise identity providers, and token refresh locking is needed to prevent intermittent session drops during concurrent refreshes.',
+        ].join('\n'),
+        author: 'alice',
+        url: 'https://github.com/octo/repo/pull/42',
+      },
     }));
 
     const draft = {
@@ -487,6 +508,56 @@ describe('runWhyExtraction', () => {
     );
     expect(result.llm.new_section_markdown).toContain(
       '  - Why: Prevents intermittent session drops during concurrent token refreshes.',
+    );
+  });
+
+  test('records precise fallback reasons when PR metadata lookups fail or degrade', async () => {
+    const selectedProvider = provider();
+    const fetchPRDetails = jest.fn<FetchPRDetails>(
+      async (_owner, _repo, prNumber) => {
+        if (prNumber === 10) {
+          return {
+            status: 'not-found',
+            message: 'PR #10 not found (404)',
+            statusCode: 404,
+          };
+        }
+        return {
+          status: 'rate-limited',
+          message: 'GitHub API rate limit exceeded: rate limit reached',
+          statusCode: 429,
+        };
+      },
+    );
+
+    const result = await runWhyExtraction({
+      cli,
+      llm: {
+        new_section_markdown: [
+          '### Fixed',
+          '',
+          '- First fix [#10](https://github.com/octo/repo/pull/10)',
+          '- Second fix [#11](https://github.com/octo/repo/pull/11)',
+        ].join('\n'),
+        pr_title: 'docs(changelog): 1.2.3',
+        pr_body: 'Generated changelog.',
+      },
+      changelogAiUsed: true,
+      provider: selectedProvider,
+      hasProviderKey: true,
+      owner: 'octo',
+      repo: 'repo',
+      token: 'token',
+      githubApiBase: 'https://api.github.com',
+      fetchPRDetails,
+    });
+
+    expect(result.diagnostics.prBodiesFetched).toBe(0);
+    expect(result.diagnostics.fallbackReasons).toContain(
+      'Skipped PR #10: PR not found (404)',
+    );
+    expect(result.diagnostics.fallbackReasons).toContain(
+      'Skipped PR #11: GitHub API rate limit reached',
     );
   });
 });
