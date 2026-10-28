@@ -292,6 +292,8 @@ describe('executeChangelogRun', () => {
         'Prompt customization: requested=true, applied=false, sources=inline+file, chars=21/16000, encoding=utf8',
         'Prompt customization file: loaded (.github/changelog-instructions.md)',
         'Prompt customization reason: not applied because provider API key is missing',
+        'Metadata lookups: total=1, successful=1, degraded=0',
+        'Metadata fallback reasons: none',
       ].join('\n'),
     );
     expect(log).toHaveBeenNthCalledWith(3, '');
@@ -364,6 +366,19 @@ describe('executeChangelogRun', () => {
         ...unresolvedCustomization.diagnostics,
         applied: false,
         reason: 'not requested',
+      },
+      metadata: {
+        totalLookups: 0,
+        successfulLookups: 0,
+        degradedLookups: 0,
+        failureCounts: {
+          'not-found': 0,
+          'rate-limited': 0,
+          unauthenticated: 0,
+          'invalid-response': 0,
+          'network-error': 0,
+        },
+        fallbackReasons: [],
       },
     });
   });

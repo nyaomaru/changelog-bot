@@ -1,9 +1,14 @@
 import { GITHUB_METADATA_CONCURRENCY } from '@/constants/github.js';
 import { WHY_MAX_TOTAL_PAYLOAD_CHARS } from '@/constants/why.js';
 import type { fetchPRDetails } from '@/lib/github.js';
+import type { MetadataDiagnostics } from '@/types/github.js';
 import type { WhyExtractionItem, WhyTarget } from '@/types/why.js';
 import { mapConcurrent } from '@/utils/concurrency.js';
 import { formatMetadataFallbackReason } from '@/utils/github-error.js';
+import {
+  createMetadataDiagnostics,
+  recordMetadataLookupOutcome,
+} from '@/utils/metadata-diagnostics.js';
 import { preprocessWhyPrBody } from '@/utils/why-preprocess.js';
 
 type CollectWhyExtractionItemsParams = {
@@ -26,6 +31,8 @@ export type WhyItemCollectionResult = {
   skippedLowTrust: number;
   /** Per-PR reasons explaining unavailable or rejected descriptions. */
   fallbackReasons: string[];
+  /** Diagnostics from GitHub metadata lookups for PR details. */
+  metadataDiagnostics: MetadataDiagnostics;
 };
 
 /**
@@ -38,11 +45,13 @@ export async function collectWhyExtractionItems(
   params: CollectWhyExtractionItemsParams,
   targets: readonly WhyTarget[],
 ): Promise<WhyItemCollectionResult> {
+  const metadataDiagnostics = createMetadataDiagnostics();
   const result: WhyItemCollectionResult = {
     items: [],
     prBodiesFetched: 0,
     skippedLowTrust: 0,
     fallbackReasons: [],
+    metadataDiagnostics,
   };
 
   // WHY: Deduplicate target PR numbers before fetching so we make at most one
@@ -67,7 +76,13 @@ export async function collectWhyExtractionItems(
   );
 
   const lookupByPrNumber = new Map(lookups);
-  for (const [, lookup] of lookups) {
+  for (const [prNumber, lookup] of lookups) {
+    const fallbackReason =
+      lookup.status !== 'success'
+        ? formatMetadataFallbackReason(prNumber, lookup)
+        : undefined;
+    recordMetadataLookupOutcome(metadataDiagnostics, lookup, fallbackReason);
+
     if (lookup.status === 'success') {
       result.prBodiesFetched += 1;
     }

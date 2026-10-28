@@ -15,6 +15,7 @@ import {
 } from '@/lib/changelog-dry-run.js';
 import { resolveChangelogRunInput } from '@/lib/changelog-run-input.js';
 import { finalizeChangelogRunOutput } from '@/lib/changelog-run-output.js';
+import { mergeMetadataDiagnostics } from '@/utils/metadata-diagnostics.js';
 
 export type { ChangelogRunDependencies, ChangelogRunLogger };
 
@@ -49,6 +50,7 @@ export async function executeChangelogRun(params: {
     titleToPr,
     customInstructionsResolution,
     providerConfig,
+    metadataDiagnostics: inputMetadataDiagnostics,
   } = await resolveChangelogRunInput({
     cli,
     appConfig,
@@ -104,6 +106,10 @@ export async function executeChangelogRun(params: {
     deps,
   });
   const { llm, updatedChangelog, whyDiagnostics } = finalizedOutput;
+  const metadataDiagnostics = mergeMetadataDiagnostics(
+    inputMetadataDiagnostics,
+    finalizedOutput.metadataDiagnostics,
+  );
 
   if (cli.dryRun) {
     writeDryRunOutput({
@@ -119,6 +125,7 @@ export async function executeChangelogRun(params: {
       whyDiagnostics,
       updated: updatedChangelog,
       outcome: llmOutput.outcome,
+      metadata: metadataDiagnostics,
     });
     return;
   }

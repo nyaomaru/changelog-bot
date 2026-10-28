@@ -1,17 +1,18 @@
 import type { CliOptions } from '@/schema/cli.js';
 import type { AppConfig, ProviderRuntimeConfig } from '@/types/config.js';
 import type { CommitLite } from '@/types/commit.js';
-import type { PullRef } from '@/types/github.js';
+import type { MetadataDiagnostics, PullRef } from '@/types/github.js';
 import type { Provider } from '@/types/provider.js';
 import type { WhyExtractor } from '@/types/why-extractor.js';
 import type { CustomInstructionsResolution } from '@/lib/customization.js';
 import type { ChangelogRunDependencies } from '@/lib/changelog-run-dependencies.js';
 import type { ReleasePlan } from '@/lib/release-context.js';
 import {
-  resolvePullRequestsBySha,
-  resolveReleaseBody,
+  resolvePullRequestsByShaWithDiagnostics,
+  resolveReleaseBodyWithDiagnostics,
 } from '@/lib/release-data.js';
 import { resolveWhyExtractor } from '@/utils/why-extractor.js';
+import { mergeMetadataDiagnostics } from '@/utils/metadata-diagnostics.js';
 
 /** Git, GitHub, configuration, and customization inputs for generation. */
 export type ChangelogRunInput = {
@@ -45,6 +46,8 @@ export type ChangelogRunInput = {
   customInstructionsResolution: CustomInstructionsResolution;
   /** Runtime settings for the selected provider. */
   providerConfig: ProviderRuntimeConfig;
+  /** Diagnostics from GitHub metadata lookups during input resolution. */
+  metadataDiagnostics: MetadataDiagnostics;
 };
 
 /** Parameters used to collect one changelog run's generation inputs. */
@@ -95,8 +98,8 @@ export async function resolveChangelogRunInput({
 
   // WHY: These GitHub lookups depend on the same resolved credentials but not
   // on each other, so running them together avoids unnecessary network latency.
-  const [pullRequestsBySha, releaseBody] = await Promise.all([
-    resolvePullRequestsBySha({
+  const [pullRequestsResolution, releaseBodyResolution] = await Promise.all([
+    resolvePullRequestsByShaWithDiagnostics({
       deps,
       owner,
       repo,
@@ -106,7 +109,7 @@ export async function resolveChangelogRunInput({
       githubApiBase: appConfig.github.apiBase,
       commitList,
     }),
-    resolveReleaseBody({
+    resolveReleaseBodyWithDiagnostics({
       cli,
       deps,
       owner,
@@ -115,6 +118,13 @@ export async function resolveChangelogRunInput({
       githubApiBase: appConfig.github.apiBase,
     }),
   ]);
+
+  const pullRequestsBySha = pullRequestsResolution.pullRequestsBySha;
+  const releaseBody = releaseBodyResolution.releaseBody;
+  const metadataDiagnostics = mergeMetadataDiagnostics(
+    pullRequestsResolution.diagnostics,
+    releaseBodyResolution.diagnostics,
+  );
 
   const prNumbersBySha = deps.buildPrMapBySha({
     commitList,
@@ -150,5 +160,6 @@ export async function resolveChangelogRunInput({
     titleToPr,
     customInstructionsResolution,
     providerConfig: deps.getProviderRuntimeConfig(appConfig, provider.name),
+    metadataDiagnostics,
   };
 }

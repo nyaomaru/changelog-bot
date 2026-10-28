@@ -147,6 +147,7 @@ export async function runWhyExtraction(
   diagnostics.prBodiesFetched = collection.prBodiesFetched;
   diagnostics.skippedLowTrust += collection.skippedLowTrust;
   diagnostics.fallbackReasons.push(...collection.fallbackReasons);
+  diagnostics.metadataDiagnostics = collection.metadataDiagnostics;
 
   const boundedItems = truncateWhyPayloadItems(collection.items);
   if (!boundedItems.length) {

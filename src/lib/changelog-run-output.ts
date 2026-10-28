@@ -1,10 +1,10 @@
 import type { CliOptions } from '@/schema/cli.js';
 import type { LLMOutput } from '@/types/llm.js';
+import type { MetadataDiagnostics } from '@/types/github.js';
 import type { Provider } from '@/types/provider.js';
 import type { WhyExtractor } from '@/types/why-extractor.js';
 import type { WhyDiagnostics } from '@/types/why.js';
 import type { ChangelogRunDependencies } from '@/lib/changelog-run-dependencies.js';
-
 import type { ReleaseDraft, ReleaseOutcome } from '@/types/release.js';
 
 type ChangelogRunOutputDependencies = Pick<
@@ -64,6 +64,8 @@ export type FinalizeChangelogRunOutputResult = {
   whyDiagnostics: WhyDiagnostics;
   /** Typed outcome of release validation before rendering. */
   outcome?: ReleaseOutcome;
+  /** Diagnostics from GitHub metadata lookups during WHY extraction. */
+  metadataDiagnostics?: MetadataDiagnostics;
 };
 
 /**
@@ -137,5 +139,6 @@ export async function finalizeChangelogRunOutput(
     updatedChangelog: finalized.updated,
     whyDiagnostics: whyOutput.diagnostics,
     outcome: params.outcome,
+    metadataDiagnostics: whyOutput.diagnostics.metadataDiagnostics,
   };
 }

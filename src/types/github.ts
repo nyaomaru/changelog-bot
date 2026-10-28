@@ -102,3 +102,17 @@ export type MetadataLookupFailure = {
 /** Result of fetching GitHub metadata, preserving typed degradation status. */
 export type MetadataLookupResult<T> =
   { status: 'success'; data: T } | MetadataLookupFailure;
+
+/** Aggregated diagnostics for GitHub metadata lookups during a run. */
+export type MetadataDiagnostics = {
+  /** Total number of GitHub metadata requests attempted. */
+  totalLookups: number;
+  /** Number of metadata requests that succeeded with valid payload. */
+  successfulLookups: number;
+  /** Number of metadata requests that degraded or failed. */
+  degradedLookups: number;
+  /** Breakdown of failed lookups by typed failure status. */
+  failureCounts: Record<MetadataLookupFailureReason, number>;
+  /** Human-readable fallback reasons explaining degraded lookups. */
+  fallbackReasons: string[];
+};

@@ -1,3 +1,4 @@
+import type { MetadataDiagnostics } from '@/types/github.js';
 import type { ReleaseChangeId } from '@/types/release.js';
 
 /** Confidence levels accepted from the WHY extraction model. */
@@ -134,4 +135,6 @@ export type WhyDiagnostics = {
   notesRendered: number;
   /** Non-fatal fallback/skip reasons. */
   fallbackReasons: string[];
+  /** Aggregated diagnostics from GitHub metadata lookups during WHY extraction. */
+  metadataDiagnostics?: MetadataDiagnostics;
 };
