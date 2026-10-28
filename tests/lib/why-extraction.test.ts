@@ -560,4 +560,66 @@ describe('runWhyExtraction', () => {
       'Skipped PR #11: GitHub API rate limit reached',
     );
   });
+
+  test('bounds concurrent PR metadata lookups and deduplicates identical PR targets', async () => {
+    let activeLookups = 0;
+    let maxObservedActiveLookups = 0;
+    const fetchPRDetails = jest.fn<FetchPRDetails>(
+      async (_owner, _repo, prNumber) => {
+        activeLookups += 1;
+        maxObservedActiveLookups = Math.max(
+          maxObservedActiveLookups,
+          activeLookups,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        activeLookups -= 1;
+        return {
+          status: 'success',
+          data: {
+            number: prNumber,
+            title: `PR #${prNumber}`,
+            body: '## Why\n\nExplicit rationale for this change.',
+            author: 'alice',
+            url: `https://github.com/octo/repo/pull/${prNumber}`,
+          },
+        };
+      },
+    );
+
+    const selectedProvider = provider();
+    await runWhyExtraction({
+      cli: {
+        ...cli,
+        whyMaxPrs: 10,
+      },
+      llm: {
+        new_section_markdown: [
+          '### Added',
+          '',
+          '- Feat 1 [#1](https://github.com/octo/repo/pull/1)',
+          '- Feat 1 duplicate [#1](https://github.com/octo/repo/pull/1)',
+          '- Feat 2 [#2](https://github.com/octo/repo/pull/2)',
+          '- Feat 3 [#3](https://github.com/octo/repo/pull/3)',
+          '- Feat 4 [#4](https://github.com/octo/repo/pull/4)',
+          '- Feat 5 [#5](https://github.com/octo/repo/pull/5)',
+        ].join('\n'),
+        pr_title: 'docs(changelog): 1.2.3',
+        pr_body: 'Generated changelog.',
+      },
+      changelogAiUsed: true,
+      provider: selectedProvider,
+      hasProviderKey: true,
+      owner: 'octo',
+      repo: 'repo',
+      token: 'token',
+      githubApiBase: 'https://api.github.com',
+      fetchPRDetails,
+    });
+
+    // 5 unique PRs despite 6 targets
+    expect(fetchPRDetails).toHaveBeenCalledTimes(5);
+    // Concurrency is bounded by GITHUB_METADATA_CONCURRENCY (4)
+    expect(maxObservedActiveLookups).toBeLessThanOrEqual(4);
+    expect(activeLookups).toBe(0);
+  });
 });

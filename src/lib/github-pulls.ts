@@ -1,5 +1,6 @@
 import {
   GITHUB_API_BASE_DEFAULT,
+  GITHUB_METADATA_CONCURRENCY,
   PRS_LOOKUP_COMMIT_LIMIT,
 } from '@/constants/github.js';
 import { githubGet } from '@/lib/github-client.js';
@@ -14,6 +15,7 @@ import type {
   PullRef,
   PullRequestDetails,
 } from '@/types/github.js';
+import { mapConcurrent } from '@/utils/concurrency.js';
 import { classifyGithubError } from '@/utils/github-error.js';
 
 function toPullRef(pullRequest: GitHubCommitPullsItemParsed): PullRef {
@@ -172,13 +174,14 @@ export async function prsForCommit(
 }
 
 /**
- * Map commit SHAs to associated pull requests.
- * WHY: Cap requests to keep API usage and runtime predictable.
+ * Map commit SHAs to associated pull requests with bounded concurrency.
+ * WHY: Cap requests and bound concurrency to keep API usage and runtime predictable.
  * @param owner Repository owner or org.
  * @param repo Repository name.
  * @param shas Commit SHAs to inspect.
  * @param token Optional GitHub token for private repositories and higher limits.
  * @param apiBase GitHub API base URL.
+ * @param concurrency Maximum concurrent requests; defaults to GITHUB_METADATA_CONCURRENCY.
  * @returns Map of commit SHA to associated pull requests.
  */
 export async function mapCommitsToPrs(
@@ -187,20 +190,26 @@ export async function mapCommitsToPrs(
   shas: string[],
   token?: string,
   apiBase: string = GITHUB_API_BASE_DEFAULT,
+  concurrency = GITHUB_METADATA_CONCURRENCY,
 ): Promise<Record<string, PullRef[]>> {
-  const commitToPullRefs: Record<string, PullRef[]> = {};
-  for (const commitSha of shas.slice(0, PRS_LOOKUP_COMMIT_LIMIT)) {
-    try {
-      commitToPullRefs[commitSha] = await prsForCommit(
-        owner,
-        repo,
-        commitSha,
-        token,
-        apiBase,
-      );
-    } catch {
-      commitToPullRefs[commitSha] = [];
-    }
-  }
-  return commitToPullRefs;
+  const targetShas = shas.slice(0, PRS_LOOKUP_COMMIT_LIMIT);
+  const pullRefEntries = await mapConcurrent(
+    targetShas,
+    concurrency,
+    async (commitSha): Promise<readonly [string, PullRef[]]> => {
+      try {
+        const pullRefs = await prsForCommit(
+          owner,
+          repo,
+          commitSha,
+          token,
+          apiBase,
+        );
+        return [commitSha, pullRefs];
+      } catch {
+        return [commitSha, []];
+      }
+    },
+  );
+  return Object.fromEntries(pullRefEntries);
 }

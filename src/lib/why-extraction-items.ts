@@ -1,6 +1,8 @@
+import { GITHUB_METADATA_CONCURRENCY } from '@/constants/github.js';
 import { WHY_MAX_TOTAL_PAYLOAD_CHARS } from '@/constants/why.js';
 import type { fetchPRDetails } from '@/lib/github.js';
 import type { WhyExtractionItem, WhyTarget } from '@/types/why.js';
+import { mapConcurrent } from '@/utils/concurrency.js';
 import { formatMetadataFallbackReason } from '@/utils/github-error.js';
 import { preprocessWhyPrBody } from '@/utils/why-preprocess.js';
 
@@ -11,6 +13,7 @@ type CollectWhyExtractionItemsParams = {
   githubApiBase: string;
   maxCharsPerPr: number;
   fetchPRDetails: typeof fetchPRDetails;
+  concurrency?: number;
 };
 
 /** Result of fetching and locally validating WHY extraction candidates. */
@@ -27,7 +30,7 @@ export type WhyItemCollectionResult = {
 
 /**
  * Fetch and preprocess PR descriptions selected from changelog bullets.
- * @param params GitHub lookup dependencies and per-PR candidate limit.
+ * @param params GitHub lookup dependencies, candidate limits, and optional concurrency setting.
  * @param targets Authoritative PR targets selected from the changelog.
  * @returns Trusted provider inputs and collection diagnostics.
  */
@@ -42,29 +45,36 @@ export async function collectWhyExtractionItems(
     fallbackReasons: [],
   };
 
-  const lookupByPrNumber = new Map<
-    number,
-    Awaited<ReturnType<typeof params.fetchPRDetails>>
-  >();
+  // WHY: Deduplicate target PR numbers before fetching so we make at most one
+  // network request per unique PR, bounded by GITHUB_METADATA_CONCURRENCY.
+  const uniquePrNumbers = Array.from(
+    new Set(targets.map((target) => target.prNumber)),
+  );
 
-  for (const target of targets) {
-    let lookup: Awaited<ReturnType<typeof params.fetchPRDetails>> | undefined;
-    if (lookupByPrNumber.has(target.prNumber)) {
-      lookup = lookupByPrNumber.get(target.prNumber);
-    } else {
-      lookup = await params.fetchPRDetails(
+  const lookups = await mapConcurrent(
+    uniquePrNumbers,
+    params.concurrency ?? GITHUB_METADATA_CONCURRENCY,
+    async (prNumber) => {
+      const lookup = await params.fetchPRDetails(
         params.owner,
         params.repo,
-        target.prNumber,
+        prNumber,
         params.token,
         params.githubApiBase,
       );
-      lookupByPrNumber.set(target.prNumber, lookup);
-      if (lookup && lookup.status === 'success') {
-        result.prBodiesFetched += 1;
-      }
-    }
+      return [prNumber, lookup] as const;
+    },
+  );
 
+  const lookupByPrNumber = new Map(lookups);
+  for (const [, lookup] of lookups) {
+    if (lookup.status === 'success') {
+      result.prBodiesFetched += 1;
+    }
+  }
+
+  for (const target of targets) {
+    const lookup = lookupByPrNumber.get(target.prNumber);
     if (!lookup || lookup.status !== 'success') {
       const fallbackReason = lookup
         ? formatMetadataFallbackReason(target.prNumber, lookup)
