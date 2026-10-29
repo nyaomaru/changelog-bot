@@ -209,7 +209,11 @@ export async function runWhyExtraction(
     diagnostics.fallbackReasons.push(
       'WHY extraction skipped: provider returned no trusted notes',
     );
-    return { llm: llmAfterWhyEnrichment, diagnostics };
+    return {
+      llm: llmAfterWhyEnrichment,
+      diagnostics,
+      metadataDiagnostics: collection.metadataDiagnostics,
+    };
   }
 
   const notesByPr = new Map(

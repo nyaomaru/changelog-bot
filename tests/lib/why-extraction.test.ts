@@ -622,4 +622,49 @@ describe('runWhyExtraction', () => {
     expect(maxObservedActiveLookups).toBeLessThanOrEqual(4);
     expect(activeLookups).toBe(0);
   });
+  test('preserves metadata diagnostics when provider returns no trusted notes', async () => {
+    const selectedProvider = provider();
+    jest.mocked(selectedProvider.extractWhyNotes).mockResolvedValue({
+      items: [],
+    });
+    const fetchPRDetails = jest.fn<FetchPRDetails>(async () => ({
+      status: 'success',
+      data: {
+        number: 12,
+        title: 'PR #12',
+        body: '## Why\n\nBecause draft releases can be created first and published later, the workflow must listen to publication.',
+        author: 'alice',
+        url: 'https://github.com/octo/repo/pull/12',
+      },
+    }));
+
+    const result = await runWhyExtraction({
+      cli,
+      llm: {
+        new_section_markdown: [
+          '### Added',
+          '',
+          '- Feat [#12](https://github.com/octo/repo/pull/12)',
+        ].join('\n'),
+        pr_title: 'docs(changelog): 1.2.3',
+        pr_body: 'body',
+      },
+      changelogAiUsed: true,
+      provider: selectedProvider,
+      hasProviderKey: true,
+      owner: 'octo',
+      repo: 'repo',
+      token: 'token',
+      githubApiBase: 'https://api.github.com',
+      fetchPRDetails,
+    });
+
+    expect(result.diagnostics.fallbackReasons).toContain(
+      'WHY extraction skipped: provider returned no trusted notes',
+    );
+    expect(result.metadataDiagnostics).toBeDefined();
+    expect(result.metadataDiagnostics?.totalLookups).toBe(1);
+    expect(result.metadataDiagnostics?.successfulLookups).toBe(1);
+    expect(result.metadataDiagnostics?.degradedLookups).toBe(0);
+  });
 });
