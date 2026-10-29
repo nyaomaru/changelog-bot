@@ -36,7 +36,11 @@ export function loadCliConfigFile(
     const rawConfig = JSON.parse(
       readFileSync(resolvedPath, CLI_CONFIG_ENCODING),
     );
-    return CliConfigFileSchema.parse(rawConfig);
+    const config = { ...CliConfigFileSchema.parse(rawConfig) };
+    // WHY: `$schema` is an editor hint, not an option; keep it out of the result.
+    delete config.$schema;
+    return config;
+
   } catch (error) {
     if (isZodError(error)) {
       throw new ConfigError(
