@@ -139,6 +139,6 @@ export async function finalizeChangelogRunOutput(
     updatedChangelog: finalized.updated,
     whyDiagnostics: whyOutput.diagnostics,
     outcome: params.outcome,
-    metadataDiagnostics: whyOutput.diagnostics.metadataDiagnostics,
+    metadataDiagnostics: whyOutput.metadataDiagnostics,
   };
 }

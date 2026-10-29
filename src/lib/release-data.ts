@@ -19,7 +19,10 @@ import {
   mergeMetadataDiagnostics,
   recordMetadataLookupOutcome,
 } from '@/utils/metadata-diagnostics.js';
-import { formatReleaseMetadataFallbackReason } from '@/utils/github-error.js';
+import {
+  formatBranchMetadataFallbackReason,
+  formatReleaseMetadataFallbackReason,
+} from '@/utils/github-error.js';
 
 /** Git and GitHub adapters used to associate commits with pull requests. */
 export type PullRequestResolutionDependencies = {
@@ -95,7 +98,11 @@ export async function resolvePullRequestsByShaWithDiagnostics({
         token,
         githubApiBase,
       );
-      recordMetadataLookupOutcome(diagnostics, branchResult);
+      const fallbackReason =
+        branchResult.status !== 'success'
+          ? formatBranchMetadataFallbackReason(branchName, branchResult)
+          : undefined;
+      recordMetadataLookupOutcome(diagnostics, branchResult, fallbackReason);
       if (branchResult.status === 'success') {
         branchPullRequests = branchResult.data;
       }
@@ -223,7 +230,7 @@ export async function resolveReleaseBodyWithDiagnostics(
   if (params.cli.releaseBody) {
     return { releaseBody: params.cli.releaseBody, diagnostics };
   }
-  if (!params.cli.releaseTag) {
+  if (!params.cli.releaseTag || params.cli.releaseTag === HEAD_REF) {
     return { releaseBody: '', diagnostics };
   }
 

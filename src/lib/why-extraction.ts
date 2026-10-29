@@ -1,5 +1,6 @@
 import { LlmError } from '@/lib/errors.js';
 import type { fetchPRDetails } from '@/lib/github.js';
+import type { MetadataDiagnostics } from '@/types/github.js';
 import type { CliOptions } from '@/schema/cli.js';
 import type { LLMOutput } from '@/types/llm.js';
 import type { Provider } from '@/types/provider.js';
@@ -58,11 +59,13 @@ type RunWhyExtractionParams = {
   fetchPRDetails: typeof fetchPRDetails;
 };
 
-type RunWhyExtractionResult = {
+export type RunWhyExtractionResult = {
   /** Updated LLM output with WHY notes applied when available. */
   llm: LLMOutput;
   /** Dry-run diagnostics for WHY extraction. */
   diagnostics: WhyDiagnostics;
+  /** Metadata lookup diagnostics when PR details lookups were attempted. */
+  metadataDiagnostics?: MetadataDiagnostics;
 };
 
 function createEmptyDiagnostics(
@@ -147,14 +150,17 @@ export async function runWhyExtraction(
   diagnostics.prBodiesFetched = collection.prBodiesFetched;
   diagnostics.skippedLowTrust += collection.skippedLowTrust;
   diagnostics.fallbackReasons.push(...collection.fallbackReasons);
-  diagnostics.metadataDiagnostics = collection.metadataDiagnostics;
 
   const boundedItems = truncateWhyPayloadItems(collection.items);
   if (!boundedItems.length) {
     diagnostics.fallbackReasons.push(
       'WHY extraction skipped: no trusted PR description candidates',
     );
-    return { llm, diagnostics };
+    return {
+      llm,
+      diagnostics,
+      metadataDiagnostics: collection.metadataDiagnostics,
+    };
   }
 
   let providerOutput;
@@ -173,7 +179,11 @@ export async function runWhyExtraction(
       throw new LlmError(`WHY extraction failed: ${message}`);
     }
     diagnostics.fallbackReasons.push(`WHY extraction skipped: ${message}`);
-    return { llm, diagnostics };
+    return {
+      llm,
+      diagnostics,
+      metadataDiagnostics: collection.metadataDiagnostics,
+    };
   }
 
   // WHY: Jev may enrich a deterministic changelog, but that does not make the
@@ -235,5 +245,6 @@ export async function runWhyExtraction(
       ),
     },
     diagnostics,
+    metadataDiagnostics: collection.metadataDiagnostics,
   };
 }

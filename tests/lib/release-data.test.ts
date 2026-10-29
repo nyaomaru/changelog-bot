@@ -196,6 +196,34 @@ describe('resolvePullRequestsByShaWithDiagnostics', () => {
       'API rate limit exceeded',
     ]);
   });
+
+  test('records fallback reason when branch lookup degrades', async () => {
+    const deps = {
+      ...createPullRequestDependencies(),
+      currentBranch: jest.fn(() => 'feature/rate-limited'),
+      fetchPullRequestsForBranchResult: jest.fn(async () => ({
+        status: 'rate-limited' as const,
+        message: 'API rate limit exceeded',
+      })),
+    };
+
+    const result = await resolvePullRequestsByShaWithDiagnostics({
+      deps,
+      owner: 'octo',
+      repo: 'repo',
+      releaseRef: 'HEAD',
+      repoPath: '.',
+      githubApiBase: 'https://api.github.test',
+      commitList: [{ sha: 'sha1', subject: 'feat: branch commit' }],
+    });
+
+    expect(result.diagnostics.totalLookups).toBe(1);
+    expect(result.diagnostics.degradedLookups).toBe(1);
+    expect(result.diagnostics.failureCounts['rate-limited']).toBe(1);
+    expect(result.diagnostics.fallbackReasons).toEqual([
+      'Branch feature/rate-limited: GitHub API rate limit reached',
+    ]);
+  });
 });
 
 describe('resolveReleaseBodyWithDiagnostics', () => {
@@ -224,5 +252,30 @@ describe('resolveReleaseBodyWithDiagnostics', () => {
     expect(result.diagnostics.fallbackReasons).toEqual([
       'Release v1.2.3: release notes not found (404)',
     ]);
+  });
+
+  test('skips release body lookup when releaseTag is HEAD', async () => {
+    const fetchReleaseBodyResult = jest.fn(async () => ({
+      status: 'success' as const,
+      data: 'should not be called',
+    }));
+    const deps = {
+      fetchReleaseBody: jest.fn(async () => ''),
+      fetchReleaseBodyResult,
+    };
+
+    const result = await resolveReleaseBodyWithDiagnostics({
+      cli: { ...cli, releaseTag: 'HEAD' },
+      deps,
+      owner: 'octo',
+      repo: 'repo',
+      githubApiBase: 'https://api.github.test',
+    });
+
+    expect(result.releaseBody).toBe('');
+    expect(fetchReleaseBodyResult).not.toHaveBeenCalled();
+    expect(result.diagnostics.totalLookups).toBe(0);
+    expect(result.diagnostics.degradedLookups).toBe(0);
+    expect(result.diagnostics.fallbackReasons).toEqual([]);
   });
 });

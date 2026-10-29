@@ -1,3 +1,4 @@
+import { SHORT_COMMIT_SHA_LENGTH } from '@/constants/git.js';
 import {
   GITHUB_API_BASE_DEFAULT,
   GITHUB_METADATA_CONCURRENCY,
@@ -212,14 +213,20 @@ export async function prsForCommitData(
     const rawData = await githubGet<unknown>(endpoint, token);
     const parsed = GitHubCommitPullsArraySchema.safeParse(rawData);
     if (!parsed.success) {
-      return classifyGithubError(parsed.error, `Commit ${sha.slice(0, 7)} PRs`);
+      return classifyGithubError(
+        parsed.error,
+        `Commit ${sha.slice(0, SHORT_COMMIT_SHA_LENGTH)} PRs`,
+      );
     }
     return {
       status: 'success',
       data: parsed.data.map(toPullRef),
     };
   } catch (caughtError) {
-    return classifyGithubError(caughtError, `Commit ${sha.slice(0, 7)} PRs`);
+    return classifyGithubError(
+      caughtError,
+      `Commit ${sha.slice(0, SHORT_COMMIT_SHA_LENGTH)} PRs`,
+    );
   }
 }
 

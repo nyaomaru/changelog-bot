@@ -763,4 +763,180 @@ describe('executeChangelogRun', () => {
     const finalOutcome = validateReleaseResult(draft);
     expect(finalOutcome.kind).toBe('release');
   });
+  test('dry-run JSON report with WHY enabled merges metadata into top-level and keeps why clean', async () => {
+    const log = jest.fn<(message: string) => void>();
+    const whyMetadataDiagnostics = {
+      totalLookups: 2,
+      successfulLookups: 1,
+      degradedLookups: 1,
+      failureCounts: {
+        'not-found': 0,
+        'rate-limited': 1,
+        unauthenticated: 0,
+        'invalid-response': 0,
+        'network-error': 0,
+      },
+      fallbackReasons: ['Skipped PR #42: GitHub API rate limit reached'],
+    };
+
+    const deps: Partial<ChangelogRunDependencies> = {
+      providerFactory: jest.fn(() => provider),
+      getRepoFullName: jest.fn(() => 'octo/repo'),
+      resolveReleasePlan: jest.fn(() => ({
+        owner: 'octo',
+        repo: 'repo',
+        repoPath: '.',
+        changelogPath: 'CHANGELOG.md',
+        releaseRef: 'v1.2.3',
+        version: '1.2.3',
+        prevRef: 'v1.2.2',
+        date: '2026-06-20',
+      })),
+      gitMergedPRs: jest.fn(() => ''),
+      commitsInRange: jest.fn(() => []),
+      currentBranch: jest.fn(() => 'main'),
+      fetchPullRequestsForBranch: jest.fn(async () => []),
+      tryFindPullRequestNumberForBranch: jest.fn(() => null),
+      prepareExistingChangelog: jest.fn(() => 'existing changelog'),
+      resolveRunCredentials: jest.fn(async () => ({
+        token: undefined,
+        hasProviderKey: true,
+      })),
+      mapCommitsToPrs: jest.fn(async () => ({})),
+      fetchReleaseBody: jest.fn(async () => ''),
+      resolveCustomInstructionsWithDiagnostics: jest.fn(
+        () => unresolvedCustomization,
+      ),
+      buildPrMapBySha: jest.fn(() => ({})),
+      buildTitleToPr: jest.fn(() => ({})),
+      getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
+      buildChangelogLlmOutput: jest.fn(async () => ({
+        llm: createLlmOutput(),
+        aiUsed: true,
+        fallbackReasons: [],
+      })),
+      finalizeChangelogUpdate: jest.fn((params) => ({
+        llm: params.llm,
+        updated: 'updated changelog',
+      })),
+      runWhyExtraction: jest.fn(async (params) => ({
+        llm: params.llm,
+        diagnostics: {
+          enabled: true,
+          engine: 'llm',
+          selectionDiagnostics: [],
+          aiUsed: false,
+          targetsFound: 1,
+          prBodiesFetched: 1,
+          skippedBeforeFetch: 0,
+          skippedLowTrust: 0,
+          notesRendered: 0,
+          fallbackReasons: [],
+        },
+        metadataDiagnostics: whyMetadataDiagnostics,
+      })),
+      writeChangelog: jest.fn(),
+      ensureGithubTokenRequired: jest.fn(),
+      createPR: jest.fn(async () => 1),
+    };
+
+    await executeChangelogRun({
+      cli: { ...cli, dryRunJsonReport: true, why: true },
+      appConfig,
+      log,
+      deps,
+    });
+
+    const parsed = JSON.parse(log.mock.calls[1][0]);
+    expect(parsed.why).toBeDefined();
+    expect(parsed.why.metadataDiagnostics).toBeUndefined();
+    expect(parsed.metadata).toEqual(
+      expect.objectContaining({
+        totalLookups: 2,
+        successfulLookups: 1,
+        degradedLookups: 1,
+        failureCounts: expect.objectContaining({
+          'rate-limited': 1,
+        }),
+        fallbackReasons: ['Skipped PR #42: GitHub API rate limit reached'],
+      }),
+    );
+  });
+
+  test('dry-run for HEAD release skips release body lookup and avoids false degraded 404', async () => {
+    const log = jest.fn<(message: string) => void>();
+    const fetchReleaseBody = jest.fn(async () => '');
+    const deps: Partial<ChangelogRunDependencies> = {
+      providerFactory: jest.fn(() => provider),
+      getRepoFullName: jest.fn(() => 'octo/repo'),
+      resolveReleasePlan: jest.fn(() => ({
+        owner: 'octo',
+        repo: 'repo',
+        repoPath: '.',
+        changelogPath: 'CHANGELOG.md',
+        releaseRef: 'HEAD',
+        version: '1.2.3',
+        prevRef: 'v1.2.2',
+        date: '2026-06-20',
+      })),
+      gitMergedPRs: jest.fn(() => ''),
+      commitsInRange: jest.fn(() => []),
+      currentBranch: jest.fn(() => 'main'),
+      fetchPullRequestsForBranch: jest.fn(async () => []),
+      tryFindPullRequestNumberForBranch: jest.fn(() => null),
+      prepareExistingChangelog: jest.fn(() => 'existing changelog'),
+      resolveRunCredentials: jest.fn(async () => ({
+        token: undefined,
+        hasProviderKey: false,
+      })),
+      mapCommitsToPrs: jest.fn(async () => ({})),
+      fetchReleaseBody,
+      resolveCustomInstructionsWithDiagnostics: jest.fn(
+        () => unresolvedCustomization,
+      ),
+      buildPrMapBySha: jest.fn(() => ({})),
+      buildTitleToPr: jest.fn(() => ({})),
+      getProviderRuntimeConfig: jest.fn(() => appConfig.providers.openai),
+      buildChangelogLlmOutput: jest.fn(async () => ({
+        llm: createLlmOutput(),
+        aiUsed: false,
+        fallbackReasons: [],
+      })),
+      finalizeChangelogUpdate: jest.fn((params) => ({
+        llm: params.llm,
+        updated: 'updated changelog',
+      })),
+      runWhyExtraction: jest.fn(async (params) => ({
+        llm: params.llm,
+        diagnostics: {
+          enabled: false,
+          engine: 'llm',
+          selectionDiagnostics: [],
+          aiUsed: false,
+          targetsFound: 0,
+          prBodiesFetched: 0,
+          skippedBeforeFetch: 0,
+          skippedLowTrust: 0,
+          notesRendered: 0,
+          fallbackReasons: [],
+        },
+      })),
+      writeChangelog: jest.fn(),
+      ensureGithubTokenRequired: jest.fn(),
+      createPR: jest.fn(async () => 1),
+    };
+
+    await executeChangelogRun({
+      cli: { ...cli, releaseTag: 'HEAD', dryRunJsonReport: true },
+      appConfig,
+      log,
+      deps,
+    });
+
+    const parsed = JSON.parse(log.mock.calls[1][0]);
+    expect(fetchReleaseBody).not.toHaveBeenCalled();
+    expect(parsed.metadata.degradedLookups).toBe(0);
+    expect(parsed.metadata.failureCounts['not-found']).toBe(0);
+    expect(parsed.metadata.fallbackReasons).toEqual([]);
+  });
 });
