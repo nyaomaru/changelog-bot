@@ -1,3 +1,4 @@
+import { SHORT_COMMIT_SHA_LENGTH } from '@/constants/git.js';
 import type { MetadataLookupFailure } from '@/types/github.js';
 import {
   isError,
@@ -203,6 +204,97 @@ export function formatMetadataFallbackReason(
       return `Skipped PR #${prNumber}: invalid PR metadata received from GitHub`;
     case 'network-error':
       return `Skipped PR #${prNumber}: network error fetching PR metadata`;
+    default: {
+      const exhaustiveStatus: never = failure.status;
+      throw new Error(
+        `Unsupported metadata lookup failure status: ${String(exhaustiveStatus)}`,
+      );
+    }
+  }
+}
+
+/**
+ * Format a human-readable fallback reason when commit-to-PR metadata lookups degrade.
+ * @param commitSha Commit SHA associated with the failed lookup.
+ * @param failure Typed failure detail.
+ * @returns Formatted reason string.
+ */
+export function formatCommitMetadataFallbackReason(
+  commitSha: string,
+  failure: MetadataLookupFailure,
+): string {
+  const shortSha = commitSha.slice(0, SHORT_COMMIT_SHA_LENGTH);
+  switch (failure.status) {
+    case 'not-found':
+      return `Commit ${shortSha}: commit pulls not found (404)`;
+    case 'unauthenticated':
+      return `Commit ${shortSha}: GitHub authentication required or token invalid`;
+    case 'rate-limited':
+      return `Commit ${shortSha}: GitHub API rate limit reached`;
+    case 'invalid-response':
+      return `Commit ${shortSha}: invalid commit PR metadata received from GitHub`;
+    case 'network-error':
+      return `Commit ${shortSha}: network error fetching commit PR metadata`;
+    default: {
+      const exhaustiveStatus: never = failure.status;
+      throw new Error(
+        `Unsupported metadata lookup failure status: ${String(exhaustiveStatus)}`,
+      );
+    }
+  }
+}
+
+/**
+ * Format a human-readable fallback reason when release body metadata lookups degrade.
+ * @param releaseTag Release tag associated with the failed lookup.
+ * @param failure Typed failure detail.
+ * @returns Formatted reason string.
+ */
+export function formatReleaseMetadataFallbackReason(
+  releaseTag: string,
+  failure: MetadataLookupFailure,
+): string {
+  switch (failure.status) {
+    case 'not-found':
+      return `Release ${releaseTag}: release notes not found (404)`;
+    case 'unauthenticated':
+      return `Release ${releaseTag}: GitHub authentication required or token invalid`;
+    case 'rate-limited':
+      return `Release ${releaseTag}: GitHub API rate limit reached`;
+    case 'invalid-response':
+      return `Release ${releaseTag}: invalid release notes metadata received from GitHub`;
+    case 'network-error':
+      return `Release ${releaseTag}: network error fetching release notes`;
+    default: {
+      const exhaustiveStatus: never = failure.status;
+      throw new Error(
+        `Unsupported metadata lookup failure status: ${String(exhaustiveStatus)}`,
+      );
+    }
+  }
+}
+
+/**
+ * Format a human-readable fallback reason when branch pull request lookups degrade.
+ * @param branchName Branch name associated with the failed lookup.
+ * @param failure Typed failure detail.
+ * @returns Formatted reason string.
+ */
+export function formatBranchMetadataFallbackReason(
+  branchName: string,
+  failure: MetadataLookupFailure,
+): string {
+  switch (failure.status) {
+    case 'not-found':
+      return `Branch ${branchName}: branch pull requests not found (404)`;
+    case 'unauthenticated':
+      return `Branch ${branchName}: GitHub authentication required or token invalid`;
+    case 'rate-limited':
+      return `Branch ${branchName}: GitHub API rate limit reached`;
+    case 'invalid-response':
+      return `Branch ${branchName}: invalid branch PR metadata received from GitHub`;
+    case 'network-error':
+      return `Branch ${branchName}: network error fetching branch pull requests`;
     default: {
       const exhaustiveStatus: never = failure.status;
       throw new Error(

@@ -1,6 +1,8 @@
+import type { MetadataDiagnostics } from '@/types/github.js';
 import type { ProviderName } from '@/types/llm.js';
 import type { WhyDiagnostics } from '@/types/why.js';
 import type { CustomInstructionsDiagnostics } from '@/lib/customization.js';
+import type { ReleaseOutcome } from '@/types/release.js';
 
 /** Prompt customization state shown in dry-run diagnostics. */
 export type DryRunPromptCustomizationDiagnostics =
@@ -10,8 +12,6 @@ export type DryRunPromptCustomizationDiagnostics =
     /** Human-readable explanation of the applied state. */
     reason: string;
   };
-
-import type { ReleaseOutcome } from '@/types/release.js';
 
 /** Inputs required to render dry-run execution diagnostics. */
 export type DryRunDiagnosticsInput = {
@@ -29,6 +29,8 @@ export type DryRunDiagnosticsInput = {
   why?: WhyDiagnostics;
   /** Validated release outcome when available. */
   outcome?: ReleaseOutcome;
+  /** Aggregated GitHub metadata lookups diagnostics when lookups were performed. */
+  metadata?: MetadataDiagnostics;
 };
 
 /** Machine-readable dry-run report printed when requested by CLI flag. */
@@ -47,6 +49,8 @@ export type DryRunJsonReport = {
   why?: WhyDiagnostics;
   /** Validated release outcome when available. */
   outcome?: ReleaseOutcome;
+  /** Aggregated GitHub metadata lookups diagnostics when lookups were performed. */
+  metadata?: MetadataDiagnostics;
 };
 
 /**
@@ -115,6 +119,16 @@ export function formatDryRunDiagnostics(input: DryRunDiagnosticsInput): string {
     }
   }
 
+  if (input.metadata) {
+    const metadataFallbackReasonText = input.metadata.fallbackReasons.length
+      ? input.metadata.fallbackReasons.join('; ')
+      : 'none';
+    lines.push(
+      `Metadata lookups: total=${input.metadata.totalLookups}, successful=${input.metadata.successfulLookups}, degraded=${input.metadata.degradedLookups}`,
+      `Metadata fallback reasons: ${metadataFallbackReasonText}`,
+    );
+  }
+
   if (input.outcome) {
     lines.push(`Release outcome: ${input.outcome.kind}`);
   }
@@ -137,6 +151,7 @@ export function formatDryRunJsonReport(input: DryRunDiagnosticsInput): string {
       ? { promptCustomization: input.promptCustomization }
       : {}),
     ...(input.why?.enabled ? { why: input.why } : {}),
+    ...(input.metadata ? { metadata: input.metadata } : {}),
     ...(input.outcome ? { outcome: input.outcome } : {}),
   };
 

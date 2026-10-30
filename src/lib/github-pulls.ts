@@ -1,3 +1,4 @@
+import { SHORT_COMMIT_SHA_LENGTH } from '@/constants/git.js';
 import {
   GITHUB_API_BASE_DEFAULT,
   GITHUB_METADATA_CONCURRENCY,
@@ -11,12 +12,20 @@ import {
   type GitHubPRInfoParsed,
 } from '@/schema/github.js';
 import type {
+  MetadataDiagnostics,
   MetadataLookupResult,
   PullRef,
   PullRequestDetails,
 } from '@/types/github.js';
 import { mapConcurrent } from '@/utils/concurrency.js';
-import { classifyGithubError } from '@/utils/github-error.js';
+import {
+  classifyGithubError,
+  formatCommitMetadataFallbackReason,
+} from '@/utils/github-error.js';
+import {
+  createMetadataDiagnostics,
+  recordMetadataLookupOutcome,
+} from '@/utils/metadata-diagnostics.js';
 
 function toPullRef(pullRequest: GitHubCommitPullsItemParsed): PullRef {
   return {
@@ -125,6 +134,39 @@ export async function fetchPRDetails(
 }
 
 /**
+ * Fetch open pull requests whose head matches a repository branch, returning a structured result.
+ * @param owner Repository owner or organization.
+ * @param repo Repository name.
+ * @param branch Local branch name used as the pull request head.
+ * @param token Optional GitHub token for private repositories and higher limits.
+ * @param apiBase GitHub API base URL.
+ * @returns Matching pull request metadata result.
+ */
+export async function fetchPullRequestsForBranchResult(
+  owner: string,
+  repo: string,
+  branch: string,
+  token?: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
+): Promise<MetadataLookupResult<PullRef[]>> {
+  const head = encodeURIComponent(`${owner}:${branch}`);
+  const endpoint = `${apiBase}/repos/${owner}/${repo}/pulls?state=open&head=${head}&per_page=10`;
+  try {
+    const rawData = await githubGet<unknown>(endpoint, token);
+    const parsed = GitHubCommitPullsArraySchema.safeParse(rawData);
+    if (!parsed.success) {
+      return classifyGithubError(parsed.error, `Branch ${branch} PRs`);
+    }
+    return {
+      status: 'success',
+      data: parsed.data.map(toPullRef),
+    };
+  } catch (caughtError) {
+    return classifyGithubError(caughtError, `Branch ${branch} PRs`);
+  }
+}
+
+/**
  * Fetch open pull requests whose head matches a repository branch.
  * @param owner Repository owner or organization.
  * @param repo Repository name.
@@ -140,14 +182,51 @@ export async function fetchPullRequestsForBranch(
   token?: string,
   apiBase: string = GITHUB_API_BASE_DEFAULT,
 ): Promise<PullRef[]> {
-  const head = encodeURIComponent(`${owner}:${branch}`);
-  const endpoint = `${apiBase}/repos/${owner}/${repo}/pulls?state=open&head=${head}&per_page=10`;
+  const result = await fetchPullRequestsForBranchResult(
+    owner,
+    repo,
+    branch,
+    token,
+    apiBase,
+  );
+  return result.status === 'success' ? result.data : [];
+}
+
+/**
+ * List pull requests associated with a commit SHA, returning a structured lookup result.
+ * @param owner Repository owner or org.
+ * @param repo Repository name.
+ * @param sha Commit SHA to inspect.
+ * @param token Optional GitHub token for private repositories and higher limits.
+ * @param apiBase GitHub API base URL.
+ * @returns Structured metadata lookup result containing associated pull requests.
+ */
+export async function prsForCommitData(
+  owner: string,
+  repo: string,
+  sha: string,
+  token?: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
+): Promise<MetadataLookupResult<PullRef[]>> {
+  const endpoint = `${apiBase}/repos/${owner}/${repo}/commits/${sha}/pulls`;
   try {
-    const data = await githubGet<unknown>(endpoint, token);
-    const parsed = GitHubCommitPullsArraySchema.safeParse(data);
-    return parsed.success ? parsed.data.map(toPullRef) : [];
-  } catch {
-    return [];
+    const rawData = await githubGet<unknown>(endpoint, token);
+    const parsed = GitHubCommitPullsArraySchema.safeParse(rawData);
+    if (!parsed.success) {
+      return classifyGithubError(
+        parsed.error,
+        `Commit ${sha.slice(0, SHORT_COMMIT_SHA_LENGTH)} PRs`,
+      );
+    }
+    return {
+      status: 'success',
+      data: parsed.data.map(toPullRef),
+    };
+  } catch (caughtError) {
+    return classifyGithubError(
+      caughtError,
+      `Commit ${sha.slice(0, SHORT_COMMIT_SHA_LENGTH)} PRs`,
+    );
   }
 }
 
@@ -167,15 +246,76 @@ export async function prsForCommit(
   token?: string,
   apiBase: string = GITHUB_API_BASE_DEFAULT,
 ): Promise<PullRef[]> {
-  const endpoint = `${apiBase}/repos/${owner}/${repo}/commits/${sha}/pulls`;
-  const data = await githubGet<unknown>(endpoint, token);
-  const parsed = GitHubCommitPullsArraySchema.safeParse(data);
-  return parsed.success ? parsed.data.map(toPullRef) : [];
+  const result = await prsForCommitData(owner, repo, sha, token, apiBase);
+  return result.status === 'success' ? result.data : [];
+}
+
+/** Result of mapping commits to pull requests with associated lookup diagnostics. */
+export type MapCommitsToPrsResult = {
+  /** Pull request lists keyed by commit SHA. */
+  pullRequestsBySha: Record<string, PullRef[]>;
+  /** Diagnostics summarizing commit metadata lookups. */
+  diagnostics: MetadataDiagnostics;
+};
+
+/**
+ * Map commit SHAs to associated pull requests with bounded concurrency and diagnostics.
+ * WHY: Cap requests and bound concurrency to keep API usage predictable while
+ * preserving typed failure diagnostics for dry-run reporting.
+ * @param owner Repository owner or org.
+ * @param repo Repository name.
+ * @param shas Commit SHAs to inspect.
+ * @param token Optional GitHub token for private repositories and higher limits.
+ * @param apiBase GitHub API base URL.
+ * @param concurrency Maximum concurrent requests; defaults to GITHUB_METADATA_CONCURRENCY.
+ * @returns Mapped pull requests and aggregated lookup diagnostics.
+ */
+export async function mapCommitsToPrsWithDiagnostics(
+  owner: string,
+  repo: string,
+  shas: string[],
+  token?: string,
+  apiBase: string = GITHUB_API_BASE_DEFAULT,
+  concurrency = GITHUB_METADATA_CONCURRENCY,
+): Promise<MapCommitsToPrsResult> {
+  const targetShas = shas.slice(0, PRS_LOOKUP_COMMIT_LIMIT);
+  const diagnostics = createMetadataDiagnostics();
+
+  const pullRefEntries = await mapConcurrent(
+    targetShas,
+    concurrency,
+    async (
+      commitSha,
+    ): Promise<readonly [string, MetadataLookupResult<PullRef[]>]> => {
+      const lookupResult = await prsForCommitData(
+        owner,
+        repo,
+        commitSha,
+        token,
+        apiBase,
+      );
+      return [commitSha, lookupResult];
+    },
+  );
+
+  const pullRequestsBySha: Record<string, PullRef[]> = {};
+  for (const [commitSha, lookupResult] of pullRefEntries) {
+    const fallbackReason =
+      lookupResult.status !== 'success'
+        ? formatCommitMetadataFallbackReason(commitSha, lookupResult)
+        : undefined;
+    recordMetadataLookupOutcome(diagnostics, lookupResult, fallbackReason);
+
+    pullRequestsBySha[commitSha] =
+      lookupResult.status === 'success' ? lookupResult.data : [];
+  }
+
+  return { pullRequestsBySha, diagnostics };
 }
 
 /**
  * Map commit SHAs to associated pull requests with bounded concurrency.
- * WHY: Cap requests and bound concurrency to keep API usage and runtime predictable.
+ * WHY: Preserves backward-compatible signature for callers expecting a simple map.
  * @param owner Repository owner or org.
  * @param repo Repository name.
  * @param shas Commit SHAs to inspect.
@@ -192,24 +332,13 @@ export async function mapCommitsToPrs(
   apiBase: string = GITHUB_API_BASE_DEFAULT,
   concurrency = GITHUB_METADATA_CONCURRENCY,
 ): Promise<Record<string, PullRef[]>> {
-  const targetShas = shas.slice(0, PRS_LOOKUP_COMMIT_LIMIT);
-  const pullRefEntries = await mapConcurrent(
-    targetShas,
+  const { pullRequestsBySha } = await mapCommitsToPrsWithDiagnostics(
+    owner,
+    repo,
+    shas,
+    token,
+    apiBase,
     concurrency,
-    async (commitSha): Promise<readonly [string, PullRef[]]> => {
-      try {
-        const pullRefs = await prsForCommit(
-          owner,
-          repo,
-          commitSha,
-          token,
-          apiBase,
-        );
-        return [commitSha, pullRefs];
-      } catch {
-        return [commitSha, []];
-      }
-    },
   );
-  return Object.fromEntries(pullRefEntries);
+  return pullRequestsBySha;
 }

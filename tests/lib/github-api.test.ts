@@ -35,7 +35,10 @@ const {
   fetchPRInfo,
   fetchPullRequestsForBranch,
   prsForCommit,
+  prsForCommitData,
   mapCommitsToPrs,
+  mapCommitsToPrsWithDiagnostics,
+  fetchPullRequestsForBranchResult,
 } = await import('@/lib/github.js');
 
 describe('lib/github API helpers', () => {
@@ -214,5 +217,108 @@ describe('lib/github API helpers', () => {
     expect(maxObservedActiveRequests).toBe(concurrencyLimit);
     expect(activeRequests).toBe(0);
     expect(getJsonMock).toHaveBeenCalledTimes(commitShas.length);
+  });
+  test('prsForCommitData returns typed success and classified failure outcomes', async () => {
+    getJsonMock.mockResolvedValueOnce([
+      {
+        number: 42,
+        title: 'Fix bug',
+        user: { login: 'octo' },
+        html_url: 'https://github.com/o/r/pull/42',
+      },
+    ]);
+
+    const successResult = await prsForCommitData('o', 'r', 'sha-1', 'token');
+    expect(successResult).toEqual({
+      status: 'success',
+      data: [
+        {
+          number: 42,
+          title: 'Fix bug',
+          author: 'octo',
+          url: 'https://github.com/o/r/pull/42',
+        },
+      ],
+    });
+
+    getJsonMock.mockRejectedValueOnce(
+      new Error('GitHub API rate limit exceeded (status: 403)'),
+    );
+    const rateLimitResult = await prsForCommitData('o', 'r', 'sha-2', 'token');
+    expect(rateLimitResult.status).toBe('rate-limited');
+
+    getJsonMock.mockResolvedValueOnce('not-an-array');
+    const invalidResult = await prsForCommitData('o', 'r', 'sha-3', 'token');
+    expect(invalidResult.status).toBe('invalid-response');
+  });
+
+  test('mapCommitsToPrsWithDiagnostics aggregates diagnostics across commits', async () => {
+    getJsonMock.mockImplementation((url: string) => {
+      if (url.includes('/commits/c-success/')) {
+        return Promise.resolve([{ number: 10 }]);
+      }
+      if (url.includes('/commits/c-ratelimit/')) {
+        return Promise.reject(new Error('API rate limit exceeded'));
+      }
+      return Promise.reject(new Error('Network offline'));
+    });
+
+    const result = await mapCommitsToPrsWithDiagnostics(
+      'o',
+      'r',
+      ['c-success', 'c-ratelimit', 'c-offline'],
+      'token',
+    );
+
+    expect(result.pullRequestsBySha['c-success']).toEqual([{ number: 10 }]);
+    expect(result.pullRequestsBySha['c-ratelimit']).toEqual([]);
+    expect(result.pullRequestsBySha['c-offline']).toEqual([]);
+
+    expect(result.diagnostics.totalLookups).toBe(3);
+    expect(result.diagnostics.successfulLookups).toBe(1);
+    expect(result.diagnostics.degradedLookups).toBe(2);
+    expect(result.diagnostics.failureCounts['rate-limited']).toBe(1);
+    expect(result.diagnostics.failureCounts['network-error']).toBe(1);
+    expect(result.diagnostics.fallbackReasons.length).toBe(2);
+  });
+
+  test('fetchPullRequestsForBranchResult returns typed results', async () => {
+    getJsonMock.mockResolvedValueOnce([
+      {
+        number: 99,
+        title: 'Feature',
+        user: { login: 'dev' },
+        html_url: 'https://github.com/o/r/pull/99',
+      },
+    ]);
+
+    const result = await fetchPullRequestsForBranchResult(
+      'o',
+      'r',
+      'feat-branch',
+      'token',
+    );
+    expect(result).toEqual({
+      status: 'success',
+      data: [
+        {
+          number: 99,
+          title: 'Feature',
+          author: 'dev',
+          url: 'https://github.com/o/r/pull/99',
+        },
+      ],
+    });
+
+    getJsonMock.mockRejectedValueOnce(
+      Object.assign(new Error('Not found'), { status: 404 }),
+    );
+    const notFoundResult = await fetchPullRequestsForBranchResult(
+      'o',
+      'r',
+      'feat-branch',
+      'token',
+    );
+    expect(notFoundResult.status).toBe('not-found');
   });
 });

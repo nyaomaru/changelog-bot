@@ -1,8 +1,11 @@
 import { describe, expect, jest, test } from '@jest/globals';
 import {
   resolvePullRequestsBySha,
+  resolvePullRequestsByShaWithDiagnostics,
   resolveReleaseBody,
+  resolveReleaseBodyWithDiagnostics,
 } from '@/lib/release-data.js';
+import { createMetadataDiagnostics } from '@/utils/metadata-diagnostics.js';
 import type { ChangelogRunDependencies } from '@/lib/changelog-run.js';
 import type { CliOptions } from '@/schema/cli.js';
 
@@ -151,5 +154,128 @@ describe('resolveReleaseBody', () => {
       'token',
       'https://api.github.test',
     );
+  });
+});
+
+describe('resolvePullRequestsByShaWithDiagnostics', () => {
+  test('accumulates diagnostics when commit mapping provides diagnostics', async () => {
+    const deps = {
+      ...createPullRequestDependencies(),
+      mapCommitsToPrsWithDiagnostics: jest.fn(async () => {
+        const diagnostics = createMetadataDiagnostics();
+        diagnostics.totalLookups = 2;
+        diagnostics.successfulLookups = 1;
+        diagnostics.degradedLookups = 1;
+        diagnostics.failureCounts['rate-limited'] = 1;
+        diagnostics.fallbackReasons = ['API rate limit exceeded'];
+        return {
+          pullRequestsBySha: { sha1: [{ number: 10 }] },
+          diagnostics,
+        };
+      }),
+    };
+
+    const result = await resolvePullRequestsByShaWithDiagnostics({
+      deps,
+      owner: 'octo',
+      repo: 'repo',
+      releaseRef: 'v1.0.0',
+      repoPath: '.',
+      githubApiBase: 'https://api.github.test',
+      commitList: [
+        { sha: 'sha1', subject: 'feat: change 1' },
+        { sha: 'sha2', subject: 'fix: change 2' },
+      ],
+    });
+
+    expect(result.pullRequestsBySha).toEqual({ sha1: [{ number: 10 }] });
+    expect(result.diagnostics.totalLookups).toBe(2);
+    expect(result.diagnostics.degradedLookups).toBe(1);
+    expect(result.diagnostics.failureCounts['rate-limited']).toBe(1);
+    expect(result.diagnostics.fallbackReasons).toEqual([
+      'API rate limit exceeded',
+    ]);
+  });
+
+  test('records fallback reason when branch lookup degrades', async () => {
+    const deps = {
+      ...createPullRequestDependencies(),
+      currentBranch: jest.fn(() => 'feature/rate-limited'),
+      fetchPullRequestsForBranchResult: jest.fn(async () => ({
+        status: 'rate-limited' as const,
+        message: 'API rate limit exceeded',
+      })),
+    };
+
+    const result = await resolvePullRequestsByShaWithDiagnostics({
+      deps,
+      owner: 'octo',
+      repo: 'repo',
+      releaseRef: 'HEAD',
+      repoPath: '.',
+      githubApiBase: 'https://api.github.test',
+      commitList: [{ sha: 'sha1', subject: 'feat: branch commit' }],
+    });
+
+    expect(result.diagnostics.totalLookups).toBe(1);
+    expect(result.diagnostics.degradedLookups).toBe(1);
+    expect(result.diagnostics.failureCounts['rate-limited']).toBe(1);
+    expect(result.diagnostics.fallbackReasons).toEqual([
+      'Branch feature/rate-limited: GitHub API rate limit reached',
+    ]);
+  });
+});
+
+describe('resolveReleaseBodyWithDiagnostics', () => {
+  test('records degraded diagnostics when release lookup fails', async () => {
+    const deps = {
+      fetchReleaseBody: jest.fn(async () => ''),
+      fetchReleaseBodyResult: jest.fn(async () => ({
+        status: 'not-found' as const,
+        message: 'Release tag v1.0.0 not found',
+      })),
+    };
+
+    const result = await resolveReleaseBodyWithDiagnostics({
+      cli,
+      deps,
+      owner: 'octo',
+      repo: 'repo',
+      token: 'test-token',
+      githubApiBase: 'https://api.github.test',
+    });
+
+    expect(result.releaseBody).toBe('');
+    expect(result.diagnostics.totalLookups).toBe(1);
+    expect(result.diagnostics.degradedLookups).toBe(1);
+    expect(result.diagnostics.failureCounts['not-found']).toBe(1);
+    expect(result.diagnostics.fallbackReasons).toEqual([
+      'Release v1.2.3: release notes not found (404)',
+    ]);
+  });
+
+  test('skips release body lookup when releaseTag is HEAD', async () => {
+    const fetchReleaseBodyResult = jest.fn(async () => ({
+      status: 'success' as const,
+      data: 'should not be called',
+    }));
+    const deps = {
+      fetchReleaseBody: jest.fn(async () => ''),
+      fetchReleaseBodyResult,
+    };
+
+    const result = await resolveReleaseBodyWithDiagnostics({
+      cli: { ...cli, releaseTag: 'HEAD' },
+      deps,
+      owner: 'octo',
+      repo: 'repo',
+      githubApiBase: 'https://api.github.test',
+    });
+
+    expect(result.releaseBody).toBe('');
+    expect(fetchReleaseBodyResult).not.toHaveBeenCalled();
+    expect(result.diagnostics.totalLookups).toBe(0);
+    expect(result.diagnostics.degradedLookups).toBe(0);
+    expect(result.diagnostics.fallbackReasons).toEqual([]);
   });
 });

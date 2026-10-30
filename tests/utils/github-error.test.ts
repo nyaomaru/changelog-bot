@@ -3,7 +3,10 @@ import { z } from 'zod';
 import type { HttpError } from '@/types/http.js';
 import {
   classifyGithubError,
+  formatBranchMetadataFallbackReason,
+  formatCommitMetadataFallbackReason,
   formatMetadataFallbackReason,
+  formatReleaseMetadataFallbackReason,
 } from '@/utils/github-error.js';
 
 function createMockHttpError(
@@ -278,5 +281,61 @@ describe('formatMetadataFallbackReason', () => {
         message: 'Something unexpected happened',
       }),
     ).toThrow('Unsupported metadata lookup failure status: custom-status');
+  });
+});
+
+describe('formatBranchMetadataFallbackReason', () => {
+  test('formats branch fallback reason for rate-limited failure', () => {
+    const reason = formatBranchMetadataFallbackReason('feature/branch', {
+      status: 'rate-limited',
+      message: 'Rate limit exceeded',
+    });
+    expect(reason).toBe('Branch feature/branch: GitHub API rate limit reached');
+  });
+
+  test('formats branch fallback reason for unauthenticated failure', () => {
+    const reason = formatBranchMetadataFallbackReason('feature/branch', {
+      status: 'unauthenticated',
+      message: 'Bad token',
+    });
+    expect(reason).toBe(
+      'Branch feature/branch: GitHub authentication required or token invalid',
+    );
+  });
+});
+
+describe('formatCommitMetadataFallbackReason', () => {
+  test('formats commit fallback reason for rate-limited failure', () => {
+    const reason = formatCommitMetadataFallbackReason('1234567890abcdef', {
+      status: 'rate-limited',
+      message: 'Rate limit exceeded',
+    });
+    expect(reason).toBe('Commit 1234567: GitHub API rate limit reached');
+  });
+
+  test('formats commit fallback reason for not-found failure', () => {
+    const reason = formatCommitMetadataFallbackReason('1234567890abcdef', {
+      status: 'not-found',
+      message: 'Not found',
+    });
+    expect(reason).toBe('Commit 1234567: commit pulls not found (404)');
+  });
+});
+
+describe('formatReleaseMetadataFallbackReason', () => {
+  test('formats release fallback reason for not-found failure', () => {
+    const reason = formatReleaseMetadataFallbackReason('v1.0.0', {
+      status: 'not-found',
+      message: 'Not found',
+    });
+    expect(reason).toBe('Release v1.0.0: release notes not found (404)');
+  });
+
+  test('formats release fallback reason for network error', () => {
+    const reason = formatReleaseMetadataFallbackReason('v1.0.0', {
+      status: 'network-error',
+      message: 'Network offline',
+    });
+    expect(reason).toBe('Release v1.0.0: network error fetching release notes');
   });
 });

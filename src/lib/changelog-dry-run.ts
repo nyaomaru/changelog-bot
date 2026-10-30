@@ -1,4 +1,5 @@
 import type { CliOptions } from '@/schema/cli.js';
+import type { MetadataDiagnostics } from '@/types/github.js';
 import type { ProviderName } from '@/types/llm.js';
 import type { WhyDiagnostics } from '@/types/why.js';
 import type { CustomInstructionsResolution } from '@/lib/customization.js';
@@ -61,6 +62,8 @@ export type WriteDryRunOutputParams = {
   updated: string;
   /** Typed outcome of release validation before rendering. */
   outcome?: ReleaseOutcome;
+  /** Aggregated GitHub metadata lookups diagnostics when lookups were performed. */
+  metadata?: MetadataDiagnostics;
 };
 
 /**
@@ -82,6 +85,7 @@ export function writeDryRunOutput(params: WriteDryRunOutputParams): void {
     whyDiagnostics,
     updated,
     outcome,
+    metadata,
   } = params;
 
   log('==== DRY RUN (no PR) ====');
@@ -104,6 +108,7 @@ export function writeDryRunOutput(params: WriteDryRunOutputParams): void {
     },
     why: whyDiagnostics,
     outcome,
+    metadata,
   };
   log(
     cli.dryRunJsonReport
