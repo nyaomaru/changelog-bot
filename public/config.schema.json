@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "URI or path of the JSON schema used for editor validation.",
+      "type": "string"
+    },
+    "repoPath": {
+      "description": "Path to repository root.",
+      "type": "string"
+    },
+    "changelogPath": {
+      "description": "Path to CHANGELOG file.",
+      "type": "string"
+    },
+    "baseBranch": {
+      "description": "Base branch for the PR.",
+      "type": "string"
+    },
+    "provider": {
+      "description": "LLM provider.",
+      "type": "string",
+      "enum": ["openai", "anthropic", "gemini", "xai"]
+    },
+    "releaseTag": {
+      "description": "Git ref (tag or HEAD) to generate the release for.",
+      "type": "string"
+    },
+    "releaseName": {
+      "description": "Display name for the version (without `v`).",
+      "type": "string"
+    },
+    "releaseBody": {
+      "description": "Additional release notes body.",
+      "type": "string"
+    },
+    "language": {
+      "description": "Language for generated changelog prose.",
+      "type": "string",
+      "minLength": 1
+    },
+    "instructions": {
+      "description": "Additional changelog writing/grouping instructions.",
+      "type": "string"
+    },
+    "instructionsFile": {
+      "description": "Path to a file with additional instructions.",
+      "type": "string"
+    },
+    "dryRun": {
+      "description": "Print the updated CHANGELOG to stdout instead of writing it.",
+      "type": "boolean"
+    },
+    "dryRunJsonReport": {
+      "description": "Print dry-run provider diagnostics as JSON.",
+      "type": "boolean"
+    },
+    "failOnLlmError": {
+      "description": "Fail instead of falling back when provider calls fail.",
+      "type": "boolean"
+    },
+    "requireProvider": {
+      "description": "Fail when the selected provider API key is missing.",
+      "type": "boolean"
+    },
+    "noAi": {
+      "description": "Skip all provider calls and use deterministic output.",
+      "type": "boolean"
+    },
+    "why": {
+      "description": "Extract short WHY notes from PR descriptions.",
+      "type": "boolean"
+    },
+    "whyEngine": {
+      "description": "WHY engine (`jev` is experimental).",
+      "type": "string",
+      "enum": ["llm", "jev"]
+    },
+    "whyMaxPrs": {
+      "description": "Maximum PRs to inspect for WHY extraction.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "whyMaxCharsPerPr": {
+      "description": "Maximum candidate characters sent per PR.",
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "whyConfidence": {
+      "description": "Minimum WHY confidence.",
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "whyLabel": {
+      "description": "Label rendered before WHY notes.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false,
+  "$id": "https://raw.githubusercontent.com/nyaomaru/changelog-bot/main/public/config.schema.json",
+  "title": "changelog-bot config",
+  "description": "Configuration file for @nyaomaru/changelog-bot."
+}

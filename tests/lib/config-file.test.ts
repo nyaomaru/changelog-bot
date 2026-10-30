@@ -38,4 +38,40 @@ describe('loadCliConfigFile', () => {
       rmSync(cwd, { recursive: true, force: true });
     }
   });
+
+  test('accepts and strips the $schema editor hint', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'changelog-bot-'));
+    try {
+      writeFileSync(
+        join(cwd, 'changelog-bot.config.json'),
+        JSON.stringify({
+          $schema:
+            './node_modules/@nyaomaru/changelog-bot/public/config.schema.json',
+          changelogPath: 'docs/CHANGELOG.md',
+        }),
+        'utf8',
+      );
+
+      expect(loadCliConfigFile(undefined, cwd)).toEqual({
+        changelogPath: 'docs/CHANGELOG.md',
+      });
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test('still rejects typos when $schema is present', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'changelog-bot-'));
+    try {
+      writeFileSync(
+        join(cwd, 'changelog-bot.config.json'),
+        JSON.stringify({ $schema: 'x', changlogPath: 'CHANGELOG.md' }),
+        'utf8',
+      );
+
+      expect(() => loadCliConfigFile(undefined, cwd)).toThrow(ConfigError);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
 });

@@ -265,6 +265,25 @@ Config files use camelCase keys matching the CLI options:
 `requireProvider`, `noAi`, `why`, `whyEngine`, `whyMaxPrs`, `whyMaxCharsPerPr`,
 `whyConfidence`, and `whyLabel`. Unknown keys are rejected so typos fail fast.
 
+#### Editor autocompletion with JSON Schema
+ 
+A JSON Schema for the config file is published with the package. Add a
+`$schema` key to get autocompletion, hover docs, and validation in VS Code,
+WebStorm, Cursor, and other JSON-aware editors:
+ 
+```json
+{
+  "$schema": "./node_modules/@nyaomaru/changelog-bot/public/config.schema.json",
+  "provider": "anthropic"
+}
+```
+ 
+You can also point at the copy on GitHub:
+`https://raw.githubusercontent.com/nyaomaru/changelog-bot/main/public/config.schema.json`.
+The `$schema` key is accepted and ignored by the CLI. Contributors can
+regenerate the schema after changing the config shape with
+`pnpm generate:schema`.
+
 ### From source (local checkout)
 
 Working in a clone? Follow the steps in [Local development setup](#local-development-setup) to install dependencies and run the CLI directly.

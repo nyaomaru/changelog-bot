@@ -16,12 +16,14 @@
     "eval:why": "pnpm build && node dist/evaluation/run-why-evaluation.js",
     "format": "prettier --write .",
     "check:dist": "node scripts/check-dist-alias.mjs",
+    "generate:schema": "pnpm build && node scripts/generate-config-schema.mjs",
     "prepack": "pnpm build",
     "prepare": "lefthook install",
     "prepublishOnly": "pnpm build && pnpm run check:dist"
   },
   "files": [
     "dist",
+    "public/config.schema.json",
     "README.md",
     "CHANGELOG.md"
   ],
