@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.11.0] - 2026-10-31
+
+### Added
+
+- typed metadata lookup results and error discrimination by @johnnylemonny in [#284](https://github.com/nyaomaru/changelog-bot/pull/284)
+- bound concurrent GitHub metadata lookups by @johnnylemonny in [#286](https://github.com/nyaomaru/changelog-bot/pull/286)
+- report degraded metadata in dry-run and JSON reports by @johnnylemonny in [#287](https://github.com/nyaomaru/changelog-bot/pull/287)
+
+### Fixed
+
+- require patched Node.js for eMudhra CA mitigation by @nyaomaru in [#285](https://github.com/nyaomaru/changelog-bot/pull/285)
+  - Why: Require patched Node.js to mitigate issues with compromised eMudhra CA certificate chains.
+- allow $schema in config file and publish JSON schema by @Prashaxt in [#288](https://github.com/nyaomaru/changelog-bot/pull/288)
+  - Why: Allowing $schema in the config file enables autocompletion and validation in editors without crashing the CLI.
+
+### Docs
+
+- 0.10.1 by @github-actions[bot] in [#278](https://github.com/nyaomaru/changelog-bot/pull/278)
+- add SECURITY.md and CODEOWNERS by @johnnylemonny in [#283](https://github.com/nyaomaru/changelog-bot/pull/283)
+- mark v1 phase 6 as implemented by @nyaomaru in [#290](https://github.com/nyaomaru/changelog-bot/pull/290)
+
+### Chore
+
+- bump the minor-and-patch group with 4 updates by @dependabot[bot] in [#289](https://github.com/nyaomaru/changelog-bot/pull/289)
+- Release: 0.11.0 by @github-actions[bot] in [#291](https://github.com/nyaomaru/changelog-bot/pull/291)
+
+### What's new 🚀
+
+#### Better metadata handling
+
+GitHub metadata lookups are now faster and easier to debug.
+
+- Run independent lookups with bounded concurrency
+- Distinguish rate limits, auth errors, missing data, invalid responses, and network failures
+- Keep generating changelogs even when metadata enrichment fails
+- Show degraded metadata details in `--dry-run` and JSON reports
+
+Phase 6 of the v1 pipeline is now complete! 😸
+
+A huge thanks to @johnnylemonny for driving the Phase 6 implementation across #284, #286, and #287! 🚀
+
+And thanks to @Prashaxt for improving config schema support in #288! 😸
+
+**Full Changelog**: https://github.com/nyaomaru/changelog-bot/compare/v0.10.1...v0.11.0
+
+[v0.11.0]: https://github.com/nyaomaru/changelog-bot/compare/v0...v0.11.0
+
 ## [v0.10.1] - 2026-10-24
 
 ### Fixed
