@@ -2,10 +2,11 @@
 
 ## Status
 
-Phases 1-5 are implemented. They establish canonical `ReleaseChange`
+Phases 1-6 are implemented. They establish canonical `ReleaseChange`
 identities, ID-based reconciliation, deterministic classification, structural
-rendering, completeness validation, and explicit no-change behavior. Phases
-6-7 are planned implementation work for v1.
+rendering, completeness validation, explicit no-change behavior, enrichment
+diagnostics, and bounded concurrency. Phase 7 remains planned implementation
+work for v1.
 
 Each numbered phase should remain a separately reviewable change and preserve
 existing output unless its acceptance criteria explicitly change behavior.
@@ -341,7 +342,7 @@ Acceptance criteria:
 - No `Summary of changes` is fabricated.
 - CLI behavior for no-change results is documented and tested.
 
-### 6. Preserve enrichment diagnostics and bound concurrency
+### 6. Preserve enrichment diagnostics and bound concurrency (implemented)
 
 Treat GitHub metadata lookup, editorial AI, and WHY enrichment as optional,
 degradable enrichment stages. Preserve typed diagnostics and fetch independent
